@@ -54,6 +54,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
+    namespace 'com.eopeter.fluttermapboxnavigation'
     compileSdkVersion 33
 
     sourceSets {
