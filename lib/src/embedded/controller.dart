@@ -68,16 +68,15 @@ class MapBoxNavigationViewController {
 
     for (var i = 0; i < wayPoints.length; i++) {
       final wayPoint = wayPoints[i];
-      assert(wayPoint.name != null, 'Error: waypoints need name');
       assert(wayPoint.latitude != null, 'Error: waypoints need latitude');
       assert(wayPoint.longitude != null, 'Error: waypoints need longitude');
 
       final pointMap = <String, dynamic>{
         'Order': i,
-        'Name': wayPoint.name,
+        'Name': wayPoint.name ?? '',
         'Latitude': wayPoint.latitude,
         'Longitude': wayPoint.longitude,
-        'IsSilent': wayPoint.isSilent,
+        'IsSilent': wayPoint.isSilent ?? false,
       };
       pointList.add(pointMap);
     }
