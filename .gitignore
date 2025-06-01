@@ -32,3 +32,75 @@ build/
 
 example/android/app/src/main/res/values/mapbox_access_token.xml
 example/android/app/src/main/res/values/strings.xml
+example/android/gradle.properties
+
+# Mapbox access token
+mapbox_access_token.txt
+mapbox_access_token.json
+mapbox_access_token.dart
+lib/config/mapbox_access_token.dart
+tokens/
+tokens/*
+
+# Flutter/Dart specific
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+ios/Pods/
+android/.gradle/
+android/app/debug
+android/app/profile
+android/app/release
+
+# IDE specific
+.idea/
+.vscode/
+*.iml
+*.iws
+.DS_Store
+
+# Coverage
+coverage/
+*.lcov
+
+# Test coverage
+test/coverage/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# Debug files
+*.log
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# Android specific
+android/app/debug.keystore
+android/app/release.keystore
+android/key.properties
+android/local.properties
+
+# iOS specific
+ios/Runner.xcworkspace/
+ios/Podfile.lock
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
