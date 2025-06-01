@@ -44,24 +44,53 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
     
     func addWayPoints(arguments: NSDictionary?, result: @escaping FlutterResult)
     {
-
-        guard var locations = getLocationsFromFlutterArgument(arguments: arguments) else { return }
-
-        var nextIndex = 1
-        for loc in locations
-        {
-            let wayPoint = Waypoint(coordinate: CLLocationCoordinate2D(latitude: loc.latitude!, longitude: loc.longitude!), name: loc.name)
-            wayPoint.separatesLegs = !loc.isSilent
-            if (_wayPoints.count >= nextIndex) {
-                _wayPoints.insert(wayPoint, at: nextIndex)
+        do {
+            guard var locations = getLocationsFromFlutterArgument(arguments: arguments) else {
+                result([
+                    "success": false,
+                    "waypointsAdded": 0,
+                    "errorMessage": "Invalid waypoints data"
+                ])
+                return
             }
-            else {
-                _wayPoints.append(wayPoint)
+
+            _wayPoints.removeAll()
+            _wayPointOrder.removeAll()
+            
+            for loc in locations {
+                let location = Waypoint(coordinate: CLLocationCoordinate2D(latitude: loc.latitude!, longitude: loc.longitude!), name: loc.name)
+                location.separatesLegs = !loc.isSilent
+                _wayPoints.append(location)
+                _wayPointOrder[loc.order!] = location
             }
-            nextIndex += 1
+            
+            parseFlutterArguments(arguments: arguments)
+            
+            _options?.includesAlternativeRoutes = _alternatives
+            
+            if(_wayPoints.count > 3 && arguments?["mode"] == nil) {
+                _navigationMode = "driving"
+            }
+            
+            if(_wayPoints.count > 0) {
+                if(IsMultipleUniqueRoutes) {
+                    startNavigationWithWayPoints(wayPoints: [_wayPoints.remove(at: 0), _wayPoints.remove(at: 0)], flutterResult: result, isUpdatingWaypoints: true)
+                } else {
+                    startNavigationWithWayPoints(wayPoints: _wayPoints, flutterResult: result, isUpdatingWaypoints: true)
+                }
+            }
+            
+            result([
+                "success": true,
+                "waypointsAdded": locations.count
+            ])
+        } catch {
+            result([
+                "success": false,
+                "waypointsAdded": 0,
+                "errorMessage": error.localizedDescription
+            ])
         }
-        
-        startNavigationWithWayPoints(wayPoints: _wayPoints, flutterResult: result, isUpdatingWaypoints: true)
     }
     
     func startFreeDrive(arguments: NSDictionary?, result: @escaping FlutterResult)

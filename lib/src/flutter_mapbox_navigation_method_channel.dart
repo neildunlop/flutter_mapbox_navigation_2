@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mapbox_navigation/src/flutter_mapbox_navigation_platform_interface.dart';
 import 'package:flutter_mapbox_navigation/src/models/models.dart';
+import 'package:flutter_mapbox_navigation/src/models/waypoint_result.dart';
 
 /// An implementation of [FlutterMapboxNavigationPlatform]
 /// that uses method channels.
@@ -81,14 +82,33 @@ class MethodChannelFlutterMapboxNavigation
   }
 
   @override
-  Future<dynamic> addWayPoints({required List<WayPoint> wayPoints}) async {
+  Future<WaypointResult> addWayPoints({required List<WayPoint> wayPoints}) async {
     assert(wayPoints.isNotEmpty, 'Error: WayPoints must be at least 1');
-    final pointList = _getPointListFromWayPoints(wayPoints);
-    var i = 0;
-    final wayPointMap = {for (var e in pointList) i++: e};
-    final args = <String, dynamic>{};
-    args['wayPoints'] = wayPointMap;
-    await methodChannel.invokeMethod('addWayPoints', args);
+    try {
+      final pointList = _getPointListFromWayPoints(wayPoints);
+      var i = 0;
+      final wayPointMap = {for (var e in pointList) i++: e};
+      final args = <String, dynamic>{};
+      args['wayPoints'] = wayPointMap;
+      
+      final result = await methodChannel.invokeMethod('addWayPoints', args);
+      if (result is Map) {
+        return WaypointResult(
+          success: result['success'] as bool,
+          waypointsAdded: result['waypointsAdded'] as int,
+          errorMessage: result['errorMessage'] as String?,
+        );
+      }
+      return WaypointResult.failure(
+        errorMessage: 'Invalid response from platform',
+        waypointsAdded: 0,
+      );
+    } catch (e) {
+      return WaypointResult.failure(
+        errorMessage: e.toString(),
+        waypointsAdded: 0,
+      );
+    }
   }
 
   @override

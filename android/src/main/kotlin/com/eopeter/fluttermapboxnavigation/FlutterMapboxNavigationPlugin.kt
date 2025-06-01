@@ -228,18 +228,31 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         call: MethodCall,
         result: Result
     ) {
-        val arguments = call.arguments as? Map<String, Any>
-        val points = arguments?.get("wayPoints") as HashMap<Int, Any>
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val points = arguments?.get("wayPoints") as HashMap<Int, Any>
+            val waypoints = mutableListOf<Waypoint>()
 
-        for (item in points) {
-            val point = item.value as HashMap<*, *>
-            val name = point["Name"] as String
-            val latitude = point["Latitude"] as Double
-            val longitude = point["Longitude"] as Double
-            val isSilent = point["IsSilent"] as Boolean
-            wayPoints.add(Waypoint(name, latitude, longitude, isSilent))
+            for (item in points) {
+                val point = item.value as HashMap<*, *>
+                val name = point["Name"] as String
+                val latitude = point["Latitude"] as Double
+                val longitude = point["Longitude"] as Double
+                val isSilent = point["IsSilent"] as Boolean
+                waypoints.add(Waypoint(name, latitude, longitude, isSilent))
+            }
+            NavigationLauncher.addWayPoints(currentActivity, waypoints)
+            result.success(mapOf(
+                "success" to true,
+                "waypointsAdded" to waypoints.size
+            ))
+        } catch (e: Exception) {
+            result.success(mapOf(
+                "success" to false,
+                "waypointsAdded" to 0,
+                "errorMessage" to e.message
+            ))
         }
-        NavigationLauncher.addWayPoints(currentActivity, wayPoints)
     }
 
     override fun onListen(args: Any?, events: EventChannel.EventSink?) {

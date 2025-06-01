@@ -1,5 +1,7 @@
 import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_mapbox_navigation/src/models/options.dart';
+import 'package:flutter_mapbox_navigation/src/models/voice_units.dart';
 
 void main() {
   group('Route Options Tests', () {
@@ -25,33 +27,44 @@ void main() {
     });
 
     test('should handle different navigation modes', () {
-      // TODO: Test mode switching
+      // TODO: Test navigation modes
       // - Test driving mode
       // - Test walking mode
       // - Test cycling mode
       // - Test driving with traffic mode
-    });
+      // - Test mode switching behavior
+      // - Test mode-specific route options
+    }, skip: 'Navigation mode tests not yet implemented');
 
     test('should handle voice instruction settings', () {
-      // TODO: Test voice settings
+      // TODO: Test voice instructions
       // - Test voice enabled/disabled
-      // - Test different languages
+      // - Test voice language
       // - Test voice volume
-    });
+      // - Test different languages
+      // - Test voice instruction timing
+      // - Test voice instruction content
+    }, skip: 'Voice instruction tests not yet implemented');
 
     test('should handle unit preferences', () {
       // TODO: Test unit preferences
       // - Test metric units
       // - Test imperial units
       // - Test unit conversion
-    });
+      // - Test distance formatting
+      // - Test speed formatting
+      // - Test unit persistence
+    }, skip: 'Unit preference tests not yet implemented');
 
     test('should handle map display options', () {
-      // TODO: Test map display options
+      // TODO: Test map display
       // - Test zoom level
-      // - Test tilt
       // - Test bearing
+      // - Test tilt
+      // - Test map style
       // - Test refresh settings
-    });
+      // - Test map interaction
+      // - Test night mode
+    }, skip: 'Map display tests not yet implemented');
   });
 } 

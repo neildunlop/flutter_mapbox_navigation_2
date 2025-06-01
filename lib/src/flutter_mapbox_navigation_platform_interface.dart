@@ -1,9 +1,18 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_mapbox_navigation/src/flutter_mapbox_navigation_method_channel.dart';
 import 'package:flutter_mapbox_navigation/src/models/models.dart';
+import 'package:flutter_mapbox_navigation/src/models/options.dart';
+import 'package:flutter_mapbox_navigation/src/models/route_event.dart';
+import 'package:flutter_mapbox_navigation/src/models/waypoint_result.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-/// FlutterMapboxNavigationPlatform abstract class
+/// The interface that implementations of flutter_mapbox_navigation must implement.
+///
+/// Platform implementations should extend this class rather than implement it as `flutter_mapbox_navigation`
+/// does not consider newly added methods to be breaking changes. Extending this class
+/// (using `extends`) ensures that the subclass will get the default implementation, while
+/// platform implementations that `implements` this interface will be broken by newly added
+/// [FlutterMapboxNavigationPlatform] methods.
 abstract class FlutterMapboxNavigationPlatform extends PlatformInterface {
   /// Constructs a FlutterMapboxNavigationPlatform.
   FlutterMapboxNavigationPlatform() : super(token: _token);
@@ -75,7 +84,7 @@ abstract class FlutterMapboxNavigationPlatform extends PlatformInterface {
   /// [wayPoints] must not be null and have at least 1 item. The way points will
   /// be inserted after the currently navigating \
   /// waypoint in the existing navigation
-  Future<dynamic> addWayPoints({required List<WayPoint> wayPoints}) {
+  Future<WaypointResult> addWayPoints({required List<WayPoint> wayPoints}) {
     throw UnimplementedError(
       'addWayPoints({required wayPoints }) has not been implemented.',
     );
@@ -99,7 +108,7 @@ abstract class FlutterMapboxNavigationPlatform extends PlatformInterface {
     ValueSetter<RouteEvent> listener,
   ) async {
     throw UnimplementedError(
-      'registerEventListener() has not been implemented.',
+      'registerRouteEventListener() has not been implemented.',
     );
   }
 }

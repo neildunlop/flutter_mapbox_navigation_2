@@ -248,6 +248,20 @@ _controller.startNavigation();
 * [DONE] Embeddable Navigation View 
 * Offline Routing
 
+## Changelog
+
+### [Unreleased]
+#### Breaking Changes
+- Improved `addWayPoints` API to return meaningful results:
+  - Now returns `WaypointResult` with success status and number of waypoints added
+  - Added proper error handling and feedback
+  - Makes the API more consistent with other navigation methods
+
+#### Improvements
+- Added better error handling for waypoint operations
+- Improved type safety across the navigation API
+- Enhanced test coverage for platform communication
+
 <!-- Links -->
 [pub_badge]: https://img.shields.io/pub/v/flutter_mapbox_navigation.svg
 [pub]: https://pub.dev/packages/flutter_mapbox_navigation
