@@ -1,16 +1,20 @@
 package com.eopeter.fluttermapboxnavigation.activity
 
+import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.location.Location
+import android.os.Build
 import android.os.Bundle
-
-import org.json.JSONObject
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.eopeter.fluttermapboxnavigation.FlutterMapboxNavigationPlugin
 import com.eopeter.fluttermapboxnavigation.R
+import com.eopeter.fluttermapboxnavigation.TurnByTurn
 import com.eopeter.fluttermapboxnavigation.databinding.NavigationActivityBinding
 import com.eopeter.fluttermapboxnavigation.models.MapBoxEvents
 import com.eopeter.fluttermapboxnavigation.models.MapBoxRouteProgressEvent
@@ -20,6 +24,7 @@ import com.eopeter.fluttermapboxnavigation.utilities.CustomInfoPanelEndNavButton
 import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities
 import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities.Companion.sendEvent
 import com.google.gson.Gson
+import com.mapbox.api.directions.v5.DirectionsCriteria
 import com.mapbox.api.directions.v5.models.DirectionsRoute
 import com.mapbox.api.directions.v5.models.RouteOptions
 import com.mapbox.geojson.Point
@@ -49,6 +54,10 @@ import com.mapbox.navigation.core.trip.session.VoiceInstructionsObserver
 import com.mapbox.navigation.dropin.map.MapViewObserver
 import com.mapbox.navigation.dropin.navigationview.NavigationViewListener
 import com.mapbox.navigation.utils.internal.ifNonNull
+import com.mapbox.navigation.base.formatter.DistanceFormatterOptions
+import com.mapbox.navigation.base.formatter.DistanceFormatter
+import com.mapbox.navigation.base.formatter.UnitType
+import org.json.JSONObject
 
 class NavigationActivity : AppCompatActivity() {
     private var finishBroadcastReceiver: BroadcastReceiver? = null
@@ -59,6 +68,8 @@ class NavigationActivity : AppCompatActivity() {
     private var accessToken: String? = null
     private var lastLocation: Location? = null
     private var isNavigationInProgress = false
+    private lateinit var binding: NavigationActivityBinding
+    private lateinit var turnByTurn: TurnByTurn
 
     private val navigationStateListener = object : NavigationViewListener() {
         override fun onFreeDrive() {
@@ -170,6 +181,13 @@ class NavigationActivity : AppCompatActivity() {
         binding.navigationView.customizeViewOptions {
             mapStyleUriDay = styleUrlDay
             mapStyleUriNight = styleUrlNight
+            // Configure units for UI display
+            distanceFormatterOptions = DistanceFormatterOptions.Builder(this@NavigationActivity)
+                .unitType(if (FlutterMapboxNavigationPlugin.navigationVoiceUnits == DirectionsCriteria.IMPERIAL) 
+                    UnitType.IMPERIAL 
+                else 
+                    UnitType.METRIC)
+                .build()
         }
 
         if (FlutterMapboxNavigationPlugin.enableFreeDriveMode) {
@@ -184,6 +202,34 @@ class NavigationActivity : AppCompatActivity() {
         points.forEach { waypointSet.add(it) }
         requestRoutes(waypointSet)
 
+        turnByTurn = TurnByTurn(
+            this,
+            this,
+            binding,
+            accessToken ?: ""
+        )
+
+        turnByTurn.initFlutterChannelHandlers()
+        turnByTurn.initNavigation()
+
+        // Check for location permissions
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                    LOCATION_PERMISSION_REQUEST_CODE
+                )
+            } else {
+                beginNavigation()
+            }
+        } else {
+            beginNavigation()
+        }
     }
 
     override fun onDestroy() {
@@ -342,12 +388,6 @@ class NavigationActivity : AppCompatActivity() {
 
 
     /**
-     * Bindings to the Navigation Activity.
-     */
-    private lateinit var binding: NavigationActivityBinding// MapboxActivityTurnByTurnExperienceBinding
-
-
-    /**
      * Gets notified with progress along the currently active route.
      */
     private val routeProgressObserver = RouteProgressObserver { routeProgress ->
@@ -365,11 +405,11 @@ class NavigationActivity : AppCompatActivity() {
         }
 
         override fun onNextRouteLegStart(routeLegProgress: RouteLegProgress) {
-
+            // Not needed for basic navigation
         }
 
         override fun onWaypointArrival(routeProgress: RouteProgress) {
-
+            // Not needed for basic navigation
         }
     }
 
@@ -454,5 +494,34 @@ class NavigationActivity : AppCompatActivity() {
             sendEvent(MapBoxEvents.ON_MAP_TAP, JSONObject(waypoint).toString())
             return false
         }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                beginNavigation()
+            } else {
+                PluginUtilities.sendEvent(MapBoxEvents.NAVIGATION_CANCELLED)
+                finish()
+            }
+        }
+    }
+
+    private fun beginNavigation() {
+        val wayPoints = intent.getSerializableExtra("waypoints") as? MutableList<Waypoint>
+        if (wayPoints != null) {
+            points = wayPoints
+            points.forEach { waypointSet.add(it) }
+            requestRoutes(waypointSet)
+        }
+    }
+
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
     }
 }

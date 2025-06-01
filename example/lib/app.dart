@@ -128,68 +128,81 @@ class _SampleNavigationAppState extends State<SampleNavigationApp> {
                         )),
                       ),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton(
-                          child: const Text("Start A to B"),
-                          onPressed: () async {
-                            var wayPoints = <WayPoint>[];
-                            wayPoints.add(_home);
-                            wayPoints.add(_store);
-                            var opt = MapBoxOptions.from(_navigationOption);
-                            opt.simulateRoute = true;
-                            opt.voiceInstructionsEnabled = true;
-                            opt.bannerInstructionsEnabled = true;
-                            opt.units = VoiceUnits.metric;
-                            opt.language = "de-DE";
-                            await MapBoxNavigation.instance
-                                .startNavigation(wayPoints: wayPoints, options: opt);
-                          },
-                        ),
-                        const SizedBox(
-                          width: 10,
-                        ),
-                        ElevatedButton(
-                          child: const Text("Start Multi Stop"),
-                          onPressed: () async {
-                            _isMultipleStop = true;
-                            var wayPoints = <WayPoint>[];
-                            wayPoints.add(_origin);
-                            wayPoints.add(_stop1);
-                            wayPoints.add(_stop2);
-                            wayPoints.add(_stop3);
-                            wayPoints.add(_destination);
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Wrap(
+                        spacing: 8.0, // gap between adjacent buttons
+                        runSpacing: 8.0, // gap between lines
+                        alignment: WrapAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            child: const Text("Start A to B (Metric)"),
+                            onPressed: () async {
+                              var wayPoints = <WayPoint>[];
+                              wayPoints.add(_home);
+                              wayPoints.add(_store);
+                              var opt = MapBoxOptions.from(_navigationOption);
+                              opt.simulateRoute = true;
+                              opt.voiceInstructionsEnabled = true;
+                              opt.bannerInstructionsEnabled = true;
+                              opt.units = VoiceUnits.metric;
+                              await MapBoxNavigation.instance
+                                  .startNavigation(wayPoints: wayPoints, options: opt);
+                            },
+                          ),
+                          ElevatedButton(
+                            child: const Text("Start A to B (Imperial)"),
+                            onPressed: () async {
+                              var wayPoints = <WayPoint>[];
+                              wayPoints.add(_home);
+                              wayPoints.add(_store);
+                              var opt = MapBoxOptions.from(_navigationOption);
+                              opt.simulateRoute = true;
+                              opt.voiceInstructionsEnabled = true;
+                              opt.bannerInstructionsEnabled = true;
+                              opt.units = VoiceUnits.imperial;
+                              await MapBoxNavigation.instance
+                                  .startNavigation(wayPoints: wayPoints, options: opt);
+                            },
+                          ),
+                          ElevatedButton(
+                            child: const Text("Start Multi Stop"),
+                            onPressed: () async {
+                              _isMultipleStop = true;
+                              var wayPoints = <WayPoint>[];
+                              wayPoints.add(_origin);
+                              wayPoints.add(_stop1);
+                              wayPoints.add(_stop2);
+                              wayPoints.add(_stop3);
+                              wayPoints.add(_destination);
 
-                            MapBoxNavigation.instance.startNavigation(
-                                wayPoints: wayPoints,
-                                options: MapBoxOptions(
-                                    mode: MapBoxNavigationMode.driving,
-                                    simulateRoute: true,
-                                    language: "en",
-                                    allowsUTurnAtWayPoints: true,
-                                    units: VoiceUnits.metric));
-                            //after 10 seconds add a new stop
-                            await Future.delayed(const Duration(seconds: 10));
-                            var stop = WayPoint(
-                                name: "Gas Station",
-                                latitude: 38.911176544398,
-                                longitude: -77.04014366543564,
-                                isSilent: false);
-                            MapBoxNavigation.instance
-                                .addWayPoints(wayPoints: [stop]);
-                          },
-                        ),
-                        const SizedBox(
-                          width: 10,
-                        ),
-                        ElevatedButton(
-                          child: const Text("Free Drive"),
-                          onPressed: () async {
-                            await MapBoxNavigation.instance.startFreeDrive();
-                          },
-                        ),
-                      ],
+                              MapBoxNavigation.instance.startNavigation(
+                                  wayPoints: wayPoints,
+                                  options: MapBoxOptions(
+                                      mode: MapBoxNavigationMode.driving,
+                                      simulateRoute: true,
+                                      language: "en",
+                                      allowsUTurnAtWayPoints: true,
+                                      units: VoiceUnits.metric));
+                              //after 10 seconds add a new stop
+                              await Future.delayed(const Duration(seconds: 10));
+                              var stop = WayPoint(
+                                  name: "Gas Station",
+                                  latitude: 38.911176544398,
+                                  longitude: -77.04014366543564,
+                                  isSilent: false);
+                              MapBoxNavigation.instance
+                                  .addWayPoints(wayPoints: [stop]);
+                            },
+                          ),
+                          ElevatedButton(
+                            child: const Text("Free Drive"),
+                            onPressed: () async {
+                              await MapBoxNavigation.instance.startFreeDrive();
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                     Container(
                       color: Colors.grey,
@@ -217,9 +230,11 @@ class _SampleNavigationAppState extends State<SampleNavigationApp> {
                                     wayPoints.add(_home);
                                     wayPoints.add(_store);
                                     _isMultipleStop = wayPoints.length > 2;
+                                    var opt = MapBoxOptions.from(_navigationOption);
+                                    opt.units = VoiceUnits.metric;
                                     _controller?.buildRoute(
                                         wayPoints: wayPoints,
-                                        options: _navigationOption);
+                                        options: opt);
                                   }
                                 },
                           child: Text(_routeBuilt && !_isNavigating
@@ -232,10 +247,12 @@ class _SampleNavigationAppState extends State<SampleNavigationApp> {
                         ElevatedButton(
                           onPressed: _routeBuilt && !_isNavigating
                               ? () {
-                                  _controller?.startNavigation();
+                                  var opt = MapBoxOptions.from(_navigationOption);
+                                  opt.units = VoiceUnits.metric;
+                                  _controller?.startNavigation(options: opt);
                                 }
                               : null,
-                          child: const Text('Start '),
+                          child: const Text("Start Embedded"),
                         ),
                         const SizedBox(
                           width: 10,
@@ -243,21 +260,24 @@ class _SampleNavigationAppState extends State<SampleNavigationApp> {
                         ElevatedButton(
                           onPressed: _isNavigating
                               ? () {
-                                  _controller?.finishNavigation();
+                                  MapBoxNavigation.instance.finishNavigation();
                                 }
                               : null,
-                          child: const Text('Cancel '),
-                        )
-                      ],
-                    ),
-                    ElevatedButton(
-                      onPressed: _inFreeDrive
-                          ? null
-                          : () async {
-                              _inFreeDrive =
-                                  await _controller?.startFreeDrive() ?? false;
-                            },
-                      child: const Text("Free Drive "),
+                          child: const Text("Stop Navigation"),
+                        ),
+                        const SizedBox(
+                          width: 10,
+                        ),
+                        ElevatedButton(
+                          onPressed: _inFreeDrive
+                              ? null
+                              : () async {
+                                  _inFreeDrive =
+                                      await _controller?.startFreeDrive() ?? false;
+                                },
+                          child: const Text("Free Drive "),
+                        ),
+                    ],
                     ),
                     const Center(
                       child: Padding(

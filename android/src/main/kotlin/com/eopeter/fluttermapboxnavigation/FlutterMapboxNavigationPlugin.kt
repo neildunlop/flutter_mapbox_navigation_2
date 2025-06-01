@@ -64,7 +64,14 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         var mapStyleUrlDay: String? = null
         var mapStyleUrlNight: String? = null
         var navigationLanguage = "en"
-        var navigationVoiceUnits = DirectionsCriteria.IMPERIAL
+        /**
+         * The voice units to use for navigation.
+         * Note: Voice instruction units are locked at first initialization of the navigation session.
+         * This means that while display units can be changed at runtime, voice instructions will
+         * maintain the units they were initialized with. This is by design in the Mapbox SDK to
+         * ensure consistent voice guidance throughout a navigation session.
+         */
+        var navigationVoiceUnits = DirectionsCriteria.METRIC
         var voiceInstructionsEnabled = true
         var bannerInstructionsEnabled = true
         var zoom = 15.0
@@ -76,6 +83,19 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         var binaryMessenger: BinaryMessenger? = null
 
         var viewId = "FlutterMapboxNavigationView"
+
+        /**
+         * Converts string unit type to DirectionsCriteria constant.
+         * Note: Voice instruction units are locked at first initialization of the navigation session.
+         * This means that while display units can be changed at runtime, voice instructions will
+         * maintain the units they were initialized with.
+         */
+        fun getUnitType(units: String?): String {
+            return when (units?.lowercase()) {
+                "imperial" -> DirectionsCriteria.IMPERIAL
+                else -> DirectionsCriteria.METRIC
+            }
+        }
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
@@ -114,7 +134,8 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         call: MethodCall,
         result: Result
     ) {
-        result.error("TODO", "Not Implemented in Android", "will implement soon")
+        // Offline routing is not currently supported in this version
+        result.error("NOT_IMPLEMENTED", "Offline routing is not supported", "This feature will be implemented in a future version")
     }
 
     private fun checkPermissionAndBeginNavigation(
@@ -167,13 +188,8 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         }
 
         val units = arguments?.get("units") as? String
-
         if (units != null) {
-            if (units == "imperial") {
-                navigationVoiceUnits = DirectionsCriteria.IMPERIAL
-            } else if (units == "metric") {
-                navigationVoiceUnits = DirectionsCriteria.METRIC
-            }
+            navigationVoiceUnits = getUnitType(units)
         }
 
         mapStyleUrlDay = arguments?.get("mapStyleUrlDay") as? String

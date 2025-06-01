@@ -47,7 +47,14 @@ units: VoiceUnits.metric,
 - `voiceInstructionsEnabled`: Toggle voice guidance
 - `bannerInstructionsEnabled`: Toggle on-screen instructions
 - `language`: Set instruction language (e.g., "en", "es", "fr")
-- `units`: Choose between `metric` or `imperial` units
+- `units`: Choose between `metric` or `imperial` units. This setting affects:
+  - Voice instructions (e.g., "Turn left in 100 meters" vs "Turn left in 300 feet")
+  - Banner instructions (e.g., "100m" vs "300ft")
+  - Distance remaining display
+  - Route calculations and raw distance values
+  - Navigation UI distance formatting
+
+Note: The units setting is consistently applied across both iOS and Android platforms, affecting all distance-related features in the navigation experience.
 
 ### Route Options
 

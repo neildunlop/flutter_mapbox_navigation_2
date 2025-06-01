@@ -1,3 +1,34 @@
+## [Unreleased]
+
+### Breaking Changes
+- Improved `addWayPoints` API to return meaningful results:
+  - Now returns `WaypointResult` with success status and number of waypoints added
+  - Added proper error handling and feedback
+  - Makes the API more consistent with other navigation methods
+
+### Added
+- Documentation about voice instruction units being locked at first initialization
+- Proper error handling for offline routing feature
+- Better error handling for waypoint operations
+- Improved type safety across the navigation API
+- Enhanced test coverage for platform communication
+
+### Changed
+- Simplified embedded navigation UI by removing redundant "Start (Imperial)" button
+- Renamed "Start (Metric)" button to "Start Embedded" for clarity
+- Improved code organization and removed unused imports
+- Enhanced error messages and comments for better maintainability
+
+### Fixed
+- Voice instruction units now properly documented as being locked at first initialization
+- Removed redundant code and improved error handling in permission checks
+- Cleaned up empty method implementations with proper documentation
+
+### Technical Notes
+- Voice instruction units are locked at first initialization of the navigation session by design in the Mapbox SDK
+- Display units can be changed at runtime, but voice instructions will maintain their initial units
+- This behavior ensures consistent voice guidance throughout a navigation session
+
 ## 0.2.2
 * Fix issue with voice units in Android
 * Fix BannerText, VoiceInstruction and Off Route Events

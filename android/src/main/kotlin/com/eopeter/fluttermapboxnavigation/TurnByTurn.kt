@@ -33,6 +33,8 @@ import com.mapbox.navigation.core.arrival.ArrivalObserver
 import com.mapbox.navigation.core.directions.session.RoutesObserver
 import com.mapbox.navigation.core.lifecycle.MapboxNavigationApp
 import com.mapbox.navigation.core.trip.session.*
+import com.mapbox.navigation.base.formatter.DistanceFormatterOptions
+import com.mapbox.navigation.base.formatter.UnitType
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -60,6 +62,16 @@ open class TurnByTurn(
         MapboxNavigationApp
             .setup(navigationOptions)
             .attach(this.activity as LifecycleOwner)
+
+        // Set initial units configuration
+        binding.navigationView.customizeViewOptions {
+            distanceFormatterOptions = DistanceFormatterOptions.Builder(context)
+                .unitType(if (FlutterMapboxNavigationPlugin.navigationVoiceUnits == DirectionsCriteria.IMPERIAL) 
+                    UnitType.IMPERIAL 
+                else 
+                    UnitType.METRIC)
+                .build()
+        }
 
         // initialize navigation trip observers
         this.registerObservers()
@@ -152,6 +164,18 @@ open class TurnByTurn(
                         this.infoPanelEndNavigationButtonBinder =
                             CustomInfoPanelEndNavButtonBinder(activity)
                     }
+                    // Configure voice units for the navigation view
+                    this@TurnByTurn.binding.navigationView.customizeViewOptions {
+                        voiceInstructionsEnabled = this@TurnByTurn.voiceInstructionsEnabled
+                        bannerInstructionsEnabled = this@TurnByTurn.bannerInstructionsEnabled
+                        // Set both UI and voice units to match the route options
+                        distanceFormatterOptions = DistanceFormatterOptions.Builder(context)
+                            .unitType(if (this@TurnByTurn.navigationVoiceUnits == DirectionsCriteria.IMPERIAL) 
+                                UnitType.IMPERIAL 
+                            else 
+                                UnitType.METRIC)
+                            .build()
+                    }
                 }
 
                 override fun onFailure(
@@ -207,11 +231,27 @@ open class TurnByTurn(
         }
     }
 
+    /**
+     * Starts navigation with the current route.
+     * Note: Voice instruction units are locked at first initialization of the navigation session.
+     * This means that while display units can be changed at runtime, voice instructions will
+     * maintain the units they were initialized with. This is by design in the Mapbox SDK to
+     * ensure consistent voice guidance throughout a navigation session.
+     */
     @SuppressLint("MissingPermission")
     private fun startNavigation() {
         if (this.currentRoutes == null) {
             PluginUtilities.sendEvent(MapBoxEvents.NAVIGATION_CANCELLED)
             return
+        }
+        // Set units before starting navigation
+        binding.navigationView.customizeViewOptions {
+            distanceFormatterOptions = DistanceFormatterOptions.Builder(context)
+                .unitType(if (this@TurnByTurn.navigationVoiceUnits == DirectionsCriteria.IMPERIAL) 
+                    UnitType.IMPERIAL 
+                else 
+                    UnitType.METRIC)
+                .build()
         }
         this.binding.navigationView.api.startActiveGuidance(this.currentRoutes!!)
         PluginUtilities.sendEvent(MapBoxEvents.NAVIGATION_RUNNING)
@@ -244,13 +284,8 @@ open class TurnByTurn(
         }
 
         val units = arguments["units"] as? String
-
         if (units != null) {
-            if (units == "imperial") {
-                this.navigationVoiceUnits = DirectionsCriteria.IMPERIAL
-            } else if (units == "metric") {
-                this.navigationVoiceUnits = DirectionsCriteria.METRIC
-            }
+            this.navigationVoiceUnits = FlutterMapboxNavigationPlugin.getUnitType(units)
         }
 
         this.mapStyleUrlDay = arguments["mapStyleUrlDay"] as? String
@@ -392,6 +427,7 @@ open class TurnByTurn(
 
     private var currentRoutes: List<NavigationRoute>? = null
     private var isNavigationCanceled = false
+    private var isNavigating = false
 
     /**
      * Bindings to the example layout.
@@ -455,15 +491,16 @@ open class TurnByTurn(
 
     private val arrivalObserver: ArrivalObserver = object : ArrivalObserver {
         override fun onFinalDestinationArrival(routeProgress: RouteProgress) {
-            PluginUtilities.sendEvent(MapBoxEvents.ON_ARRIVAL)
+            // Not needed for basic navigation
+            isNavigating = false
         }
 
         override fun onNextRouteLegStart(routeLegProgress: RouteLegProgress) {
-            // not impl
+            // Not needed for basic navigation
         }
 
         override fun onWaypointArrival(routeProgress: RouteProgress) {
-            // not impl
+            // Not needed for basic navigation
         }
     }
 
