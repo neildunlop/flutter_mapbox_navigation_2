@@ -1,12 +1,89 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.eopeter.fluttermapboxnavigation">
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.eopeter.fluttermapboxnavigation">
 
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application>
-        <activity android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationActivity" />
+        <activity 
+            android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            tools:replace="android:theme" />
+            
+        <receiver
+            android:name="com.eopeter.fluttermapboxnavigation.receivers.NavigationReceiver"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+            
+        <receiver
+            android:name="com.mapbox.navigation.core.trip.service.NavigationNotificationReceiver"
+            android:exported="false" />
+            
+        <receiver
+            android:name="com.mapbox.navigation.core.trip.service.NavigationServiceReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name="com.mapbox.navigation.core.trip.service.NavigationServiceBroadcastReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name="com.mapbox.navigation.core.trip.service.NavigationServiceNotificationReceiver"
+            android:exported="false" />
+
+        <!-- Dynamic receivers from NavigationActivity -->
+        <receiver
+            android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationActivity$finishBroadcastReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationLauncher.KEY_STOP_NAVIGATION" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationActivity$addWayPointsBroadcastReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationLauncher.KEY_ADD_WAYPOINTS" />
+            </intent-filter>
+        </receiver>
+            
+        <!-- Navigation observers -->
+        <receiver
+            android:name="com.mapbox.navigation.core.trip.session.BannerInstructionsObserver"
+            android:exported="false" />
+
+        <receiver
+            android:name="com.mapbox.navigation.core.trip.session.VoiceInstructionsObserver"
+            android:exported="false" />
+
+        <receiver
+            android:name="com.mapbox.navigation.core.trip.session.OffRouteObserver"
+            android:exported="false" />
+
+        <receiver
+            android:name="com.mapbox.navigation.core.trip.session.RouteProgressObserver"
+            android:exported="false" />
+
+        <receiver
+            android:name="com.mapbox.navigation.core.trip.session.LocationObserver"
+            android:exported="false" />
+
+        <receiver
+            android:name="com.mapbox.navigation.core.arrival.ArrivalObserver"
+            android:exported="false" />
+
+        <!-- Additional observers -->
+        <receiver
+            android:name="com.mapbox.navigation.core.directions.session.RoutesObserver"
+            android:exported="false" />
+
+        <receiver
+            android:name="com.mapbox.navigation.core.trip.session.MapViewObserver"
+            android:exported="false" />
     </application>
 
 </manifest>

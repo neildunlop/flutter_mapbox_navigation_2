@@ -84,7 +84,7 @@ class NavigationActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setTheme(R.style.Theme_AppCompat_NoActionBar)
+        setTheme(R.style.AppTheme)
         binding = NavigationActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.navigationView.addListener(navigationStateListener)
@@ -146,26 +146,27 @@ class NavigationActivity : AppCompatActivity() {
             }
         }
 
+        // Register receivers using the manifest-declared receivers
+        val finishIntentFilter = IntentFilter(NavigationLauncher.KEY_STOP_NAVIGATION)
+        val addWayPointsIntentFilter = IntentFilter(NavigationLauncher.KEY_ADD_WAYPOINTS)
+        
         registerReceiver(
             finishBroadcastReceiver,
-            IntentFilter(NavigationLauncher.KEY_STOP_NAVIGATION)
+            finishIntentFilter,
+            Context.RECEIVER_NOT_EXPORTED
         )
 
         registerReceiver(
             addWayPointsBroadcastReceiver,
-            IntentFilter(NavigationLauncher.KEY_ADD_WAYPOINTS)
+            addWayPointsIntentFilter,
+            Context.RECEIVER_NOT_EXPORTED
         )
 
-        // TODO set the style Uri
-        var styleUrlDay = FlutterMapboxNavigationPlugin.mapStyleUrlDay
-        var styleUrlNight = FlutterMapboxNavigationPlugin.mapStyleUrlNight
-
-        if (styleUrlDay == null) styleUrlDay = Style.MAPBOX_STREETS
-        if (styleUrlNight == null) styleUrlNight = Style.DARK
-        // set map style
+        // Set map styles
+        val styleUrlDay = FlutterMapboxNavigationPlugin.mapStyleUrlDay ?: Style.MAPBOX_STREETS
+        val styleUrlNight = FlutterMapboxNavigationPlugin.mapStyleUrlNight ?: Style.DARK
+        
         binding.navigationView.customizeViewStyles {}
-
-        // set map style
         binding.navigationView.customizeViewOptions {
             mapStyleUriDay = styleUrlDay
             mapStyleUriNight = styleUrlNight
@@ -177,9 +178,10 @@ class NavigationActivity : AppCompatActivity() {
             return
         }
 
+        // Handle waypoints
         val p = intent.getSerializableExtra("waypoints") as? MutableList<Waypoint>
         if (p != null) points = p
-        points.map { waypointSet.add(it) }
+        points.forEach { waypointSet.add(it) }
         requestRoutes(waypointSet)
 
     }
@@ -321,21 +323,15 @@ class NavigationActivity : AppCompatActivity() {
 
     // Resets the current route
     private fun resetCurrentRoute() {
-//        if (mapboxNavigation.getRoutes().isNotEmpty()) {
-//            mapboxNavigation.setRoutes(emptyList()) // reset route
-//            addedWaypoints.clear() // reset stored waypoints
-//        }
+        // Implementation will be added when needed
     }
 
     private fun setRouteAndStartNavigation(routes: List<DirectionsRoute>) {
-        // set routes, where the first route in the list is the primary route that
-        // will be used for active guidance
-        // mapboxNavigation.setRoutes(routes)
+        // Implementation will be added when needed
     }
 
     private fun clearRouteAndStopNavigation() {
-        // clear
-        // mapboxNavigation.setRoutes(listOf())
+        // Implementation will be added when needed
     }
 
 
