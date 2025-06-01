@@ -47,81 +47,44 @@ void main() {
       });
     });
 
-    group('Unnamed WayPoint Handling', () {
-      test('should handle unnamed waypoints', () {
+    group('Name Validation', () {
+      test('should throw FormatException for empty name', () {
+        // Arrange & Act & Assert
+        expect(
+          () => WayPoint(
+            name: '',
+            latitude: 51.5074,
+            longitude: -0.1278,
+          ),
+          throwsFormatException,
+        );
+      });
+
+      test('should throw FormatException for whitespace-only name', () {
+        // Arrange & Act & Assert
+        expect(
+          () => WayPoint(
+            name: '   ',
+            latitude: 51.5074,
+            longitude: -0.1278,
+          ),
+          throwsFormatException,
+        );
+      });
+
+      test('should accept valid name with whitespace', () {
         // Arrange
-        const latitude = 51.5074;
-        const longitude = -0.1278;
+        const name = '  Test Location  ';
 
         // Act
         final wayPoint = WayPoint(
-          name: null,
-          latitude: latitude,
-          longitude: longitude,
+          name: name,
+          latitude: 51.5074,
+          longitude: -0.1278,
         );
 
         // Assert
-        expect(wayPoint.name, isNull);
-        expect(wayPoint.latitude, equals(latitude));
-        expect(wayPoint.longitude, equals(longitude));
-        expect(wayPoint.isSilent, equals(false));
-      });
-
-      test('should handle unnamed waypoints in JSON', () {
-        // Arrange
-        final json = {
-          'latitude': 51.5074,
-          'longitude': -0.1278,
-          'isSilent': false,
-        };
-
-        // Act
-        final wayPoint = WayPoint.fromJson(json);
-
-        // Assert
-        expect(wayPoint.name, isNull);
-        expect(wayPoint.latitude, equals(51.5074));
-        expect(wayPoint.longitude, equals(-0.1278));
-        expect(wayPoint.isSilent, equals(false));
-      });
-
-      test('should handle empty name in JSON', () {
-        // Arrange
-        final json = {
-          'name': '',
-          'latitude': 51.5074,
-          'longitude': -0.1278,
-          'isSilent': false,
-        };
-
-        // Act
-        final wayPoint = WayPoint.fromJson(json);
-
-        // Assert
-        expect(wayPoint.name, isEmpty);
-        expect(wayPoint.latitude, equals(51.5074));
-        expect(wayPoint.longitude, equals(-0.1278));
-        expect(wayPoint.isSilent, equals(false));
-      });
-
-      test('should handle unnamed waypoint with isSilent true', () {
-        // Arrange
-        const latitude = 51.5074;
-        const longitude = -0.1278;
-
-        // Act
-        final wayPoint = WayPoint(
-          name: null,
-          latitude: latitude,
-          longitude: longitude,
-          isSilent: true,
-        );
-
-        // Assert
-        expect(wayPoint.name, isNull);
-        expect(wayPoint.latitude, equals(latitude));
-        expect(wayPoint.longitude, equals(longitude));
-        expect(wayPoint.isSilent, equals(true));
+        expect(wayPoint.name, equals(name));
       });
     });
 
@@ -181,6 +144,65 @@ void main() {
         expect(wayPoint.longitude, equals(-0.1278));
         expect(wayPoint.isSilent, equals(false)); // Default value
       });
+
+      test('should throw FormatException for missing name in JSON', () {
+        // Arrange
+        final json = {
+          'latitude': 51.5074,
+          'longitude': -0.1278,
+        };
+
+        // Act & Assert
+        expect(
+          () => WayPoint.fromJson(json),
+          throwsFormatException,
+        );
+      });
+
+      test('should throw FormatException for null name in JSON', () {
+        // Arrange
+        final json = {
+          'name': null,
+          'latitude': 51.5074,
+          'longitude': -0.1278,
+        };
+
+        // Act & Assert
+        expect(
+          () => WayPoint.fromJson(json),
+          throwsFormatException,
+        );
+      });
+
+      test('should throw FormatException for empty name in JSON', () {
+        // Arrange
+        final json = {
+          'name': '',
+          'latitude': 51.5074,
+          'longitude': -0.1278,
+        };
+
+        // Act & Assert
+        expect(
+          () => WayPoint.fromJson(json),
+          throwsFormatException,
+        );
+      });
+
+      test('should throw FormatException for whitespace-only name in JSON', () {
+        // Arrange
+        final json = {
+          'name': '   ',
+          'latitude': 51.5074,
+          'longitude': -0.1278,
+        };
+
+        // Act & Assert
+        expect(
+          () => WayPoint.fromJson(json),
+          throwsFormatException,
+        );
+      });
     });
 
     group('String Representation', () {
@@ -198,12 +220,15 @@ void main() {
         );
 
         // Assert
-        expect(wayPoint.toString(), equals('WayPoint{latitude: 51.5074, longitude: -0.1278}'));
+        expect(
+          wayPoint.toString(),
+          equals('WayPoint{name: Test Location, latitude: 51.5074, longitude: -0.1278}'),
+        );
       });
     });
 
     group('Error Handling', () {
-      test('should handle null waypoints', () {
+      test('should handle null coordinates', () {
         // Arrange & Act & Assert
         expect(
           () => WayPoint(
@@ -211,7 +236,7 @@ void main() {
             latitude: null,
             longitude: -0.1278,
           ),
-          throwsAssertionError,
+          throwsFormatException,
         );
 
         expect(
@@ -220,7 +245,7 @@ void main() {
             latitude: 51.5074,
             longitude: null,
           ),
-          throwsAssertionError,
+          throwsFormatException,
         );
       });
 
@@ -232,7 +257,7 @@ void main() {
             latitude: 91.0, // Invalid latitude > 90
             longitude: -0.1278,
           ),
-          throwsAssertionError,
+          throwsFormatException,
         );
 
         expect(
@@ -241,7 +266,7 @@ void main() {
             latitude: 51.5074,
             longitude: 181.0, // Invalid longitude > 180
           ),
-          throwsAssertionError,
+          throwsFormatException,
         );
 
         expect(
@@ -250,7 +275,7 @@ void main() {
             latitude: -91.0, // Invalid latitude < -90
             longitude: -0.1278,
           ),
-          throwsAssertionError,
+          throwsFormatException,
         );
 
         expect(
@@ -259,7 +284,7 @@ void main() {
             latitude: 51.5074,
             longitude: -181.0, // Invalid longitude < -180
           ),
-          throwsAssertionError,
+          throwsFormatException,
         );
       });
 

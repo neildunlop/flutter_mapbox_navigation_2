@@ -11,16 +11,25 @@ class WayPoint {
     required this.longitude,
     this.isSilent = false,
   }) {
-    assert(latitude != null, 'Latitude cannot be null');
-    assert(longitude != null, 'Longitude cannot be null');
-    assert(latitude! >= -90 && latitude! <= 90, 'Latitude must be between -90 and 90');
-    assert(longitude! >= -180 && longitude! <= 180, 'Longitude must be between -180 and 180');
+    if (latitude == null) {
+      throw FormatException('Latitude cannot be null');
+    }
+    if (longitude == null) {
+      throw FormatException('Longitude cannot be null');
+    }
+    if (latitude! < -90 || latitude! > 90) {
+      throw FormatException('Latitude must be between -90 and 90');
+    }
+    if (longitude! < -180 || longitude! > 180) {
+      throw FormatException('Longitude must be between -180 and 180');
+    }
+    if (name.trim().isEmpty) {
+      throw FormatException('Name cannot be empty or contain only whitespace');
+    }
   }
 
   /// create [WayPoint] from a json
-  WayPoint.fromJson(Map<String, dynamic> json) {
-    name = json['name'] as String?;
-    
+  WayPoint.fromJson(Map<String, dynamic> json) : name = _validateName(json['name']) {
     // Handle latitude
     if (json['latitude'] is String) {
       latitude = double.tryParse(json['latitude'] as String);
@@ -62,6 +71,19 @@ class WayPoint {
     }
   }
 
+  /// Validates and returns the name from JSON
+  /// Throws [FormatException] if name is null or empty
+  static String _validateName(dynamic name) {
+    if (name == null) {
+      throw FormatException('Name is required and cannot be null');
+    }
+    final nameStr = name.toString();
+    if (nameStr.trim().isEmpty) {
+      throw FormatException('Name is required and cannot be empty or contain only whitespace');
+    }
+    return nameStr;
+  }
+
   /// Validates a list of waypoints for duplicates
   /// Throws [FormatException] if duplicate coordinates are found
   static void validateWaypoints(List<WayPoint> waypoints) {
@@ -75,8 +97,8 @@ class WayPoint {
     }
   }
 
-  /// Waypoint [name]
-  String? name;
+  /// Waypoint [name] - required for navigation and waypoint identification
+  final String name;
 
   /// Waypoint latitude
   double? latitude;
@@ -89,6 +111,6 @@ class WayPoint {
 
   @override
   String toString() {
-    return 'WayPoint{latitude: $latitude, longitude: $longitude}';
+    return 'WayPoint{name: $name, latitude: $latitude, longitude: $longitude}';
   }
 }
