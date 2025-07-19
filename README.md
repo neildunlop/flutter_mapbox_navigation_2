@@ -151,6 +151,86 @@ await MapBoxNavigation.instance.startNavigation(
 );
 ```
 
+### Waypoint Properties
+
+Waypoints support several properties to customize navigation behavior:
+
+```dart
+final waypoint = WayPoint(
+    name: "Stop Name",           // Required: Display name for the waypoint
+    latitude: 42.886448,         // Required: Latitude coordinate
+    longitude: -78.878372,       // Required: Longitude coordinate
+    isSilent: false,             // Optional: Whether to announce this waypoint (default: false)
+);
+```
+
+#### Silent Waypoints (`isSilent`)
+
+Silent waypoints are used for route shaping without announcing them to the user:
+
+- **`isSilent: false`** (default): Waypoint will be announced with voice and banner instructions
+- **`isSilent: true`**: Waypoint is used for route calculation but not announced
+
+**Important Rules:**
+- First and last waypoints **cannot** be silent (they will always be announced)
+- Silent waypoints are useful for:
+  - Route optimization (avoiding certain areas)
+  - Traffic avoidance
+  - Creating smoother routes
+  - Intermediate points that don't need announcements
+
+**Example with Silent Waypoints:**
+```dart
+final wayPoints = [
+    WayPoint(name: "Start", latitude: 42.886448, longitude: -78.878372),           // Always announced
+    WayPoint(name: "Route Point", latitude: 42.8866177, longitude: -78.8814924, isSilent: true),  // Silent
+    WayPoint(name: "End", latitude: 42.8866177, longitude: -78.8814924),           // Always announced
+];
+```
+
+#### Waypoint Validation
+
+The `WayPoint` class includes built-in validation:
+
+- **Name**: Required and cannot be empty or whitespace-only
+- **Coordinates**: Must be valid latitude (-90 to 90) and longitude (-180 to 180)
+- **Silent Rules**: First and last waypoints cannot be silent
+- **Duplicate Prevention**: Coordinates must be unique within a route
+
+**Validation Examples:**
+```dart
+// ✅ Valid waypoints
+WayPoint(name: "Valid Stop", latitude: 42.886448, longitude: -78.878372);
+WayPoint(name: "Silent Point", latitude: 42.8866177, longitude: -78.8814924, isSilent: true);
+
+// ❌ Invalid waypoints (will throw FormatException)
+WayPoint(name: "", latitude: 42.886448, longitude: -78.878372);                    // Empty name
+WayPoint(name: "Invalid", latitude: 91.0, longitude: -78.878372);                 // Invalid latitude
+WayPoint(name: "Invalid", latitude: 42.886448, longitude: 181.0);                 // Invalid longitude
+```
+
+#### Best Practices
+
+1. **Naming Strategy:**
+   - Use descriptive names for important stops
+   - Keep names concise but informative
+   - Consider user context when naming waypoints
+
+2. **Silent Waypoint Usage:**
+   - Use for route optimization and traffic avoidance
+   - Avoid overusing silent waypoints (can make routes confusing)
+   - Remember: first and last waypoints are always announced
+
+3. **Coordinate Accuracy:**
+   - Use precise coordinates for accurate navigation
+   - Consider using geocoding services for address-to-coordinate conversion
+   - Validate coordinates before creating waypoints
+
+4. **Platform Limitations:**
+   - **iOS**: Cannot use `drivingWithTraffic` mode with more than 3 waypoints
+   - **Android**: No waypoint count limitations for traffic mode
+   - **Both**: Maximum 25 waypoints per route
+
 ### Free Drive Mode
 
 ```dart
@@ -170,12 +250,12 @@ await MapBoxNavigation.instance.startFreeDrive(
 ### Multi-Stop Navigation
 
 ```dart
-// Define multiple waypoints
+// Define multiple waypoints (up to 25)
 final waypoints = [
-    WayPoint(name: "Start", latitude: 37.774406, longitude: -122.435397),
-    WayPoint(name: "Stop 1", latitude: 37.765569, longitude: -122.424098, isSilent: true),
-    WayPoint(name: "Stop 2", latitude: 37.784406, longitude: -122.445397, isSilent: false),
-    WayPoint(name: "Destination", latitude: 37.794406, longitude: -122.455397),
+    WayPoint(name: "Start", latitude: 37.774406, longitude: -122.435397),                    // Always announced
+    WayPoint(name: "Route Point", latitude: 37.765569, longitude: -122.424098, isSilent: true), // Silent - no announcement
+    WayPoint(name: "Stop 1", latitude: 37.784406, longitude: -122.445397, isSilent: false),  // Announced
+    WayPoint(name: "Destination", latitude: 37.794406, longitude: -122.455397),              // Always announced
 ];
 
 // Start multi-stop navigation
@@ -196,7 +276,32 @@ final newStop = WayPoint(
     longitude: -122.435397,
     isSilent: false
 );
-await MapBoxNavigation.instance.addWayPoints(wayPoints: [newStop]);
+
+// addWayPoints returns a WaypointResult with success status and count
+final result = await MapBoxNavigation.instance.addWayPoints(wayPoints: [newStop]);
+if (result.success) {
+    print("Added ${result.waypointsAdded} waypoints successfully");
+} else {
+    print("Failed to add waypoints: ${result.errorMessage}");
+}
+```
+
+**Multi-stop Navigation Features:**
+- **Up to 25 waypoints** per route
+- **Dynamic waypoint addition** during navigation with `WaypointResult` feedback
+- **Silent waypoints** for route optimization without announcements
+- **Automatic route recalculation** when waypoints are added
+- **Voice and banner instructions** for each announced waypoint
+- **Arrival events** for each waypoint (except silent ones)
+
+**WaypointResult Class:**
+The `addWayPoints` method returns a `WaypointResult` object:
+```dart
+class WaypointResult {
+  final bool success;           // Whether waypoints were added successfully
+  final int waypointsAdded;     // Number of waypoints actually added
+  final String? errorMessage;   // Error message if addition failed
+}
 ```
 
 ### Event Handling
