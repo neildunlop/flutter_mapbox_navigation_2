@@ -89,12 +89,12 @@ android {
 }
 
 dependencies {
-    // Mapbox Navigation SDK
+    // Mapbox Navigation SDK v2 - Working configuration
     implementation "com.mapbox.navigation:copilot:2.16.0"
     implementation "com.mapbox.navigation:ui-app:2.16.0"
     implementation "com.mapbox.navigation:ui-dropin:2.16.0"
     
-    // Mapbox Maps SDK (includes annotations)
+    // Mapbox Maps SDK v10 - Working with current token
     implementation "com.mapbox.maps:android:10.16.0"
     
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
