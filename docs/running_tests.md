@@ -56,7 +56,10 @@ To view the coverage report:
 ```bash
 # Install lcov if not already installed
 # On Windows with Chocolatey:
-choco install lcov
+# choco install lcov
+# 
+# On macOS with Homebrew:
+# brew install lcov
 
 # Generate HTML report
 genhtml coverage/lcov.info -o coverage/html

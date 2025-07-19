@@ -28,7 +28,7 @@ Add Turn By Turn Navigation to Your Flutter Application Using MapBox. Never leav
 
 ### Advanced Features
 * **Event-Driven Architecture** - Comprehensive event system for navigation progress, route updates, and user interactions
-* **Offline Routing** - Download navigation data for offline use
+* **Offline Routing** - Download navigation data for offline use *(Coming Soon)*
 * **Modern Android Support** - Android 13+ compatibility with enhanced security
 * **Type-Safe API** - Improved error handling and type safety across all platforms
 
@@ -310,17 +310,13 @@ await _controller?.startFreeDrive();
 |----------|--------|-------|
 | iOS | ✅ Fully Supported | iOS 10+ required |
 | Android | ✅ Fully Supported | API 21+ required, Android 13+ optimized |
-| Linux | 🔄 Planned | Commented out in pubspec.yaml |
-| macOS | 🔄 Planned | Commented out in pubspec.yaml |
-| Windows | 🔄 Planned | Commented out in pubspec.yaml |
-| Web | 🔄 Planned | Commented out in pubspec.yaml |
 
 ## Roadmap
 * [DONE] Android Implementation
 * [DONE] Add more settings like Navigation Mode (driving, walking, etc)
 * [DONE] Stream Events like relevant navigation notifications, metrics, current location, etc. 
 * [DONE] Embeddable Navigation View 
-* [DONE] Offline Routing
+* [PLANNED] Offline Routing
 * [DONE] Free Drive Mode
 * [DONE] Multi-stop Navigation
 * [DONE] Enhanced Error Handling
@@ -328,6 +324,7 @@ await _controller?.startFreeDrive();
 * [PLANNED] Map Markers System
 * [PLANNED] Vehicle Movement Simulation
 * [PLANNED] Enhanced UI Components
+* [PLANNED] Offline Routing Implementation
 
 ## Technical Notes
 
@@ -336,6 +333,9 @@ Voice instruction units are locked at first initialization of the navigation ses
 
 ### Android Security
 The plugin has been updated for Android 13+ compatibility with proper receiver registration and enhanced security measures.
+
+### Offline Routing Status
+The `enableOfflineRouting()` method exists in the API but is not currently implemented. Android returns a "NOT_IMPLEMENTED" error, and iOS has the implementation commented out. This feature is planned for future releases.
 
 ## Documentation
 

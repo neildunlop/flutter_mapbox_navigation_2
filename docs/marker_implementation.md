@@ -521,7 +521,7 @@ void updateVehiclePosition(String id, double lat, double lng, double heading) {
      - RAM: 2GB or more
      - Internal Storage: 2GB or more
 
-2. **iOS Simulator** (if on macOS)
+2. **iOS Simulator** (macOS only)
    - Open Xcode
    - Go to Xcode > Open Developer Tool > Simulator
    - Choose device type and iOS version

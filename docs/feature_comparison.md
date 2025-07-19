@@ -42,7 +42,7 @@ This document compares the features available in the Mapbox Navigation SDKs with
 
 | Feature | Android SDK | iOS SDK | Flutter Wrapper | Notes |
 |---------|------------|---------|----------------|-------|
-| Offline routing | ✅ | ✅ | ⚠️ | Partially implemented |
+| Offline routing | ✅ | ✅ | ❌ | Not implemented - API exists but native methods return errors |
 | Traffic avoidance | ✅ | ✅ | ✅ | Via `mode` option |
 | Incident reporting | ✅ | ✅ | ❌ | Not implemented |
 | Speed limits | ✅ | ✅ | ❌ | Not implemented |
