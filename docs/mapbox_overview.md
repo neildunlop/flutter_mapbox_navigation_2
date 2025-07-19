@@ -274,6 +274,7 @@ final emptyNameWaypoint = WayPoint(
    - Named waypoints require more processing
    - Silent waypoints are more efficient
    - Consider using waypoint optimization for long routes
+   - Use `WayPoint.validateWaypointCount()` to check API limits before navigation
 
 4. **User Experience**
    - Clear naming helps users understand the route
@@ -316,7 +317,8 @@ final wayPoints = [
 
 1. **Route Not Building**
    - Check waypoint coordinates
-   - Verify waypoint count (2-25)
+   - Verify waypoint count (minimum 2, recommended max 25)
+   - Use `WayPoint.validateWaypointCount()` to check for issues
    - Ensure first/last waypoints are named
    - Check for invalid coordinates
 

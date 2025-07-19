@@ -1,3 +1,5 @@
+import 'waypoint_validation_result.dart';
+
 ///A `WayPoint` object indicates a location along a route.
 ///It may be the route's origin or destination, or it may be another location
 ///that the route visits. A waypoint object indicates the location's geographic
@@ -95,6 +97,38 @@ class WayPoint {
       }
       coordinates.add(coordKey);
     }
+  }
+
+  /// Validates waypoint count against Mapbox API limits
+  /// Returns a [WaypointValidationResult] with warnings and recommendations
+  static WaypointValidationResult validateWaypointCount(List<WayPoint> waypoints) {
+    final count = waypoints.length;
+    
+    if (count < 2) {
+      return WaypointValidationResult(
+        isValid: false,
+        warnings: ['Minimum 2 waypoints required for navigation'],
+        recommendations: ['Add at least one more waypoint'],
+      );
+    }
+    
+    final warnings = <String>[];
+    final recommendations = <String>[];
+    
+    if (count > 25) {
+      warnings.add('Waypoint count ($count) exceeds recommended Mapbox API limit of 25');
+      recommendations.add('Consider reducing waypoint count for better performance');
+      recommendations.add('Use silent waypoints for route shaping instead of additional stops');
+    } else if (count > 15) {
+      warnings.add('High waypoint count ($count) may impact route calculation performance');
+      recommendations.add('Consider optimizing route with fewer waypoints');
+    }
+    
+    return WaypointValidationResult(
+      isValid: count >= 2,
+      warnings: warnings,
+      recommendations: recommendations,
+    );
   }
 
   /// Waypoint [name] - required for navigation and waypoint identification

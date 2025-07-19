@@ -9,3 +9,4 @@ export 'route_progress_event.dart';
 export 'route_step.dart';
 export 'voice_units.dart';
 export 'way_point.dart';
+export 'waypoint_validation_result.dart';

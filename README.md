@@ -11,7 +11,7 @@ Add Turn By Turn Navigation to Your Flutter Application Using MapBox. Never leav
 * Worldwide driving, cycling, and walking directions powered by [open data](https://www.mapbox.com/about/open/) and user feedback
 * Traffic avoidance and proactive rerouting based on current conditions in [over 55 countries](https://docs.mapbox.com/help/how-mapbox-works/directions/#traffic-data)
 * **Free Drive Mode** - Passive navigation without a set destination
-* **Multi-stop Navigation** - Support for up to 25 waypoints with dynamic additions
+* **Multi-stop Navigation** - Support for multiple waypoints with dynamic additions
 * **Route Simulation** - Test navigation with simulated movement
 
 ### Map & UI Features
@@ -197,7 +197,7 @@ The `WayPoint` class includes built-in validation:
 - **Silent Rules**: First and last waypoints cannot be silent
 - **Duplicate Prevention**: Coordinates must be unique within a route
 
-**Validation Examples:**
+**Basic Validation Examples:**
 ```dart
 // ✅ Valid waypoints
 WayPoint(name: "Valid Stop", latitude: 42.886448, longitude: -78.878372);
@@ -207,6 +207,29 @@ WayPoint(name: "Silent Point", latitude: 42.8866177, longitude: -78.8814924, isS
 WayPoint(name: "", latitude: 42.886448, longitude: -78.878372);                    // Empty name
 WayPoint(name: "Invalid", latitude: 91.0, longitude: -78.878372);                 // Invalid latitude
 WayPoint(name: "Invalid", latitude: 42.886448, longitude: 181.0);                 // Invalid longitude
+```
+
+**API Limit Validation:**
+```dart
+// Validate waypoint count against Mapbox API limits
+final waypoints = [
+    WayPoint(name: "Start", latitude: 37.774406, longitude: -122.435397),
+    WayPoint(name: "Stop 1", latitude: 37.784406, longitude: -122.445397),
+    // ... more waypoints
+];
+
+final validation = WayPoint.validateWaypointCount(waypoints);
+if (!validation.isValid) {
+    print("❌ Validation failed: ${validation.warnings.join(', ')}");
+} else if (validation.hasWarnings) {
+    print("⚠️  Warnings: ${validation.warnings.join(', ')}");
+    print("💡 Recommendations: ${validation.recommendations.join(', ')}");
+} else {
+    print("✅ Waypoints are valid");
+}
+
+// Get formatted validation message
+print(validation.formattedMessage);
 ```
 
 #### Best Practices
@@ -229,7 +252,8 @@ WayPoint(name: "Invalid", latitude: 42.886448, longitude: 181.0);               
 4. **Platform Limitations:**
    - **iOS**: Cannot use `drivingWithTraffic` mode with more than 3 waypoints
    - **Android**: No waypoint count limitations for traffic mode
-   - **Both**: Maximum 25 waypoints per route
+   - **Both**: Minimum 2 waypoints required, no maximum enforced
+   - **Mapbox API**: Officially supports up to 25 waypoints, but this is not enforced in the plugin
 
 ### Free Drive Mode
 
@@ -250,7 +274,7 @@ await MapBoxNavigation.instance.startFreeDrive(
 ### Multi-Stop Navigation
 
 ```dart
-// Define multiple waypoints (up to 25)
+// Define multiple waypoints
 final waypoints = [
     WayPoint(name: "Start", latitude: 37.774406, longitude: -122.435397),                    // Always announced
     WayPoint(name: "Route Point", latitude: 37.765569, longitude: -122.424098, isSilent: true), // Silent - no announcement
@@ -287,7 +311,7 @@ if (result.success) {
 ```
 
 **Multi-stop Navigation Features:**
-- **Up to 25 waypoints** per route
+- **Multiple waypoints** per route (minimum 2, no maximum enforced)
 - **Dynamic waypoint addition** during navigation with `WaypointResult` feedback
 - **Silent waypoints** for route optimization without announcements
 - **Automatic route recalculation** when waypoints are added
@@ -441,6 +465,40 @@ The plugin has been updated for Android 13+ compatibility with proper receiver r
 
 ### Offline Routing Status
 The `enableOfflineRouting()` method exists in the API but is not currently implemented. Android returns a "NOT_IMPLEMENTED" error, and iOS has the implementation commented out. This feature is planned for future releases.
+
+### Mapbox API Limits
+
+This plugin uses the Mapbox Directions API for route calculation. Understanding these limits helps ensure reliable navigation:
+
+#### Waypoint Limits
+- **Official Limit**: Up to 25 waypoints per route request
+- **Plugin Behavior**: No enforcement of this limit in the plugin code
+- **Recommendation**: Stay within 25 waypoints for optimal performance
+- **Exceeding Limits**: May result in API errors or degraded performance
+
+#### Rate Limits
+- **Free Tier**: 100,000 requests per month
+- **Paid Tiers**: Higher limits based on your Mapbox plan
+- **Request Types**: Each navigation start counts as one request
+- **Monitoring**: Check your Mapbox dashboard for usage
+
+#### Distance Limits
+- **Maximum Route Distance**: 10,000 km (6,214 miles) per route
+- **Coordinate Precision**: 6 decimal places recommended
+- **Global Coverage**: Available worldwide with varying data quality
+
+#### Performance Considerations
+- **Route Calculation Time**: Increases with more waypoints
+- **Network Usage**: Each route request uses data
+- **Caching**: Routes are not cached by default
+- **Offline**: Limited offline capabilities (see Offline Routing Status above)
+
+#### Best Practices
+1. **Waypoint Count**: Keep routes under 25 waypoints when possible
+2. **Route Optimization**: Use silent waypoints for route shaping
+3. **Error Handling**: Implement fallbacks for API failures
+4. **Monitoring**: Track API usage to avoid rate limits
+5. **Testing**: Test with realistic waypoint counts in your app
 
 ## Documentation
 

@@ -46,8 +46,19 @@ class MapBoxNavigationViewController {
   ///Build the Route Used for the Navigation
   ///
   /// [wayPoints] must not be null. A collection of [WayPoint](longitude,
-  /// latitude and name). Must be at least 2 or at most 25. Cannot use
-  /// drivingWithTraffic mode if more than 3-waypoints.
+  /// latitude and name). 
+  /// 
+  /// **Waypoint Limits:**
+  /// - **Minimum**: 2 waypoints (enforced)
+  /// - **Recommended Maximum**: 25 waypoints (Mapbox API limit)
+  /// - **Plugin Behavior**: No maximum enforcement in plugin code
+  /// - **iOS Traffic Mode**: Maximum 3 waypoints when using drivingWithTraffic
+  /// 
+  /// **API Considerations:**
+  /// - Each route build counts as one Mapbox API request
+  /// - Route calculation time increases with more waypoints
+  /// - Exceeding 25 waypoints may result in API errors
+  /// 
   /// [options] options used to generate the route and used while navigating
   ///
   Future<bool> buildRoute({
