@@ -531,3 +531,261 @@ void updateVehiclePosition(String id, double lat, double lng, double heading) {
    - Enable USB debugging
    - Trust computer on iOS device
    - Connect device and run `flutter devices` to verify connection 
+
+## Performance Analysis and Recommendations
+
+### Multi-Vehicle Tracking Efficiency
+
+This section provides guidance on using the marker implementation for tracking multiple vehicles in real-time, including performance considerations and optimization strategies.
+
+#### Current Implementation Limitations
+
+The proposed marker implementation has several limitations when tracking multiple vehicles:
+
+1. **Individual Marker Updates**
+   - Each vehicle update requires a separate method channel call
+   - No batch processing for multiple marker updates
+   - High overhead for frequent updates (e.g., every 1-2 seconds)
+
+2. **Missing Critical Optimizations**
+   - Batch marker updates not implemented
+   - No viewport-based culling for off-screen markers
+   - No update throttling or rate limiting
+
+#### Performance Impact Analysis
+
+##### Method Channel Overhead
+- **50 vehicles × 1 update/second = 50 method channel calls/second**
+- Each call involves: Flutter → Platform → Mapbox SDK → UI update
+- **Significant battery drain** and potential frame drops
+
+##### Memory Usage
+- **50 PointAnnotation objects** in memory
+- **50 marker tracking objects** in Flutter
+- **Platform-specific marker storage** (Android/iOS)
+
+##### Update Frequency Considerations
+- **1-2 second updates**: 25-50 method calls/second (problematic)
+- **5 second updates**: 10 method calls/second (manageable)
+- **10+ second updates**: 5 or fewer calls/second (acceptable)
+
+#### Recommended Approaches by Vehicle Count
+
+##### For 1-10 Vehicles
+**Current implementation is suitable**
+```dart
+// Direct approach works well
+void updateVehicle(String id, double lat, double lng) {
+  _navigation.updateMarker(MapMarker(
+    id: id,
+    latitude: lat,
+    longitude: lng,
+  ));
+}
+```
+
+##### For 10-50 Vehicles
+**Requires optimizations for best performance**
+
+1. **Implement Batch Updates (Critical)**
+```dart
+class VehicleFleetManager {
+  final List<MapMarker> _pendingUpdates = [];
+  Timer? _batchTimer;
+  
+  void updateVehicle(String id, double lat, double lng) {
+    _pendingUpdates.add(MapMarker(id: id, latitude: lat, longitude: lng));
+    
+    _batchTimer?.cancel();
+    _batchTimer = Timer(Duration(milliseconds: 200), _flushBatch);
+  }
+  
+  void _flushBatch() {
+    if (_pendingUpdates.isNotEmpty) {
+      _navigation.updateMarkersBatch(_pendingUpdates);
+      _pendingUpdates.clear();
+    }
+  }
+}
+```
+
+2. **Reduce Update Frequency**
+```dart
+// Update every 3-5 seconds instead of every 1-2 seconds
+Timer.periodic(Duration(seconds: 3), (timer) {
+  _updateAllVehicles();
+});
+```
+
+3. **Viewport Optimization**
+```dart
+// Only update vehicles within current map view
+void updateVisibleVehicles() {
+  final bounds = _navigation.getCurrentViewport();
+  final visibleVehicles = _vehicles.where((v) => 
+    bounds.contains(v.latitude, v.longitude)
+  );
+  
+  _navigation.updateMarkersBatch(visibleVehicles.map((v) => v.marker).toList());
+}
+```
+
+##### For 50+ Vehicles
+**Requires advanced optimizations**
+
+1. **Implement Clustering**
+```dart
+// Enable clustering for better performance
+await _navigation.enableMarkerClustering(
+  maxZoom: 15.0,
+  minZoom: 10.0,
+  clusterProperties: {
+    'clusterMaxZoom': 15.0,
+    'clusterRadius': 50.0,
+  },
+);
+```
+
+2. **Level-of-Detail Rendering**
+```dart
+class VehicleTracker {
+  void updateVehicleDetail(String id, double lat, double lng, double zoom) {
+    final marker = zoom > 12.0 
+      ? _createDetailedMarker(id, lat, lng)  // Full detail
+      : _createSimpleMarker(id, lat, lng);   // Simplified
+    
+    _navigation.updateMarker(marker);
+  }
+}
+```
+
+3. **WebSocket/Real-time Updates**
+```dart
+// Use WebSocket for efficient real-time updates
+class RealTimeVehicleTracker {
+  WebSocket? _socket;
+  
+  void connectToVehicleStream() {
+    _socket = WebSocket.connect('ws://your-server/vehicles');
+    _socket!.listen((data) {
+      final vehicleData = jsonDecode(data);
+      _updateVehicleFromStream(vehicleData);
+    });
+  }
+}
+```
+
+#### Performance Optimization Strategies
+
+##### 1. Batch Updates (High Priority)
+```dart
+// Enhanced MapBoxNavigation class
+class MapBoxNavigation {
+  /// Update multiple markers in a single call
+  Future<bool> updateMarkersBatch(List<MapMarker> markers) async {
+    return await _channel.invokeMethod('updateMarkersBatch', {
+      'markers': markers.map((m) => m.toMap()).toList()
+    });
+  }
+}
+```
+
+##### 2. Update Throttling
+```dart
+class VehicleTracker {
+  final Map<String, Timer> _updateTimers = {};
+  
+  void updateVehicle(String id, double lat, double lng) {
+    _updateTimers[id]?.cancel();
+    _updateTimers[id] = Timer(Duration(milliseconds: 500), () {
+      _navigation.updateMarker(createMarker(id, lat, lng));
+    });
+  }
+}
+```
+
+##### 3. Viewport-Based Updates
+```dart
+class ViewportOptimizedTracker {
+  void updateVisibleVehicles() {
+    final bounds = _navigation.getCurrentViewport();
+    final visibleVehicles = _vehicles.where((v) => 
+      _isInViewport(v.latitude, v.longitude, bounds)
+    );
+    
+    _navigation.updateMarkersBatch(visibleVehicles.map((v) => v.marker).toList());
+  }
+}
+```
+
+#### Platform-Specific Performance Considerations
+
+##### Android
+- Use Mapbox's `PointAnnotationManager` for efficient marker management
+- Implement marker clustering using `ClusterManager`
+- Consider using `PointAnnotationOptions` for batch operations
+- Monitor memory usage with large numbers of annotations
+
+##### iOS
+- Use Mapbox's `PointAnnotationManager` for marker management
+- Implement clustering using `PointAnnotationClusterManager`
+- Consider using `PointAnnotationOptions` for batch operations
+- Monitor memory usage with large numbers of annotations
+
+#### Testing Performance
+
+##### Performance Test Example
+```dart
+// test/performance/multi_vehicle_test.dart
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  group('Multi-Vehicle Performance Tests', () {
+    test('handles 50 vehicles with batch updates', () async {
+      final tracker = VehicleFleetManager();
+      final stopwatch = Stopwatch()..start();
+      
+      // Simulate 50 vehicles updating every 3 seconds
+      for (int i = 0; i < 50; i++) {
+        tracker.updateVehicle('vehicle-$i', 51.5074 + i * 0.001, -0.1278 + i * 0.001);
+      }
+      
+      await Future.delayed(Duration(seconds: 1));
+      stopwatch.stop();
+      
+      // Should complete within reasonable time
+      expect(stopwatch.elapsedMilliseconds, lessThan(5000));
+    });
+  });
+}
+```
+
+#### Summary of Recommendations
+
+| Vehicle Count | Update Frequency | Required Optimizations | Performance Rating |
+|---------------|------------------|----------------------|-------------------|
+| 1-10 | 1-2 seconds | None | Excellent |
+| 10-25 | 3-5 seconds | Batch updates | Good |
+| 25-50 | 5-10 seconds | Batch updates + Viewport culling | Fair |
+| 50+ | 10+ seconds | Clustering + LOD + Real-time streaming | Poor (needs redesign) |
+
+#### Implementation Priority for Multi-Vehicle Support
+
+1. **High Priority**
+   - Implement batch marker updates
+   - Add update frequency controls
+   - Implement viewport-based culling
+
+2. **Medium Priority**
+   - Add marker clustering support
+   - Implement level-of-detail rendering
+   - Add performance monitoring
+
+3. **Lower Priority**
+   - Real-time streaming integration
+   - Advanced clustering algorithms
+   - Custom marker optimization
+
+#### Conclusion
+
+The proposed marker implementation can handle multiple vehicles but requires significant optimizations for 25+ vehicles. The most critical improvement is implementing batch updates to reduce method channel overhead. For 50+ vehicles, consider implementing clustering and reducing update frequency, or explore alternative approaches like custom map layers or WebGL rendering for better performance. 

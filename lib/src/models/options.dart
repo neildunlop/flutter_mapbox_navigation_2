@@ -20,7 +20,7 @@ class MapBoxOptions {
     this.tilt,
     this.alternatives,
     this.mode,
-    this.units,
+    required this.units,
     this.allowsUTurnAtWayPoints,
     this.enableRefresh,
     this.voiceInstructionsEnabled,
@@ -60,6 +60,7 @@ class MapBoxOptions {
     animateBuildRoute = option.animateBuildRoute;
     showReportFeedbackButton = option.showReportFeedbackButton;
     showEndOfRouteFeedback = option.showEndOfRouteFeedback;
+    enableOnMapTapCallback = option.enableOnMapTapCallback;
   }
 
   /// The initial Latitude of the Map View
@@ -117,7 +118,9 @@ class MapBoxOptions {
   MapBoxNavigationMode? mode;
 
   /// The unit of measure said in voice instructions
-  VoiceUnits? units;
+  /// This is required and cannot be null as voice instructions need units
+  /// to properly format distances and speeds.
+  late VoiceUnits units;
 
   /// If the value of this property is true, a returned route may require an
   /// immediate U-turn at an intermediate waypoint. At an intermediate waypoint,
@@ -191,9 +194,7 @@ class MapBoxOptions {
     if (mode != null) {
       optionsMap['mode'] = mode?.toString().split('.').last;
     }
-    if (units != null) {
-      optionsMap['units'] = units?.toString().split('.').last;
-    }
+    optionsMap['units'] = units.toString().split('.').last;
     if (allowsUTurnAtWayPoints != null) {
       optionsMap['allowsUTurnAtWayPoints'] = allowsUTurnAtWayPoints;
     }

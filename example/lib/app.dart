@@ -59,6 +59,7 @@ class _SampleNavigationAppState extends State<SampleNavigationApp> {
   bool _isNavigating = false;
   bool _inFreeDrive = false;
   late MapBoxOptions _navigationOption;
+  bool _isMetric = true;
 
   @override
   void initState() {
@@ -79,11 +80,22 @@ class _SampleNavigationAppState extends State<SampleNavigationApp> {
     // setState to update our non-existent appearance.
     if (!mounted) return;
 
-    _navigationOption = MapBoxNavigation.instance.getDefaultOptions();
-    _navigationOption.simulateRoute = true;
-    _navigationOption.language = "en";
-    //_navigationOption.initialLatitude = 36.1175275;
-    //_navigationOption.initialLongitude = -115.1839524;
+    _navigationOption = MapBoxOptions(
+      initialLatitude: 36.1175275,
+      initialLongitude: -115.1839524,
+      zoom: 15.0,
+      tilt: 0.0,
+      bearing: 0.0,
+      enableRefresh: true,
+      alternatives: true,
+      voiceInstructionsEnabled: true,
+      bannerInstructionsEnabled: true,
+      allowsUTurnAtWayPoints: true,
+      mode: MapBoxNavigationMode.drivingWithTraffic,
+      units: VoiceUnits.metric,
+      simulateRoute: true,
+      language: "en",
+    );
     MapBoxNavigation.instance.registerRouteEventListener(_onEmbeddedRouteEvent);
 
     String? platformVersion;
@@ -216,8 +228,10 @@ class _SampleNavigationAppState extends State<SampleNavigationApp> {
                         )),
                       ),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      alignment: WrapAlignment.center,
                       children: [
                         ElevatedButton(
                           onPressed: _isNavigating
@@ -241,9 +255,6 @@ class _SampleNavigationAppState extends State<SampleNavigationApp> {
                               ? "Clear Route"
                               : "Build Route"),
                         ),
-                        const SizedBox(
-                          width: 10,
-                        ),
                         ElevatedButton(
                           onPressed: _routeBuilt && !_isNavigating
                               ? () {
@@ -254,9 +265,6 @@ class _SampleNavigationAppState extends State<SampleNavigationApp> {
                               : null,
                           child: const Text("Start Embedded"),
                         ),
-                        const SizedBox(
-                          width: 10,
-                        ),
                         ElevatedButton(
                           onPressed: _isNavigating
                               ? () {
@@ -265,9 +273,6 @@ class _SampleNavigationAppState extends State<SampleNavigationApp> {
                               : null,
                           child: const Text("Stop Navigation"),
                         ),
-                        const SizedBox(
-                          width: 10,
-                        ),
                         ElevatedButton(
                           onPressed: _inFreeDrive
                               ? null
@@ -275,9 +280,9 @@ class _SampleNavigationAppState extends State<SampleNavigationApp> {
                                   _inFreeDrive =
                                       await _controller?.startFreeDrive() ?? false;
                                 },
-                          child: const Text("Free Drive "),
+                          child: const Text("Free Drive"),
                         ),
-                    ],
+                      ],
                     ),
                     const Center(
                       child: Padding(
@@ -396,5 +401,93 @@ class _SampleNavigationAppState extends State<SampleNavigationApp> {
         break;
     }
     setState(() {});
+  }
+
+  void _onMapReady() {
+    _navigationOption = MapBoxOptions(
+      initialLatitude: 36.1175275,
+      initialLongitude: -115.1839524,
+      zoom: 15.0,
+      tilt: 0.0,
+      bearing: 0.0,
+      enableRefresh: true,
+      alternatives: true,
+      voiceInstructionsEnabled: true,
+      bannerInstructionsEnabled: true,
+      allowsUTurnAtWayPoints: true,
+      mode: MapBoxNavigationMode.drivingWithTraffic,
+      units: VoiceUnits.metric,
+      simulateRoute: true,
+      language: "en",
+    );
+  }
+
+  void _startNavigation() async {
+    var wayPoints = <WayPoint>[];
+    wayPoints.add(_origin);
+    wayPoints.add(_destination);
+
+    await MapBoxNavigation.instance.startNavigation(
+      wayPoints: wayPoints,
+      options: MapBoxOptions(
+        initialLatitude: _origin.latitude!,
+        initialLongitude: _origin.longitude!,
+        zoom: 15.0,
+        tilt: 0.0,
+        bearing: 0.0,
+        enableRefresh: true,
+        alternatives: true,
+        voiceInstructionsEnabled: true,
+        bannerInstructionsEnabled: true,
+        allowsUTurnAtWayPoints: true,
+        mode: MapBoxNavigationMode.drivingWithTraffic,
+        units: VoiceUnits.metric,
+        simulateRoute: true,
+        language: "en",
+      ),
+    );
+  }
+
+  void _startFreeDrive() async {
+    await MapBoxNavigation.instance.startFreeDrive(
+      options: MapBoxOptions(
+        initialLatitude: _origin.latitude!,
+        initialLongitude: _origin.longitude!,
+        zoom: 15.0,
+        tilt: 0.0,
+        bearing: 0.0,
+        enableRefresh: true,
+        alternatives: true,
+        voiceInstructionsEnabled: true,
+        bannerInstructionsEnabled: true,
+        allowsUTurnAtWayPoints: true,
+        mode: MapBoxNavigationMode.drivingWithTraffic,
+        units: VoiceUnits.metric,
+        simulateRoute: true,
+        language: "en",
+      ),
+    );
+  }
+
+  void _toggleMetric() {
+    setState(() {
+      _isMetric = !_isMetric;
+      _navigationOption = MapBoxOptions(
+        initialLatitude: _navigationOption.initialLatitude,
+        initialLongitude: _navigationOption.initialLongitude,
+        zoom: _navigationOption.zoom,
+        tilt: _navigationOption.tilt,
+        bearing: _navigationOption.bearing,
+        enableRefresh: _navigationOption.enableRefresh,
+        alternatives: _navigationOption.alternatives,
+        voiceInstructionsEnabled: _navigationOption.voiceInstructionsEnabled,
+        bannerInstructionsEnabled: _navigationOption.bannerInstructionsEnabled,
+        allowsUTurnAtWayPoints: _navigationOption.allowsUTurnAtWayPoints,
+        mode: _navigationOption.mode,
+        units: _isMetric ? VoiceUnits.metric : VoiceUnits.imperial,
+        simulateRoute: _navigationOption.simulateRoute,
+        language: _navigationOption.language,
+      );
+    });
   }
 }

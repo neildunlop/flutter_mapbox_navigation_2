@@ -11,3 +11,6 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Mapbox tokens - NEVER commit these to version control
+gradle.properties

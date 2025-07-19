@@ -10,22 +10,33 @@ Add Turn By Turn Navigation to Your Flutter Application Using MapBox. Never leav
 * A full-fledged turn-by-turn navigation UI for Flutter that's ready to drop into your application
 * Worldwide driving, cycling, and walking directions powered by [open data](https://www.mapbox.com/about/open/) and user feedback
 * Traffic avoidance and proactive rerouting based on current conditions in [over 55 countries](https://docs.mapbox.com/help/how-mapbox-works/directions/#traffic-data)
+* **Free Drive Mode** - Passive navigation without a set destination
+* **Multi-stop Navigation** - Support for up to 25 waypoints with dynamic additions
+* **Route Simulation** - Test navigation with simulated movement
 
 ### Map & UI Features
 * [Professionally designed map styles](https://www.mapbox.com/maps/) for daytime and nighttime driving
-* Customizable navigation UI with embedded view support
+* **Embedded Navigation View** - Customizable navigation UI that integrates seamlessly into your app
 * Support for multiple waypoints and route alternatives
+* **Map Controller** - Full programmatic control over navigation state and map interactions
 
 ### Voice & Language Features
 * Natural-sounding turn instructions powered by [Amazon Polly](https://aws.amazon.com/polly/) (no configuration needed)
 * [Support for over two dozen languages](https://docs.mapbox.com/ios/navigation/overview/localization-and-internationalization/)
 * Customizable voice instructions and banner guidance
+* **Unit System Support** - Imperial and metric units (note: voice units are locked at first initialization)
+
+### Advanced Features
+* **Event-Driven Architecture** - Comprehensive event system for navigation progress, route updates, and user interactions
+* **Offline Routing** - Download navigation data for offline use
+* **Modern Android Support** - Android 13+ compatibility with enhanced security
+* **Type-Safe API** - Improved error handling and type safety across all platforms
 
 ## Setup Instructions
 
 ### Prerequisites
 1. A Mapbox account with access tokens
-2. Flutter development environment set up
+2. Flutter development environment set up (SDK >=2.19.4, Flutter >=2.5.0)
 3. iOS and/or Android development environment configured
 
 ### iOS Configuration
@@ -140,6 +151,54 @@ await MapBoxNavigation.instance.startNavigation(
 );
 ```
 
+### Free Drive Mode
+
+```dart
+// Start free drive mode (passive navigation without destination)
+await MapBoxNavigation.instance.startFreeDrive(
+    options: MapBoxOptions(
+        initialLatitude: 36.1175275,
+        initialLongitude: -115.1839524,
+        zoom: 15.0,
+        mode: MapBoxNavigationMode.drivingWithTraffic,
+        units: VoiceUnits.metric,
+        language: "en"
+    )
+);
+```
+
+### Multi-Stop Navigation
+
+```dart
+// Define multiple waypoints
+final waypoints = [
+    WayPoint(name: "Start", latitude: 37.774406, longitude: -122.435397),
+    WayPoint(name: "Stop 1", latitude: 37.765569, longitude: -122.424098, isSilent: true),
+    WayPoint(name: "Stop 2", latitude: 37.784406, longitude: -122.445397, isSilent: false),
+    WayPoint(name: "Destination", latitude: 37.794406, longitude: -122.455397),
+];
+
+// Start multi-stop navigation
+await MapBoxNavigation.instance.startNavigation(
+    wayPoints: waypoints,
+    options: MapBoxOptions(
+        mode: MapBoxNavigationMode.driving,
+        simulateRoute: true,
+        allowsUTurnAtWayPoints: true
+    )
+);
+
+// Add waypoints during navigation
+await Future.delayed(Duration(seconds: 10));
+final newStop = WayPoint(
+    name: "Gas Station",
+    latitude: 37.774406,
+    longitude: -122.435397,
+    isSilent: false
+);
+await MapBoxNavigation.instance.addWayPoints(wayPoints: [newStop]);
+```
+
 ### Event Handling
 
 ```dart
@@ -148,8 +207,8 @@ MapBoxNavigation.instance.registerRouteEventListener(_onRouteEvent);
 
 Future<void> _onRouteEvent(e) async {
     // Get remaining distance and duration
-    _distanceRemaining = await _directions.distanceRemaining;
-    _durationRemaining = await _directions.durationRemaining;
+    _distanceRemaining = await MapBoxNavigation.instance.getDistanceRemaining();
+    _durationRemaining = await MapBoxNavigation.instance.getDurationRemaining();
 
     // Handle different event types
     switch (e.eventType) {
@@ -178,7 +237,7 @@ Future<void> _onRouteEvent(e) async {
             _arrived = true;
             if (!_isMultipleStop) {
                 await Future.delayed(Duration(seconds: 3));
-                await _controller.finishNavigation();
+                await MapBoxNavigation.instance.finishNavigation();
             }
             break;
             
@@ -198,16 +257,17 @@ Future<void> _onRouteEvent(e) async {
 
 ```dart
 // 1. Declare controller
-MapBoxNavigationViewController _controller;
+MapBoxNavigationViewController? _controller;
 
 // 2. Add to widget tree
 Container(
-    color: Colors.grey,
+    height: 300,
     child: MapBoxNavigationView(
         options: _options,
         onRouteEvent: _onRouteEvent,
         onCreated: (MapBoxNavigationViewController controller) async {
             _controller = controller;
+            await controller.initialize();
         }
     ),
 )
@@ -223,10 +283,13 @@ var wayPoints = [
 ];
 
 // Build the route
-_controller.buildRoute(wayPoints: wayPoints);
+await _controller?.buildRoute(wayPoints: wayPoints);
 
 // Start navigation
-_controller.startNavigation();
+await _controller?.startNavigation();
+
+// Free drive in embedded view
+await _controller?.startFreeDrive();
 ```
 
 ## Screenshots
@@ -241,12 +304,47 @@ _controller.startNavigation();
 |:---:|:---:|
 | Embedded iOS View | Embedded Android View |
 
+## Platform Support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| iOS | ✅ Fully Supported | iOS 10+ required |
+| Android | ✅ Fully Supported | API 21+ required, Android 13+ optimized |
+| Linux | 🔄 Planned | Commented out in pubspec.yaml |
+| macOS | 🔄 Planned | Commented out in pubspec.yaml |
+| Windows | 🔄 Planned | Commented out in pubspec.yaml |
+| Web | 🔄 Planned | Commented out in pubspec.yaml |
+
 ## Roadmap
 * [DONE] Android Implementation
 * [DONE] Add more settings like Navigation Mode (driving, walking, etc)
 * [DONE] Stream Events like relevant navigation notifications, metrics, current location, etc. 
 * [DONE] Embeddable Navigation View 
-* Offline Routing
+* [DONE] Offline Routing
+* [DONE] Free Drive Mode
+* [DONE] Multi-stop Navigation
+* [DONE] Enhanced Error Handling
+* [DONE] Android 13+ Security Updates
+* [PLANNED] Map Markers System
+* [PLANNED] Vehicle Movement Simulation
+* [PLANNED] Enhanced UI Components
+
+## Technical Notes
+
+### Voice Instruction Units
+Voice instruction units are locked at first initialization of the navigation session by design in the Mapbox SDK. While display units can be changed at runtime, voice instructions will maintain their initial units throughout the navigation session.
+
+### Android Security
+The plugin has been updated for Android 13+ compatibility with proper receiver registration and enhanced security measures.
+
+## Documentation
+
+For detailed technical documentation, architecture overview, and implementation guides, see the `/docs` directory:
+- [Architecture Overview](docs/overview.md)
+- [Feature Comparison](docs/feature_comparison.md)
+- [Modernization Summary](docs/modernisation.md)
+- [Testing Strategy](docs/testing_strategy.md)
+- [Map Marker Implementation Plan](docs/marker_implementation.md)
 
 ## Changelog
 
