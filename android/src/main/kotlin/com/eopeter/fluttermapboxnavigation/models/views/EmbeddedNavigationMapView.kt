@@ -7,6 +7,7 @@ import com.eopeter.fluttermapboxnavigation.TurnByTurn
 import com.eopeter.fluttermapboxnavigation.databinding.NavigationActivityBinding
 import com.eopeter.fluttermapboxnavigation.models.MapBoxEvents
 import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities
+import com.eopeter.fluttermapboxnavigation.StaticMarkerManager
 import com.mapbox.geojson.Point
 import com.mapbox.maps.MapView
 import com.mapbox.maps.plugin.gestures.OnMapClickListener
@@ -52,6 +53,9 @@ class EmbeddedNavigationMapView(
         if (enableOnMapTap) {
             this.binding.navigationView.registerMapObserver(onMapClick)
         }
+
+        // Register MapView observer for static markers
+        this.binding.navigationView.registerMapObserver(staticMarkerMapObserver)
     }
 
     override fun getView(): View {
@@ -63,6 +67,10 @@ class EmbeddedNavigationMapView(
         if (enableOnMapTap) {
             this.binding.navigationView.unregisterMapObserver(onMapClick)
         }
+        
+        // Unregister static marker map observer
+        this.binding.navigationView.unregisterMapObserver(staticMarkerMapObserver)
+        
         unregisterObservers()
     }
 
@@ -86,6 +94,21 @@ class EmbeddedNavigationMapView(
             )
             PluginUtilities.sendEvent(MapBoxEvents.ON_MAP_TAP, JSONObject(waypoint).toString())
             return false
+        }
+    }
+
+    /**
+     * MapView observer for static markers
+     */
+    private val staticMarkerMapObserver = object : MapViewObserver() {
+        override fun onAttached(mapView: MapView) {
+            // Set the MapView in the StaticMarkerManager
+            StaticMarkerManager.getInstance().setMapView(mapView)
+        }
+
+        override fun onDetached(mapView: MapView) {
+            // Clear the MapView in the StaticMarkerManager
+            StaticMarkerManager.getInstance().setMapView(null)
         }
     }
 

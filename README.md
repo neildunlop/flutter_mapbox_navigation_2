@@ -28,6 +28,7 @@ Add Turn By Turn Navigation to Your Flutter Application Using MapBox. Never leav
 
 ### Advanced Features
 * **Event-Driven Architecture** - Comprehensive event system for navigation progress, route updates, and user interactions
+* **Static Markers** - Display custom points of interest with interactive markers and clustering
 * **Offline Routing** - Download navigation data for offline use *(Coming Soon)*
 * **Modern Android Support** - Android 13+ compatibility with enhanced security
 * **Type-Safe API** - Improved error handling and type safety across all platforms
@@ -382,6 +383,89 @@ Future<void> _onRouteEvent(e) async {
 }
 ```
 
+### Static Markers
+
+Display custom points of interest on the map with interactive markers, clustering, and rich metadata support.
+
+```dart
+// 1. Create static markers
+final markers = [
+  StaticMarker(
+    id: 'scenic_1',
+    latitude: 37.7749,
+    longitude: -122.4194,
+    title: 'Golden Gate Bridge',
+    category: 'scenic',
+    description: 'Iconic suspension bridge',
+    iconId: MarkerIcons.scenic,
+    customColor: Colors.orange,
+    priority: 5,
+    metadata: {'rating': 4.8, 'best_time': 'sunset'},
+  ),
+  StaticMarker(
+    id: 'petrol_1',
+    latitude: 37.7849,
+    longitude: -122.4094,
+    title: 'Shell Gas Station',
+    category: 'petrol_station',
+    description: '24/7 fuel station',
+    iconId: MarkerIcons.petrolStation,
+    customColor: Colors.green,
+    metadata: {'price': 1.85, 'brand': 'Shell'},
+  ),
+];
+
+// 2. Add markers to map
+await MapBoxNavigation.instance.addStaticMarkers(
+  markers: markers,
+  configuration: MarkerConfiguration(
+    maxDistanceFromRoute: 5.0, // 5km from route
+    enableClustering: true,
+    onMarkerTap: (marker) {
+      print('Tapped: ${marker.title}');
+    },
+  ),
+);
+
+// 3. Handle marker taps
+await MapBoxNavigation.instance.registerStaticMarkerTapListener(
+  (marker) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(marker.title),
+        content: Text(marker.description ?? ''),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  },
+);
+
+// 4. Remove markers when done
+await MapBoxNavigation.instance.clearAllStaticMarkers();
+```
+
+**Static Marker Features:**
+- **30+ Predefined Icons** across 5 categories (Transportation, Food & Services, Scenic & Recreation, Safety & Traffic, General)
+- **Flexible Categories** - String-based categories defined by developers
+- **Rich Metadata** - Custom data for each marker type
+- **Smart Clustering** - Automatic clustering for dense areas
+- **Distance Filtering** - Show only markers within specified distance from route
+- **Interactive** - Tap callbacks with detailed information display
+- **Performance Optimized** - Configurable limits and efficient rendering
+
+> **📝 Icon Coverage Note**: 
+> - **iOS**: Complete icon coverage with 40+ SF Symbols for all marker types
+> - **Android**: 12 essential icons implemented (petrol, restaurant, hotel, hospital, etc.), 35 additional icons fall back to default pin
+> - **TODO**: Create remaining Android vector drawables for complete cross-platform icon parity
+
+For detailed documentation, see [Static Markers Guide](docs/static_markers.md).
+
 ### Embedded Navigation View
 
 ```dart
@@ -450,7 +534,7 @@ await _controller?.startFreeDrive();
 * [DONE] Multi-stop Navigation
 * [DONE] Enhanced Error Handling
 * [DONE] Android 13+ Security Updates
-* [PLANNED] Map Markers System
+* [DONE] Static Markers System
 * [PLANNED] Vehicle Movement Simulation
 * [PLANNED] Enhanced UI Components
 * [PLANNED] Offline Routing Implementation
@@ -507,11 +591,21 @@ For detailed technical documentation, architecture overview, and implementation 
 - [Feature Comparison](docs/feature_comparison.md)
 - [Modernization Summary](docs/modernisation.md)
 - [Testing Strategy](docs/testing_strategy.md)
+- [Static Markers Guide](docs/static_markers.md)
 - [Map Marker Implementation Plan](docs/marker_implementation.md)
 
 ## Changelog
 
 ### [Unreleased]
+#### New Features
+- **Static Markers System**: Complete implementation of custom markers with:
+  - 30+ predefined icons across 5 categories
+  - Flexible string-based categories
+  - Rich metadata support
+  - Smart clustering and distance filtering
+  - Interactive tap callbacks
+  - Performance optimization features
+
 #### Breaking Changes
 - Improved `addWayPoints` API to return meaningful results:
   - Now returns `WaypointResult` with success status and number of waypoints added
@@ -522,6 +616,7 @@ For detailed technical documentation, architecture overview, and implementation 
 - Added better error handling for waypoint operations
 - Improved type safety across the navigation API
 - Enhanced test coverage for platform communication
+- Added comprehensive static marker documentation and examples
 
 <!-- Links -->
 [pub_badge]: https://img.shields.io/pub/v/flutter_mapbox_navigation.svg

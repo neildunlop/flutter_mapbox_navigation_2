@@ -43,6 +43,34 @@ class MockFlutterMapboxNavigationPlatform
     ValueSetter<RouteEvent> listener,
   ) =>
       Future.value();
+
+  @override
+  Future<bool> addStaticMarkers({
+    required List<StaticMarker> markers,
+    MarkerConfiguration? configuration,
+  }) =>
+      Future.value(true);
+
+  @override
+  Future<bool> removeStaticMarkers({required List<String> markerIds}) =>
+      Future.value(true);
+
+  @override
+  Future<bool> clearAllStaticMarkers() => Future.value(true);
+
+  @override
+  Future<bool> updateMarkerConfiguration({required MarkerConfiguration configuration}) =>
+      Future.value(true);
+
+  @override
+  Future<List<StaticMarker>?> getStaticMarkers() =>
+      Future.value([]);
+
+  @override
+  Future<dynamic> registerStaticMarkerTapListener(
+    ValueSetter<StaticMarker> listener,
+  ) =>
+      Future.value();
 }
 
 void main() {

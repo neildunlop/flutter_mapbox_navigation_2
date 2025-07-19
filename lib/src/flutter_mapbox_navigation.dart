@@ -122,4 +122,142 @@ class MapBoxNavigation {
     return FlutterMapboxNavigationPlatform.instance
         .registerRouteEventListener(listener);
   }
+
+  // MARK: Static Marker Methods
+
+  /// Adds static markers to the map
+  /// 
+  /// [markers] List of static markers to add to the map
+  /// [configuration] Optional configuration for marker display and behavior
+  /// 
+  /// **Features:**
+  /// - Markers are displayed on the map with custom icons and colors
+  /// - Clustering is enabled by default for dense areas
+  /// - Markers can be filtered by distance from route
+  /// - Tap callbacks provide interaction capabilities
+  /// 
+  /// **Usage Example:**
+  /// ```dart
+  /// final markers = [
+  ///   StaticMarker(
+  ///     id: 'scenic_1',
+  ///     latitude: 37.7749,
+  ///     longitude: -122.4194,
+  ///     title: 'Golden Gate Bridge',
+  ///     category: 'scenic',
+  ///     description: 'Iconic suspension bridge',
+  ///     iconId: MarkerIcons.scenic,
+  ///   ),
+  ///   StaticMarker(
+  ///     id: 'petrol_1',
+  ///     latitude: 37.7849,
+  ///     longitude: -122.4094,
+  ///     title: 'Shell Station',
+  ///     category: 'petrol_station',
+  ///     description: '24/7 fuel station',
+  ///     iconId: MarkerIcons.petrolStation,
+  ///   ),
+  /// ];
+  /// 
+  /// await MapBoxNavigation.instance.addStaticMarkers(
+  ///   markers: markers,
+  ///   configuration: MarkerConfiguration(
+  ///     maxDistanceFromRoute: 5.0, // 5km from route
+  ///     onMarkerTap: (marker) {
+  ///       print('Tapped: ${marker.title}');
+  ///     },
+  ///   ),
+  /// );
+  /// ```
+  Future<bool?> addStaticMarkers({
+    required List<StaticMarker> markers,
+    MarkerConfiguration? configuration,
+  }) async {
+    return FlutterMapboxNavigationPlatform.instance.addStaticMarkers(
+      markers: markers,
+      configuration: configuration,
+    );
+  }
+
+  /// Removes specific static markers from the map
+  /// 
+  /// [markerIds] List of marker IDs to remove
+  /// 
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.removeStaticMarkers(
+  ///   markerIds: ['scenic_1', 'petrol_1'],
+  /// );
+  /// ```
+  Future<bool?> removeStaticMarkers({
+    required List<String> markerIds,
+  }) async {
+    return FlutterMapboxNavigationPlatform.instance.removeStaticMarkers(
+      markerIds: markerIds,
+    );
+  }
+
+  /// Removes all static markers from the map
+  /// 
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.clearAllStaticMarkers();
+  /// ```
+  Future<bool?> clearAllStaticMarkers() async {
+    return FlutterMapboxNavigationPlatform.instance.clearAllStaticMarkers();
+  }
+
+  /// Updates the configuration for static markers
+  /// 
+  /// [configuration] New configuration settings
+  /// 
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.updateMarkerConfiguration(
+  ///   MarkerConfiguration(
+  ///     maxDistanceFromRoute: 10.0, // Increase to 10km
+  ///     enableClustering: false, // Disable clustering
+  ///   ),
+  /// );
+  /// ```
+  Future<bool?> updateMarkerConfiguration({
+    required MarkerConfiguration configuration,
+  }) async {
+    return FlutterMapboxNavigationPlatform.instance.updateMarkerConfiguration(
+      configuration: configuration,
+    );
+  }
+
+  /// Gets the current list of static markers on the map
+  /// 
+  /// Returns a list of currently displayed static markers
+  /// 
+  /// **Usage Example:**
+  /// ```dart
+  /// final currentMarkers = await MapBoxNavigation.instance.getStaticMarkers();
+  /// print('Current markers: ${currentMarkers.length}');
+  /// ```
+  Future<List<StaticMarker>?> getStaticMarkers() async {
+    return FlutterMapboxNavigationPlatform.instance.getStaticMarkers();
+  }
+
+  /// Event listener for static marker tap events
+  /// 
+  /// [listener] Callback function that receives the tapped marker
+  /// 
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.registerStaticMarkerTapListener(
+  ///   (marker) {
+  ///     print('Marker tapped: ${marker.title}');
+  ///     // Show custom UI or perform actions
+  ///   },
+  /// );
+  /// ```
+  Future<dynamic> registerStaticMarkerTapListener(
+    ValueSetter<StaticMarker> listener,
+  ) async {
+    return FlutterMapboxNavigationPlatform.instance
+        .registerStaticMarkerTapListener(listener);
+  }
 }

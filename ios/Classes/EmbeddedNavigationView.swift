@@ -109,6 +109,9 @@ public class FlutterMapboxNavigationView : NavigationFactory, FlutterPlatformVie
     {
         navigationMapView = NavigationMapView(frame: frame)
         navigationMapView.delegate = self
+        
+        // Set the MapView in the StaticMarkerManager for static marker support
+        StaticMarkerManager.shared.setMapView(navigationMapView.mapView)
 
         if(self.arguments != nil)
         {

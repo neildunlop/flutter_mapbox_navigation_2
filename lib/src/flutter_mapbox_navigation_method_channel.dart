@@ -21,8 +21,14 @@ class MethodChannelFlutterMapboxNavigation
   @visibleForTesting
   final eventChannel = const EventChannel('flutter_mapbox_navigation/events');
 
+  /// The event channel used for static marker events.
+  @visibleForTesting
+  final markerEventChannel = const EventChannel('flutter_mapbox_navigation/marker_events');
+
   late StreamSubscription<RouteEvent> _routeEventSubscription;
+  late StreamSubscription<StaticMarker> _markerEventSubscription;
   late ValueSetter<RouteEvent>? _onRouteEvent;
+  late ValueSetter<StaticMarker>? _onMarkerTap;
 
   @override
   Future<String?> getPlatformVersion() async {
@@ -133,11 +139,111 @@ class MethodChannelFlutterMapboxNavigation
     _onRouteEvent = listener;
   }
 
+  // MARK: Static Marker Methods
+
+  @override
+  Future<bool?> addStaticMarkers({
+    required List<StaticMarker> markers,
+    MarkerConfiguration? configuration,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'markers': markers.map((marker) => marker.toJson()).toList(),
+      };
+      
+      if (configuration != null) {
+        args['configuration'] = configuration.toJson();
+      }
+      
+      final result = await methodChannel.invokeMethod('addStaticMarkers', args);
+      return result as bool?;
+    } catch (e) {
+      log('Error adding static markers: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> removeStaticMarkers({
+    required List<String> markerIds,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'markerIds': markerIds,
+      };
+      
+      final result = await methodChannel.invokeMethod('removeStaticMarkers', args);
+      return result as bool?;
+    } catch (e) {
+      log('Error removing static markers: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> clearAllStaticMarkers() async {
+    try {
+      final result = await methodChannel.invokeMethod('clearAllStaticMarkers');
+      return result as bool?;
+    } catch (e) {
+      log('Error clearing static markers: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> updateMarkerConfiguration({
+    required MarkerConfiguration configuration,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'configuration': configuration.toJson(),
+      };
+      
+      final result = await methodChannel.invokeMethod('updateMarkerConfiguration', args);
+      return result as bool?;
+    } catch (e) {
+      log('Error updating marker configuration: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<List<StaticMarker>?> getStaticMarkers() async {
+    try {
+      final result = await methodChannel.invokeMethod('getStaticMarkers');
+      if (result is List) {
+        return result
+            .map((markerJson) => StaticMarker.fromJson(markerJson as Map<String, dynamic>))
+            .toList();
+      }
+      return null;
+    } catch (e) {
+      log('Error getting static markers: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<dynamic> registerStaticMarkerTapListener(
+    ValueSetter<StaticMarker> listener,
+  ) async {
+    _onMarkerTap = listener;
+    _markerEventSubscription = markerEventsListener!.listen(_onMarkerTapData);
+  }
+
   /// Events Handling
   Stream<RouteEvent>? get routeEventsListener {
     return eventChannel
         .receiveBroadcastStream()
         .map((dynamic event) => _parseRouteEvent(event as String));
+  }
+
+  /// Static Marker Events Handling
+  Stream<StaticMarker>? get markerEventsListener {
+    return markerEventChannel
+        .receiveBroadcastStream()
+        .map((dynamic event) => _parseMarkerEvent(event as String));
   }
 
   void _onProgressData(RouteEvent event) {
@@ -150,6 +256,10 @@ class MethodChannelFlutterMapboxNavigation
       default:
         break;
     }
+  }
+
+  void _onMarkerTapData(StaticMarker marker) {
+    if (_onMarkerTap != null) _onMarkerTap?.call(marker);
   }
 
   RouteEvent _parseRouteEvent(String jsonString) {
@@ -166,6 +276,11 @@ class MethodChannelFlutterMapboxNavigation
       event = RouteEvent.fromJson(map);
     }
     return event;
+  }
+
+  StaticMarker _parseMarkerEvent(String jsonString) {
+    final map = json.decode(jsonString);
+    return StaticMarker.fromJson(map as Map<String, dynamic>);
   }
 
   List<Map<String, Object?>> _getPointListFromWayPoints(

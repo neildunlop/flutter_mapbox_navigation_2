@@ -93,6 +93,10 @@ dependencies {
     implementation "com.mapbox.navigation:copilot:2.16.0"
     implementation "com.mapbox.navigation:ui-app:2.16.0"
     implementation "com.mapbox.navigation:ui-dropin:2.16.0"
+    
+    // Mapbox Maps SDK (includes annotations)
+    implementation "com.mapbox.maps:android:10.16.0"
+    
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     implementation 'com.jakewharton.timber:timber:4.7.1'
     implementation 'com.google.code.gson:gson:2.8.9'

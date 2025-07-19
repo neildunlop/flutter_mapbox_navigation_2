@@ -122,4 +122,45 @@ abstract class FlutterMapboxNavigationPlatform extends PlatformInterface {
       'registerRouteEventListener() has not been implemented.',
     );
   }
+
+  // MARK: Static Marker Methods
+
+  /// Adds static markers to the map
+  Future<bool?> addStaticMarkers({
+    required List<StaticMarker> markers,
+    MarkerConfiguration? configuration,
+  }) async {
+    throw UnimplementedError('addStaticMarkers() has not been implemented.');
+  }
+
+  /// Removes specific static markers from the map
+  Future<bool?> removeStaticMarkers({
+    required List<String> markerIds,
+  }) async {
+    throw UnimplementedError('removeStaticMarkers() has not been implemented.');
+  }
+
+  /// Removes all static markers from the map
+  Future<bool?> clearAllStaticMarkers() async {
+    throw UnimplementedError('clearAllStaticMarkers() has not been implemented.');
+  }
+
+  /// Updates the configuration for static markers
+  Future<bool?> updateMarkerConfiguration({
+    required MarkerConfiguration configuration,
+  }) async {
+    throw UnimplementedError('updateMarkerConfiguration() has not been implemented.');
+  }
+
+  /// Gets the current list of static markers on the map
+  Future<List<StaticMarker>?> getStaticMarkers() async {
+    throw UnimplementedError('getStaticMarkers() has not been implemented.');
+  }
+
+  /// Event listener for static marker tap events
+  Future<dynamic> registerStaticMarkerTapListener(
+    ValueSetter<StaticMarker> listener,
+  ) async {
+    throw UnimplementedError('registerStaticMarkerTapListener() has not been implemented.');
+  }
 }

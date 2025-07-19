@@ -8,6 +8,8 @@ import android.os.Build
 import com.eopeter.fluttermapboxnavigation.activity.NavigationLauncher
 import com.eopeter.fluttermapboxnavigation.factory.EmbeddedNavigationViewFactory
 import com.eopeter.fluttermapboxnavigation.models.Waypoint
+import com.eopeter.fluttermapboxnavigation.models.StaticMarker
+import com.eopeter.fluttermapboxnavigation.models.MarkerConfiguration
 import com.mapbox.api.directions.v5.DirectionsCriteria
 import com.mapbox.api.directions.v5.models.DirectionsRoute
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -27,8 +29,10 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
 
     private lateinit var channel: MethodChannel
     private lateinit var progressEventChannel: EventChannel
+    private lateinit var markerEventChannel: EventChannel
     private var currentActivity: Activity? = null
     private lateinit var currentContext: Context
+    private val markerManager = StaticMarkerManager.getInstance()
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         val messenger = binding.binaryMessenger
@@ -37,6 +41,17 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
 
         progressEventChannel = EventChannel(messenger, "flutter_mapbox_navigation/events")
         progressEventChannel.setStreamHandler(this)
+
+        markerEventChannel = EventChannel(messenger, "flutter_mapbox_navigation/marker_events")
+        markerEventChannel.setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                markerManager.setEventSink(events)
+            }
+
+            override fun onCancel(arguments: Any?) {
+                markerManager.setEventSink(null)
+            }
+        })
 
         platformViewRegistry = binding.platformViewRegistry
         binaryMessenger = messenger
@@ -125,6 +140,21 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             }
             "enableOfflineRouting" -> {
                 downloadRegionForOfflineRouting(call, result)
+            }
+            "addStaticMarkers" -> {
+                addStaticMarkers(call, result)
+            }
+            "removeStaticMarkers" -> {
+                removeStaticMarkers(call, result)
+            }
+            "clearAllStaticMarkers" -> {
+                clearAllStaticMarkers(result)
+            }
+            "updateMarkerConfiguration" -> {
+                updateMarkerConfiguration(call, result)
+            }
+            "getStaticMarkers" -> {
+                getStaticMarkers(result)
             }
             else -> result.notImplemented()
         }
@@ -297,6 +327,7 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         currentActivity = binding.activity
         currentContext = binding.activity.applicationContext
+        markerManager.setContext(currentContext)
         if (platformViewRegistry != null && binaryMessenger != null && currentActivity != null) {
             platformViewRegistry?.registerViewFactory(
                 viewId,
@@ -336,6 +367,87 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             }
         }
         // super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
+    // MARK: Static Marker Methods
+
+    private fun addStaticMarkers(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val markersList = arguments?.get("markers") as? List<Map<String, Any>>
+            val configJson = arguments?.get("configuration") as? Map<String, Any>
+
+            if (markersList == null) {
+                result.error("INVALID_ARGUMENTS", "Markers list is required", null)
+                return
+            }
+
+            val markers = markersList.map { markerJson ->
+                StaticMarker.fromJson(markerJson)
+            }
+
+            val config = MarkerConfiguration.fromJson(configJson)
+            val success = markerManager.addStaticMarkers(markers, config)
+
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("ADD_MARKERS_ERROR", "Failed to add static markers: ${e.message}", null)
+        }
+    }
+
+    private fun removeStaticMarkers(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val markerIds = arguments?.get("markerIds") as? List<String>
+
+            if (markerIds == null) {
+                result.error("INVALID_ARGUMENTS", "Marker IDs list is required", null)
+                return
+            }
+
+            val success = markerManager.removeStaticMarkers(markerIds)
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("REMOVE_MARKERS_ERROR", "Failed to remove static markers: ${e.message}", null)
+        }
+    }
+
+    private fun clearAllStaticMarkers(result: Result) {
+        try {
+            val success = markerManager.clearAllStaticMarkers()
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("CLEAR_MARKERS_ERROR", "Failed to clear static markers: ${e.message}", null)
+        }
+    }
+
+    private fun updateMarkerConfiguration(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val configJson = arguments?.get("configuration") as? Map<String, Any>
+
+            if (configJson == null) {
+                result.error("INVALID_ARGUMENTS", "Configuration is required", null)
+                return
+            }
+
+            val config = MarkerConfiguration.fromJson(configJson)
+            val success = markerManager.updateMarkerConfiguration(config)
+
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("UPDATE_CONFIG_ERROR", "Failed to update marker configuration: ${e.message}", null)
+        }
+    }
+
+    private fun getStaticMarkers(result: Result) {
+        try {
+            val markers = markerManager.getStaticMarkers()
+            val markersJson = markers.map { it.toJson() }
+            result.success(markersJson)
+        } catch (e: Exception) {
+            result.error("GET_MARKERS_ERROR", "Failed to get static markers: ${e.message}", null)
+        }
     }
 }
 
