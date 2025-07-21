@@ -84,67 +84,106 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
   bool _markersAdded = false;
   String? _lastTappedMarker;
 
-  // Sample static markers
+  // SIMPLE TEST: Just one huge marker at Vegas center for debugging
   final List<StaticMarker> _sampleMarkers = [
-    StaticMarker(
-      id: 'scenic_1',
-      latitude: 37.7749,
-      longitude: -122.4194,
-      title: 'Golden Gate Bridge',
+    // MOUNTAIN VIEW / GOOGLE HQ AREA TEST MARKERS
+    const StaticMarker(
+      id: 'google_hq_test',
+      latitude: 37.4220, // Amphitheatre Parkway, Mountain View
+      longitude: -122.0841,
+      title: '🔴 GOOGLE HQ TEST MARKER',
+      category: 'pin',
+      description: 'Test marker at Google headquarters',
+      iconId: MarkerIcons.pin,
+      customColor: Colors.red,
+      priority: 10,
+      metadata: {'type': 'test', 'location': 'google_hq'},
+    ),
+    const StaticMarker(
+      id: 'computer_history_test',
+      latitude: 37.4143,
+      longitude: -122.0768,
+      title: '🟡 COMPUTER HISTORY MUSEUM',
       category: 'scenic',
-      description: 'Iconic suspension bridge spanning the Golden Gate strait',
+      description: 'Test marker at Computer History Museum',
       iconId: MarkerIcons.scenic,
       customColor: Colors.orange,
-      priority: 5,
-      metadata: {'rating': 4.8, 'best_time': 'sunset'},
+      priority: 8,
+      metadata: {'type': 'test', 'location': 'museum'},
     ),
-    StaticMarker(
-      id: 'petrol_1',
-      latitude: 37.7849,
-      longitude: -122.4094,
-      title: 'Shell Gas Station',
-      category: 'petrol_station',
-      description: '24/7 fuel station with convenience store',
-      iconId: MarkerIcons.petrolStation,
-      customColor: Colors.green,
-      priority: 3,
-      metadata: {'price': 1.85, 'brand': 'Shell', 'open_24h': true},
-    ),
-    StaticMarker(
-      id: 'restaurant_1',
-      latitude: 37.7649,
-      longitude: -122.4294,
-      title: 'Fisherman\'s Wharf Restaurant',
+    const StaticMarker(
+      id: 'shoreline_test',
+      latitude: 37.4267,
+      longitude: -122.0806,
+      title: '🟢 SHORELINE AMPHITHEATRE',
       category: 'restaurant',
-      description: 'Fresh seafood with waterfront views',
+      description: 'Test marker at Shoreline Amphitheatre',
       iconId: MarkerIcons.restaurant,
-      customColor: Colors.red,
-      priority: 4,
-      metadata: {'cuisine': 'seafood', 'price_range': r'$$$', 'rating': 4.2},
-    ),
-    StaticMarker(
-      id: 'speed_camera_1',
-      latitude: 37.7549,
-      longitude: -122.4394,
-      title: 'Speed Camera',
-      category: 'speed_camera',
-      description: 'Speed enforcement camera - 25 mph limit',
-      iconId: MarkerIcons.speedCamera,
-      customColor: Colors.red,
-      priority: 2,
-      metadata: {'speed_limit': 25, 'enforcement': 'active'},
-    ),
-    StaticMarker(
-      id: 'park_1',
-      latitude: 37.7694,
-      longitude: -122.4094,
-      title: 'Alcatraz Island',
-      category: 'park',
-      description: 'Historic federal prison and national park',
-      iconId: MarkerIcons.park,
       customColor: Colors.green,
-      priority: 4,
-      metadata: {'type': 'national_park', 'tours_available': true},
+      priority: 7,
+      metadata: {'type': 'test', 'location': 'venue'},
+    ),
+    const StaticMarker(
+      id: 'linkedin_test',
+      latitude: 37.4249,
+      longitude: -122.0657,
+      title: '🔵 LINKEDIN HQ',
+      category: 'hotel',
+      description: 'Test marker at LinkedIn headquarters',
+      iconId: MarkerIcons.hotel,
+      customColor: Colors.blue,
+      priority: 6,
+      metadata: {'type': 'test', 'location': 'office'},
+    ),
+    
+    // WASHINGTON DC MULTI-STOP ROUTE AREA TEST MARKERS
+    const StaticMarker(
+      id: 'white_house_test',
+      latitude: 38.8977,
+      longitude: -77.0365,
+      title: '⚪ WHITE HOUSE TEST',
+      category: 'police',
+      description: 'Test marker near White House',
+      iconId: MarkerIcons.police,
+      customColor: Colors.purple,
+      priority: 10,
+      metadata: {'type': 'test', 'location': 'government'},
+    ),
+    const StaticMarker(
+      id: 'lincoln_memorial_test',
+      latitude: 38.8893,
+      longitude: -77.0502,
+      title: '🏛️ LINCOLN MEMORIAL',
+      category: 'scenic',
+      description: 'Test marker at Lincoln Memorial',
+      iconId: MarkerIcons.scenic,
+      customColor: Colors.brown,
+      priority: 9,
+      metadata: {'type': 'test', 'location': 'monument'},
+    ),
+    const StaticMarker(
+      id: 'capitol_test',
+      latitude: 38.8899,
+      longitude: -77.0091,
+      title: '🏛️ US CAPITOL',
+      category: 'hospital',
+      description: 'Test marker at US Capitol',
+      iconId: MarkerIcons.hospital,
+      customColor: Colors.teal,
+      priority: 8,
+      metadata: {'type': 'test', 'location': 'government'},
+    ),
+    const StaticMarker(
+      id: 'washington_monument_test',
+      latitude: 38.8895,
+      longitude: -77.0353,
+      title: '🗼 WASHINGTON MONUMENT',
+      category: 'petrol_station',
+      description: 'Test marker at Washington Monument',
+      iconId: MarkerIcons.petrolStation,
+      customColor: Colors.cyan,
+      priority: 7,
+      metadata: {'type': 'test', 'location': 'monument'},
     ),
   ];
 
@@ -168,8 +207,8 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
     if (!mounted) return;
 
     _navigationOption = MapBoxOptions(
-      initialLatitude: 36.1175275,
-      initialLongitude: -115.1839524,
+      initialLatitude: 37.4220,
+      initialLongitude: -122.0841,
       zoom: 15.0,
       tilt: 0.0,
       bearing: 0.0,
@@ -392,6 +431,10 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                           onPressed: _markersAdded ? _removeStaticMarkers : null,
                           child: const Text("Remove Markers"),
                         ),
+                        ElevatedButton(
+                          onPressed: _controller != null && !_markersAdded ? _addMarkersToEmbeddedView : null,
+                          child: const Text("Add to Embedded View"),
+                        ),
                       ],
                     ),
                   ),
@@ -442,6 +485,8 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                             opt.units = VoiceUnits.metric;
                             await MapBoxNavigation.instance
                                 .startNavigation(wayPoints: wayPoints, options: opt);
+                            // Auto-add markers to this navigation view
+                            await _addStaticMarkers();
                           },
                         ),
                         ElevatedButton(
@@ -457,6 +502,8 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                             opt.units = VoiceUnits.imperial;
                             await MapBoxNavigation.instance
                                 .startNavigation(wayPoints: wayPoints, options: opt);
+                            // Auto-add markers to this navigation view
+                            await _addStaticMarkers();
                           },
                         ),
                         ElevatedButton(
@@ -470,7 +517,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                             wayPoints.add(_stop3);
                             wayPoints.add(_destination);
 
-                            MapBoxNavigation.instance.startNavigation(
+                            await MapBoxNavigation.instance.startNavigation(
                                 wayPoints: wayPoints,
                                 options: MapBoxOptions(
                                     mode: MapBoxNavigationMode.driving,
@@ -478,6 +525,8 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                                     language: "en",
                                     allowsUTurnAtWayPoints: true,
                                     units: VoiceUnits.metric));
+                            // Auto-add markers to this navigation view
+                            await _addStaticMarkers();
                             //after 10 seconds add a new stop
                             await Future.delayed(const Duration(seconds: 10));
                             var stop = WayPoint(
@@ -493,6 +542,8 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                           child: const Text("Free Drive"),
                           onPressed: () async {
                             await MapBoxNavigation.instance.startFreeDrive();
+                            // Auto-add markers to free drive view
+                            await _addStaticMarkers();
                           },
                         ),
                       ],
@@ -539,10 +590,12 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                       ),
                       ElevatedButton(
                         onPressed: _routeBuilt && !_isNavigating
-                            ? () {
+                            ? () async {
                                 var opt = MapBoxOptions.from(_navigationOption);
                                 opt.units = VoiceUnits.metric;
                                 _controller?.startNavigation(options: opt);
+                                // Auto-add markers to embedded navigation
+                                await _addMarkersToEmbeddedView();
                               }
                             : null,
                         child: const Text("Start Embedded"),
@@ -561,6 +614,8 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                             : () async {
                                 _inFreeDrive =
                                     await _controller?.startFreeDrive() ?? false;
+                                // Auto-add markers to embedded free drive
+                                await _addMarkersToEmbeddedView();
                               },
                         child: const Text("Free Drive"),
                       ),
@@ -630,6 +685,12 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                       (MapBoxNavigationViewController controller) async {
                     _controller = controller;
                     controller.initialize();
+                    
+                    // Automatically add markers to the embedded view after a short delay
+                    await Future.delayed(const Duration(seconds: 2));
+                    if (!_markersAdded && mounted) {
+                      await _addMarkersToEmbeddedView();
+                    }
                   }),
             ),
           )
@@ -686,8 +747,8 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
 
   void _onMapReady() {
     _navigationOption = MapBoxOptions(
-      initialLatitude: 36.1175275,
-      initialLongitude: -115.1839524,
+      initialLatitude: 37.4220,
+      initialLongitude: -122.0841,
       zoom: 15.0,
       tilt: 0.0,
       bearing: 0.0,
@@ -770,5 +831,44 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
         language: _navigationOption.language,
       );
     });
+  }
+
+  Future<void> _addMarkersToEmbeddedView() async {
+    try {
+      final success = await MapBoxNavigation.instance.addStaticMarkers(
+        markers: _sampleMarkers,
+        configuration: MarkerConfiguration(
+          maxDistanceFromRoute: 10.0, // 10km from route
+          enableClustering: true,
+          onMarkerTap: _onMarkerTap,
+        ),
+      );
+
+      if (success == true) {
+        setState(() {
+          _markersAdded = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Static markers added to embedded view successfully!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to add static markers to embedded view.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error adding markers: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

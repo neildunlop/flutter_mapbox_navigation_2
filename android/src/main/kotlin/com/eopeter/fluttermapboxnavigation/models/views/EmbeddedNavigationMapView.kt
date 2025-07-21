@@ -102,13 +102,31 @@ class EmbeddedNavigationMapView(
      */
     private val staticMarkerMapObserver = object : MapViewObserver() {
         override fun onAttached(mapView: MapView) {
-            // Set the MapView in the StaticMarkerManager
-            StaticMarkerManager.getInstance().setMapView(mapView)
+            println("🗺️ MapView attached in EmbeddedNavigationMapView")
+            println("🔧 About to call StaticMarkerManager.getInstance().setMapView()")
+            try {
+                // Set the MapView in the StaticMarkerManager
+                val manager = StaticMarkerManager.getInstance()
+                println("🔧 StaticMarkerManager instance obtained: ${manager != null}")
+                
+                // Call the setMapView method
+                manager.setMapView(mapView)
+                println("🔧 setMapView() call completed")
+                
+            } catch (e: Exception) {
+                println("❌ Error calling setMapView(): ${e.message}")
+                e.printStackTrace()
+            }
         }
 
         override fun onDetached(mapView: MapView) {
-            // Clear the MapView in the StaticMarkerManager
-            StaticMarkerManager.getInstance().setMapView(null)
+            println("🗺️ MapView detached in EmbeddedNavigationMapView")
+            try {
+                // Clear the MapView in the StaticMarkerManager
+                StaticMarkerManager.getInstance().setMapView(null)
+            } catch (e: Exception) {
+                println("❌ Error calling setMapView(null): ${e.message}")
+            }
         }
     }
 
