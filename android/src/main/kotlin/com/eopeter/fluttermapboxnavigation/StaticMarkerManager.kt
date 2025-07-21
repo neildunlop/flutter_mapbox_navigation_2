@@ -111,16 +111,23 @@ class StaticMarkerManager {
      * Sets up the marker click listener for interactive markers
      */
     private fun setupMarkerClickListener() {
-        pointAnnotationManager?.addClickListener { annotation ->
-            // Find the marker associated with this annotation
-            val markerId = pointAnnotations.entries.find { it.value == annotation }?.key
-            markerId?.let { id ->
-                markers[id]?.let { marker ->
-                    onMarkerTap(marker)
-                }
+        pointAnnotationManager?.let { manager ->
+            println("🔧 Setting up marker click listener on pointAnnotationManager: $manager")
+            manager.addClickListener { annotation ->
+                println("🎯 MARKER CLICK LISTENER FIRED! Annotation: ${annotation.id}")
+                // Find the marker associated with this annotation
+                val markerId = pointAnnotations.entries.find { it.value == annotation }?.key
+                println("🔍 Found marker ID: $markerId for annotation: ${annotation.id}")
+                markerId?.let { id ->
+                    markers[id]?.let { marker ->
+                        println("🔍 Marker click detected - consuming event to prevent map tap")
+                        onMarkerTap(marker)
+                    } ?: println("❌ No marker found for ID: $id")
+                } ?: println("❌ No marker ID found for annotation: ${annotation.id}")
+                true // Consume the click event to prevent map tap
             }
-            true // Consume the click event
-        }
+            println("✅ Marker click listener added successfully")
+        } ?: println("❌ pointAnnotationManager is null - cannot add click listener")
     }
     
     /**
@@ -271,16 +278,130 @@ class StaticMarkerManager {
      */
     fun onMarkerTap(marker: StaticMarker) {
         try {
-            // Send marker data to Flutter
+            // Debug: Check event sink status
+            println("🔍 StaticMarkerManager eventSink status: ${if (eventSink != null) "SET" else "NULL"}")
+            println("🔍 StaticMarkerManager EventSink instance: $eventSink")
+            println("🔍 Plugin static eventSink: ${FlutterMapboxNavigationPlugin.eventSink}")
+            println("🔍 Are they the same? ${eventSink === FlutterMapboxNavigationPlugin.eventSink}")
+            
+            // Send marker data to Flutter (for embedded views)
             val markerData = marker.toJson()
             eventSink?.success(markerData)
+            
+            // Also show native Android notification (for full-screen navigation)
+            showNativeMarkerNotification(marker)
             
             println("🎯 Marker tapped: ${marker.title}")
             println("📍 Location: (${marker.latitude}, ${marker.longitude})")
             println("🏷️ Category: ${marker.category}")
+            println("✅ Marker data sent to Flutter via eventSink")
         } catch (e: Exception) {
             println("❌ Failed to handle marker tap: ${e.message}")
             e.printStackTrace()
+        }
+    }
+    
+    /**
+     * Shows a native Android notification for marker taps (used in full-screen navigation)
+     */
+    private fun showNativeMarkerNotification(marker: StaticMarker) {
+        context?.let { ctx ->
+            try {
+                // Make sure we have an Activity context for showing dialogs
+                val activityContext = if (ctx is android.app.Activity) {
+                    ctx
+                } else {
+                    // Try to get the current activity from application context
+                    null
+                }
+                
+                if (activityContext != null) {
+                    val builder = android.app.AlertDialog.Builder(activityContext)
+                        .setTitle("📍 ${marker.title}")
+                        .setMessage("${marker.category}${if (marker.description != null) "\n\n${marker.description}" else ""}")
+                        .setPositiveButton("Close") { dialog, _ -> dialog.dismiss() }
+                    
+                    // Add metadata if available
+                    if (marker.metadata != null && marker.metadata.isNotEmpty()) {
+                        builder.setNeutralButton("Details") { _, _ ->
+                            showDetailedMarkerInfo(marker)
+                        }
+                    }
+                    
+                    val dialog = builder.create()
+                    dialog.show()
+                    
+                    println("✅ Native marker notification shown")
+                } else {
+                    println("⚠️ No activity context available for showing dialog")
+                }
+            } catch (e: Exception) {
+                println("❌ Failed to show native notification: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+    
+    /**
+     * Shows detailed marker information in a native dialog
+     */
+    private fun showDetailedMarkerInfo(marker: StaticMarker) {
+        context?.let { ctx ->
+            try {
+                val details = StringBuilder().apply {
+                    append("📍 ${marker.title}\n")
+                    append("Category: ${marker.category}\n")
+                    append("Location: ${marker.latitude}, ${marker.longitude}\n")
+                    
+                    if (marker.description != null) {
+                        append("\nDescription:\n${marker.description}\n")
+                    }
+                    
+                    if (marker.metadata != null && marker.metadata.isNotEmpty()) {
+                        append("\nDetails:\n")
+                        marker.metadata.forEach { (key, value) ->
+                            append("• $key: $value\n")
+                        }
+                    }
+                }
+                
+                android.app.AlertDialog.Builder(ctx)
+                    .setTitle("Marker Details")
+                    .setMessage(details.toString())
+                    .setPositiveButton("Close") { dialog, _ -> dialog.dismiss() }
+                    .create()
+                    .show()
+                    
+                println("✅ Detailed marker info shown")
+            } catch (e: Exception) {
+                println("❌ Failed to show detailed info: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Checks if a point is near any existing marker
+     */
+    fun isPointNearAnyMarker(latitude: Double, longitude: Double): Boolean {
+        val tapThreshold = 0.001 // ~100m threshold for tap detection
+        
+        return markers.values.any { marker ->
+            val latDiff = abs(marker.latitude - latitude)
+            val lonDiff = abs(marker.longitude - longitude)
+            latDiff < tapThreshold && lonDiff < tapThreshold
+        }
+    }
+    
+    /**
+     * Returns the marker near a given point, or null if no marker is found
+     */
+    fun getMarkerNearPoint(latitude: Double, longitude: Double): StaticMarker? {
+        val tapThreshold = 0.001 // ~100m threshold for tap detection
+        
+        return markers.values.find { marker ->
+            val latDiff = abs(marker.latitude - latitude)
+            val lonDiff = abs(marker.longitude - longitude)
+            latDiff < tapThreshold && lonDiff < tapThreshold
         }
     }
 
@@ -406,6 +527,8 @@ class StaticMarkerManager {
                     pointAnnotations[marker.id] = annotation
                     
                     println("✅ Added marker: ${marker.title} at (${marker.latitude}, ${marker.longitude}) - Annotation ID: ${annotation?.id}")
+                    println("🔍 Stored in pointAnnotations map: ${marker.id} -> ${annotation?.id}")
+                    println("🔍 Current pointAnnotations size: ${pointAnnotations.size}")
                     
                     // Verify the annotation was actually created
                     if (annotation != null) {

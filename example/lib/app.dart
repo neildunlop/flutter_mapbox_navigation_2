@@ -246,18 +246,62 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
       _lastTappedMarker = '${marker.title} (${marker.category})';
     });
     
-    // Show a snackbar with marker info
+    // Show both SnackBar and Dialog for better visibility during navigation
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Tapped: ${marker.title}\n${marker.description ?? ''}'),
-        duration: const Duration(seconds: 3),
+        content: Text('📍 ${marker.title}\n${marker.description ?? ''}'),
+        duration: const Duration(seconds: 4),
+        backgroundColor: Colors.blue.shade800,
         action: SnackBarAction(
-          label: 'More Info',
+          label: 'Details',
+          textColor: Colors.white,
           onPressed: () {
             _showMarkerDetails(marker);
           },
         ),
       ),
+    );
+    
+    // Also show a brief overlay dialog for immediate visibility
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.location_on, color: Colors.blue),
+              SizedBox(width: 8),
+              Expanded(child: Text(marker.title, style: TextStyle(fontSize: 16))),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Category: ${marker.category}'),
+              if (marker.description != null) ...[
+                const SizedBox(height: 8),
+                Text(marker.description!),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Close'),
+            ),
+            if (marker.metadata != null && marker.metadata!.isNotEmpty)
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _showMarkerDetails(marker);
+                },
+                child: Text('More Details'),
+              ),
+          ],
+        );
+      },
     );
   }
 

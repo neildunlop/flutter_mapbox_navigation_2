@@ -23,6 +23,7 @@ import com.eopeter.fluttermapboxnavigation.models.WaypointSet
 import com.eopeter.fluttermapboxnavigation.utilities.CustomInfoPanelEndNavButtonBinder
 import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities
 import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities.Companion.sendEvent
+import com.eopeter.fluttermapboxnavigation.StaticMarkerManager
 import com.google.gson.Gson
 import com.mapbox.api.directions.v5.DirectionsCriteria
 import com.mapbox.api.directions.v5.models.DirectionsRoute
@@ -100,6 +101,7 @@ class NavigationActivity : AppCompatActivity() {
         setContentView(binding.root)
         binding.navigationView.addListener(navigationStateListener)
         binding.navigationView.registerMapObserver(onMapClick)
+        binding.navigationView.registerMapObserver(staticMarkerMapObserver)
         accessToken =
             PluginUtilities.getResourceFromContext(this.applicationContext, "mapbox_access_token")
 
@@ -240,6 +242,7 @@ class NavigationActivity : AppCompatActivity() {
         if (FlutterMapboxNavigationPlugin.enableOnMapTapCallback) {
             binding.navigationView.unregisterMapObserver(onMapClick)
         }
+        binding.navigationView.unregisterMapObserver(staticMarkerMapObserver)
         binding.navigationView.removeListener(navigationStateListener)
 
         MapboxNavigationApp.current()?.unregisterBannerInstructionsObserver(this.bannerInstructionObserver)
@@ -476,6 +479,42 @@ class NavigationActivity : AppCompatActivity() {
     /**
      * Notifies with attach and detach events on [MapView]
      */
+    /**
+     * MapView observer for static markers
+     */
+    private val staticMarkerMapObserver = object : MapViewObserver() {
+        override fun onAttached(mapView: MapView) {
+            println("🗺️ MapView attached in NavigationActivity")
+            println("🔧 About to call StaticMarkerManager.getInstance().setMapView()")
+            try {
+                // Set the MapView and Activity context in the StaticMarkerManager
+                val manager = StaticMarkerManager.getInstance()
+                println("🔧 StaticMarkerManager instance obtained: ${manager != null}")
+                
+                // Set the Activity context for native dialogs
+                manager.setContext(this@NavigationActivity)
+                
+                // Call the setMapView method
+                manager.setMapView(mapView)
+                println("🔧 setMapView() call completed")
+                
+            } catch (e: Exception) {
+                println("❌ Error calling setMapView(): ${e.message}")
+                e.printStackTrace()
+            }
+        }
+
+        override fun onDetached(mapView: MapView) {
+            println("🗺️ MapView detached in NavigationActivity")
+            try {
+                // Clear the MapView in the StaticMarkerManager
+                StaticMarkerManager.getInstance().setMapView(null)
+            } catch (e: Exception) {
+                println("❌ Error calling setMapView(null): ${e.message}")
+            }
+        }
+    }
+
     private val onMapClick = object : MapViewObserver(), OnMapClickListener {
 
         override fun onAttached(mapView: MapView) {
@@ -487,6 +526,19 @@ class NavigationActivity : AppCompatActivity() {
         }
 
         override fun onMapClick(point: Point): Boolean {
+            // Check if the tap is near any markers and handle it
+            val tappedMarker = StaticMarkerManager.getInstance().getMarkerNearPoint(
+                point.latitude(), 
+                point.longitude()
+            )
+            
+            if (tappedMarker != null) {
+                println("🔍 Map tap detected marker: ${tappedMarker.title} - triggering marker tap")
+                // Trigger marker tap directly since annotation click isn't working
+                StaticMarkerManager.getInstance().onMarkerTap(tappedMarker)
+                return true // Consume the event to prevent waypoint creation
+            }
+            
             var waypoint = mapOf<String, String>(
                 Pair("latitude", point.latitude().toString()),
                 Pair("longitude", point.longitude().toString())

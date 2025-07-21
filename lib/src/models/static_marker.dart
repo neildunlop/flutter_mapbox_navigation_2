@@ -64,7 +64,9 @@ class StaticMarker {
           : null,
       priority: json['priority'] as int?,
       isVisible: json['isVisible'] as bool? ?? true,
-      metadata: json['metadata'] as Map<String, dynamic>?,
+      metadata: json['metadata'] != null 
+          ? Map<String, dynamic>.from(json['metadata'] as Map)
+          : null,
     );
   }
 
