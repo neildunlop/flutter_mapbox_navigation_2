@@ -56,6 +56,11 @@ The package follows a platform-specific implementation pattern, where Flutter co
   - Implements the embedded navigation view for Android
   - Handles map view lifecycle and user interactions
 
+- `android/src/main/kotlin/com/eopeter/fluttermapboxnavigation/StaticMarkerManager.kt`
+  - Manages static marker display and interactions
+  - Handles marker tap events and native notifications
+  - Integrates with Maps SDK annotations API
+
 ### iOS Implementation
 
 - `ios/Classes/FlutterMapboxNavigationPlugin.swift`
@@ -72,6 +77,11 @@ The package follows a platform-specific implementation pattern, where Flutter co
   - Implements the embedded navigation view for iOS
   - Handles map view lifecycle and user interactions
 
+- `ios/Classes/StaticMarkerManager.swift`
+  - Manages static marker display and interactions
+  - Handles marker tap events and native notifications
+  - Integrates with MapboxMaps SDK annotations
+
 ## Platform Channel Communication
 
 The package uses Flutter's platform channel system to communicate between Flutter and native code:
@@ -83,6 +93,10 @@ The package uses Flutter's platform channel system to communicate between Flutte
 2. **Event Channel**
    - Used for streaming events (e.g., navigation progress, route updates)
    - Channel name: `flutter_mapbox_navigation/events`
+
+3. **Static Marker Event Channel**
+   - Used for marker tap events and interactions
+   - Channel name: `flutter_mapbox_navigation/marker_events`
 
 ## Adding New Features
 

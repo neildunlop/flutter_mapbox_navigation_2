@@ -236,20 +236,14 @@ class MethodChannelFlutterMapboxNavigation
   Stream<RouteEvent>? get routeEventsListener {
     return eventChannel
         .receiveBroadcastStream()
-        .map((dynamic event) {
-          print('📡 ROUTE EVENT RECEIVED: ${event.runtimeType} - $event');
-          return _parseRouteEvent(event as String);
-        });
+        .map((dynamic event) => _parseRouteEvent(event as String));
   }
 
   /// Static Marker Events Handling
   Stream<StaticMarker>? get markerEventsListener {
     return markerEventChannel
         .receiveBroadcastStream()
-        .map((dynamic event) {
-          print('🎯 MARKER EVENT RECEIVED: ${event.runtimeType} - $event');
-          return _parseMarkerEvent(Map<String, dynamic>.from(event as Map));
-        });
+        .map((dynamic event) => _parseMarkerEvent(Map<String, dynamic>.from(event as Map)));
   }
 
   void _onProgressData(RouteEvent event) {
@@ -265,7 +259,6 @@ class MethodChannelFlutterMapboxNavigation
   }
 
   void _onMarkerTapData(StaticMarker marker) {
-    print('🎯 MARKER TAP PROCESSED: ${marker.title}');
     if (_onMarkerTap != null) _onMarkerTap?.call(marker);
   }
 

@@ -1,34 +1,46 @@
 # Static Marker Integration Status
 
-## Current Status ✅❌
+## Current Status ✅✅
 
-### Working: Embedded Navigation
+### ✅ Working: Embedded Navigation
 - **File**: `EmbeddedNavigationMapView.kt`
 - **Status**: ✅ **WORKING** - Markers visible and functional
 - **Integration**: Complete StaticMarkerManager integration (lines 58, 103-131)
+- **Notifications**: Flutter SnackBar + Dialog with enhanced UI
 
-### Fixed: Full Screen Navigation  
+### ✅ Working: Full Screen Navigation  
 - **File**: `NavigationActivity.kt`
-- **Status**: ✅ **SHOULD BE WORKING** - StaticMarkerManager integrated
-- **Integration**: Complete StaticMarkerManager integration added (lines 26, 104, 245, 483-511)
+- **Status**: ✅ **WORKING** - Markers visible and functional
+- **Integration**: Complete StaticMarkerManager integration (lines 26, 104, 245, 483-511)
+- **Notifications**: Native Android AlertDialog with marker details
 
-## Root Cause Identified
+## Implementation Details
 
-Full screen navigation (`NavigationActivity.kt`) lacks the StaticMarkerManager MapView observer that embedded navigation has:
+### Marker Event Handling Architecture
 
-**Missing Integration Pattern:**
+**Embedded Navigation (Flutter-based):**
+- Uses Flutter SnackBar + Dialog notifications
+- Events flow: Marker Tap → StaticMarkerManager → Flutter EventChannel → Flutter UI
+
+**Full-Screen Navigation (Native Android):**
+- Uses native Android AlertDialog notifications  
+- Events flow: Map Tap → StaticMarkerManager.getMarkerNearPoint() → Native Dialog
+- **Workaround**: Map tap handler detects marker proximity and triggers marker tap directly
+
+### Key Integration Points
+
+**NavigationActivity.kt:**
 ```kotlin
-// Need to add around line 102 in NavigationActivity.kt
+// Line 104: Register StaticMarkerManager observer
 binding.navigationView.registerMapObserver(staticMarkerMapObserver)
 
-// Need to add observer implementation (copy from EmbeddedNavigationMapView.kt lines 103-131)
-private val staticMarkerMapObserver = object : MapViewObserver() {
-    override fun onAttached(mapView: MapView) {
-        StaticMarkerManager.getInstance().setMapView(mapView)
-    }
-    override fun onDetached(mapView: MapView) {
-        StaticMarkerManager.getInstance().setMapView(null)
-    }
+// Line 495: Set Activity context for native dialogs
+manager.setContext(this@NavigationActivity)
+
+// Lines 530-540: Map tap handler with marker detection
+val tappedMarker = StaticMarkerManager.getInstance().getMarkerNearPoint(...)
+if (tappedMarker != null) {
+    StaticMarkerManager.getInstance().onMarkerTap(tappedMarker)
 }
 ```
 
@@ -46,12 +58,15 @@ private val staticMarkerMapObserver = object : MapViewObserver() {
 - 🏛️ US Capitol (38.8899, -77.0091)
 - 🗼 Washington Monument (38.8895, -77.0353)
 
-## Next Steps
+## ✅ Integration Complete
 
-1. **Copy StaticMarkerManager integration** from `EmbeddedNavigationMapView.kt` to `NavigationActivity.kt`
-2. **Register the observer** around line 102 in NavigationActivity
-3. **Add cleanup** in onDestroy() around line 243
-4. **Test** that markers appear on both embedded and full screen navigation
+Both embedded and full-screen navigation views now have fully functional marker support:
+
+1. ✅ **StaticMarkerManager integration** - Complete in both views
+2. ✅ **Marker tap handling** - Working with appropriate UI for each view type
+3. ✅ **Event channel fixes** - Resolved type casting issues
+4. ✅ **Native notifications** - Added for full-screen navigation
+5. ✅ **Event conflicts resolved** - Map tap vs marker tap prioritization fixed
 
 ## Technical Details
 

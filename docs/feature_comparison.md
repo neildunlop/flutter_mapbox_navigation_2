@@ -24,8 +24,8 @@ This document compares the features available in the Mapbox Navigation SDKs with
 | Custom map styles | ✅ | ✅ | ✅ | Via `mapStyleUrlDay` and `mapStyleUrlNight` |
 | Map camera controls | ✅ | ✅ | ⚠️ | Limited implementation |
 | Map gestures | ✅ | ✅ | ⚠️ | Basic implementation only |
-| Map markers | ✅ | ✅ | ❌ | Not implemented |
-| Map annotations | ✅ | ✅ | ❌ | Not implemented |
+| Map markers | ✅ | ✅ | ✅ | Via StaticMarkerManager with 30+ icons |
+| Map annotations | ✅ | ✅ | ✅ | Static markers with tap events and metadata |
 | Custom map layers | ✅ | ✅ | ❌ | Not implemented |
 
 ## Location Features
@@ -89,11 +89,11 @@ This document compares the features available in the Mapbox Navigation SDKs with
 5. Custom UI components
 
 ### Medium Priority
-1. Map markers and annotations
-2. Location history
-3. Speed limits
-4. Junction views
-5. Custom instruction views
+1. Location history
+2. Speed limits
+3. Junction views
+4. Custom instruction views
+5. Enhanced marker features (animations, custom icons)
 
 ### Low Priority
 1. EV routing

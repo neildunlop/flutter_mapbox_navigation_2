@@ -533,8 +533,7 @@ class NavigationActivity : AppCompatActivity() {
             )
             
             if (tappedMarker != null) {
-                println("🔍 Map tap detected marker: ${tappedMarker.title} - triggering marker tap")
-                // Trigger marker tap directly since annotation click isn't working
+                // Trigger marker tap directly for full-screen navigation
                 StaticMarkerManager.getInstance().onMarkerTap(tappedMarker)
                 return true // Consume the event to prevent waypoint creation
             }
