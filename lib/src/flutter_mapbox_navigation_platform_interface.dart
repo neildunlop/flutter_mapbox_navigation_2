@@ -123,6 +123,15 @@ abstract class FlutterMapboxNavigationPlatform extends PlatformInterface {
     );
   }
 
+  /// Register a callback for full-screen navigation events
+  Future<dynamic> registerFullScreenEventListener(
+    ValueSetter<FullScreenEvent> listener,
+  ) async {
+    throw UnimplementedError(
+      'registerFullScreenEventListener() has not been implemented.',
+    );
+  }
+
   // MARK: Static Marker Methods
 
   /// Adds static markers to the map
@@ -162,5 +171,19 @@ abstract class FlutterMapboxNavigationPlatform extends PlatformInterface {
     ValueSetter<StaticMarker> listener,
   ) async {
     throw UnimplementedError('registerStaticMarkerTapListener() has not been implemented.');
+  }
+  
+  /// Get screen position for a marker coordinate
+  /// Returns a Map with 'x' and 'y' screen coordinates, or null if not visible
+  Future<Map<String, double>?> getMarkerScreenPosition(
+    String markerId,
+  ) async {
+    throw UnimplementedError('getMarkerScreenPosition() has not been implemented.');
+  }
+  
+  /// Get current map viewport information
+  /// Returns a Map with center coordinates, zoom level, and view size
+  Future<Map<String, dynamic>?> getMapViewport() async {
+    throw UnimplementedError('getMapViewport() has not been implemented.');
   }
 }

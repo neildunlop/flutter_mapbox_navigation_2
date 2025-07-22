@@ -28,6 +28,20 @@ class MarkerConfiguration {
   /// Callback function when a marker is tapped
   final Function(StaticMarker)? onMarkerTap;
   
+  /// Flutter widget builder for popup overlays when markers are tapped
+  /// If provided, popups will be shown as Flutter overlays
+  final Widget Function(StaticMarker, BuildContext)? popupBuilder;
+  
+  /// Duration to show popup before auto-hiding (if popup builder is provided)
+  final Duration popupDuration;
+  
+  /// Offset from marker position to show popup (if popup builder is provided)
+  /// Positive y values move popup down, negative values move it up
+  final Offset popupOffset;
+  
+  /// Whether to automatically hide popup when user taps elsewhere
+  final bool hidePopupOnTapOutside;
+  
   /// Default icon ID to use when marker doesn't specify one
   final String? defaultIconId;
   
@@ -43,6 +57,10 @@ class MarkerConfiguration {
     this.enableClustering = true,
     this.maxMarkersToShow,
     this.onMarkerTap,
+    this.popupBuilder,
+    this.popupDuration = const Duration(seconds: 5),
+    this.popupOffset = const Offset(0, -60),
+    this.hidePopupOnTapOutside = true,
     this.defaultIconId,
     this.defaultColor,
   });
@@ -89,6 +107,10 @@ class MarkerConfiguration {
     bool? enableClustering,
     int? maxMarkersToShow,
     Function(StaticMarker)? onMarkerTap,
+    Widget Function(StaticMarker, BuildContext)? popupBuilder,
+    Duration? popupDuration,
+    Offset? popupOffset,
+    bool? hidePopupOnTapOutside,
     String? defaultIconId,
     Color? defaultColor,
   }) {
@@ -101,6 +123,10 @@ class MarkerConfiguration {
       enableClustering: enableClustering ?? this.enableClustering,
       maxMarkersToShow: maxMarkersToShow ?? this.maxMarkersToShow,
       onMarkerTap: onMarkerTap ?? this.onMarkerTap,
+      popupBuilder: popupBuilder ?? this.popupBuilder,
+      popupDuration: popupDuration ?? this.popupDuration,
+      popupOffset: popupOffset ?? this.popupOffset,
+      hidePopupOnTapOutside: hidePopupOnTapOutside ?? this.hidePopupOnTapOutside,
       defaultIconId: defaultIconId ?? this.defaultIconId,
       defaultColor: defaultColor ?? this.defaultColor,
     );

@@ -71,6 +71,12 @@ class MockFlutterMapboxNavigationPlatform
     ValueSetter<StaticMarker> listener,
   ) =>
       Future.value();
+      
+  @override
+  Future<dynamic> registerFullScreenEventListener(
+    ValueSetter<FullScreenEvent> listener,
+  ) =>
+      Future.value();
 }
 
 void main() {

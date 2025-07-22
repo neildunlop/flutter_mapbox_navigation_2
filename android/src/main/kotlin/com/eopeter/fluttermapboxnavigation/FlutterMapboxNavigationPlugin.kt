@@ -6,7 +6,9 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import com.eopeter.fluttermapboxnavigation.activity.NavigationLauncher
+import com.eopeter.fluttermapboxnavigation.activity.FlutterNavigationLauncher
 import com.eopeter.fluttermapboxnavigation.factory.EmbeddedNavigationViewFactory
+import com.eopeter.fluttermapboxnavigation.views.FlutterNavigationPlatformViewFactory
 import com.eopeter.fluttermapboxnavigation.models.Waypoint
 import com.eopeter.fluttermapboxnavigation.models.StaticMarker
 import com.eopeter.fluttermapboxnavigation.models.MarkerConfiguration
@@ -56,6 +58,12 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         platformViewRegistry = binding.platformViewRegistry
         binaryMessenger = messenger
 
+        // Register the Flutter navigation platform view factory
+        binding.platformViewRegistry.registerViewFactory(
+            "flutter_mapbox_navigation_platform_view",
+            FlutterNavigationPlatformViewFactory(messenger)
+        )
+
 
     }
 
@@ -98,6 +106,8 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         var binaryMessenger: BinaryMessenger? = null
 
         var viewId = "FlutterMapboxNavigationView"
+        
+        var enableFlutterStyleOverlays = false
 
         /**
          * Converts string unit type to DirectionsCriteria constant.
@@ -130,7 +140,11 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             }
             "startNavigation" -> {
                 enableFreeDriveMode = false
+                enableFlutterStyleOverlays = false // Regular navigation uses standard UI
                 checkPermissionAndBeginNavigation(call)
+            }
+            "startFlutterNavigation" -> {
+                startFlutterStyledNavigation(call, result)
             }
             "addWayPoints" -> {
                 addWayPointsToNavigation(call, result)
@@ -447,6 +461,54 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             result.success(markersJson)
         } catch (e: Exception) {
             result.error("GET_MARKERS_ERROR", "Failed to get static markers: ${e.message}", null)
+        }
+    }
+
+    private fun startFlutterStyledNavigation(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            
+            // Parse waypoints
+            val points = arguments?.get("wayPoints") as? HashMap<Int, Any> ?: run {
+                result.error("INVALID_ARGUMENTS", "wayPoints is required", null)
+                return
+            }
+            
+            val waypoints = mutableListOf<Waypoint>()
+            for (item in points) {
+                val point = item.value as HashMap<*, *>
+                val name = point["Name"] as String
+                val latitude = point["Latitude"] as Double
+                val longitude = point["Longitude"] as Double
+                val isSilent = point["IsSilent"] as Boolean
+                waypoints.add(Waypoint(name, longitude, latitude, isSilent))
+            }
+            
+            // Parse options
+            val options = mutableMapOf<String, Any>()
+            arguments?.get("simulateRoute")?.let { options["simulateRoute"] = it }
+            arguments?.get("voiceInstructionsEnabled")?.let { options["voiceInstructionsEnabled"] = it }
+            arguments?.get("bannerInstructionsEnabled")?.let { options["bannerInstructionsEnabled"] = it }
+            arguments?.get("units")?.let { options["units"] = it }
+            arguments?.get("language")?.let { options["language"] = it }
+            arguments?.get("mode")?.let { options["mode"] = it }
+            
+            // Parse debug flag
+            val showDebug = arguments?.get("showDebugOverlay") as? Boolean ?: false
+            
+            // Set a flag to enable Flutter-style overlays in NavigationActivity
+            println("FlutterMapboxNavigationPlugin: Setting enableFlutterStyleOverlays = true")
+            enableFlutterStyleOverlays = true
+            println("FlutterMapboxNavigationPlugin: Flag set, enableFlutterStyleOverlays = $enableFlutterStyleOverlays")
+            
+            // Launch NavigationActivity with Flutter overlay customizations
+            println("FlutterMapboxNavigationPlugin: Launching NavigationActivity with waypoints: ${waypoints.size}")
+            NavigationLauncher.startNavigation(currentActivity, waypoints)
+            
+            result.success(true)
+            
+        } catch (e: Exception) {
+            result.error("FLUTTER_NAVIGATION_ERROR", "Failed to start Flutter navigation: ${e.message}", null)
         }
     }
 }
