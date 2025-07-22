@@ -5,7 +5,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mapbox_navigation/src/flutter_mapbox_navigation_platform_interface.dart';
+import 'package:flutter_mapbox_navigation/src/flutter_mapbox_navigation_method_channel.dart';
 import 'package:flutter_mapbox_navigation/src/models/models.dart';
+import 'package:flutter_mapbox_navigation/src/widgets/flutter_fullscreen_navigation.dart';
+import 'package:flutter_mapbox_navigation/src/utilities/coordinate_converter.dart';
 
 /// Turn-By-Turn Navigation Provider
 class MapBoxNavigation {
@@ -104,6 +107,86 @@ class MapBoxNavigation {
         .startNavigation(wayPoints, options);
   }
 
+  /// Show a Flutter-styled Drop-in Navigation view (RECOMMENDED)
+  /// This uses Mapbox's Drop-in UI with Flutter-style customizations for the best experience
+  /// 
+  /// [wayPoints] must not be null and have at least 2 items
+  /// [options] options used to generate the route and used while navigating
+  /// [showDebugOverlay] whether to show debug information overlay
+  ///
+  /// **Features:**
+  /// - Native Mapbox Drop-in UI performance with Flutter styling
+  /// - Perfect marker overlays with Material Design
+  /// - No lifecycle or context issues
+  /// - Production-ready and stable
+  /// - Flutter-consistent theming and animations
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.startFlutterStyledNavigation(
+  ///   wayPoints: [origin, destination],
+  ///   options: MapBoxOptions(simulateRoute: true),
+  ///   showDebugOverlay: true,
+  /// );
+  /// ```
+  Future<bool?> startFlutterStyledNavigation({
+    required List<WayPoint> wayPoints,
+    MapBoxOptions? options,
+    bool showDebugOverlay = false,
+  }) async {
+    options ??= _defaultOptions;
+    
+    return (FlutterMapboxNavigationPlatform.instance as MethodChannelFlutterMapboxNavigation)
+        .startFlutterStyledNavigation(
+      wayPoints,
+      options,
+      showDebugOverlay: showDebugOverlay,
+    );
+  }
+
+  /// Show a Flutter-controlled full-screen navigation view (LEGACY - Platform Views)
+  /// This provides complete Flutter UI control over the navigation experience
+  /// with native map performance through platform views
+  ///
+  /// **DEPRECATED: Use startFlutterStyledNavigation() instead for better reliability**
+  ///
+  /// [context] Build context for navigation
+  /// [wayPoints] must not be null and have at least 2 items
+  /// [options] options used to generate the route and used while navigating
+  /// [onMarkerTap] optional callback for marker tap events
+  /// [onMapTap] optional callback for map tap events  
+  /// [onRouteEvent] optional callback for route progress events
+  /// [onNavigationFinished] optional callback when navigation ends
+  /// [showDebugOverlay] whether to show debug information overlay
+  @Deprecated('Use startFlutterStyledNavigation() for better reliability')
+  Future<void> startFlutterNavigation({
+    required BuildContext context,
+    required List<WayPoint> wayPoints,
+    MapBoxOptions? options,
+    Function(StaticMarker)? onMarkerTap,
+    Function(double lat, double lng)? onMapTap,
+    Function(RouteEvent)? onRouteEvent,
+    Function()? onNavigationFinished,
+    bool showDebugOverlay = false,
+  }) async {
+    options ??= _defaultOptions;
+    
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => FlutterFullScreenNavigation(
+          wayPoints: wayPoints,
+          options: options!,
+          onMarkerTap: onMarkerTap,
+          onMapTap: onMapTap,
+          onRouteEvent: onRouteEvent,
+          onNavigationFinished: onNavigationFinished,
+          showDebugOverlay: showDebugOverlay,
+        ),
+        fullscreenDialog: true,
+      ),
+    );
+  }
+
   ///Ends Navigation and Closes the Navigation View
   Future<bool?> finishNavigation() async {
     return FlutterMapboxNavigationPlatform.instance.finishNavigation();
@@ -121,6 +204,15 @@ class MapBoxNavigation {
   ) async {
     return FlutterMapboxNavigationPlatform.instance
         .registerRouteEventListener(listener);
+  }
+
+  /// Event listener for full-screen navigation events
+  /// This handles marker taps and map taps in full-screen navigation mode
+  Future<dynamic> registerFullScreenEventListener(
+    ValueSetter<FullScreenEvent> listener,
+  ) async {
+    return FlutterMapboxNavigationPlatform.instance
+        .registerFullScreenEventListener(listener);
   }
 
   // MARK: Static Marker Methods
@@ -259,5 +351,56 @@ class MapBoxNavigation {
   ) async {
     return FlutterMapboxNavigationPlatform.instance
         .registerStaticMarkerTapListener(listener);
+  }
+  
+  /// Get screen position for a marker by ID
+  /// Returns screen coordinates as Offset, or null if marker not found/visible
+  /// 
+  /// **Usage Example:**
+  /// ```dart
+  /// final position = await MapBoxNavigation.instance.getMarkerScreenPosition('marker_id');
+  /// if (position != null) {
+  ///   print('Marker is at screen position: $position');
+  /// }
+  /// ```
+  Future<Offset?> getMarkerScreenPosition(String markerId) async {
+    final result = await FlutterMapboxNavigationPlatform.instance
+        .getMarkerScreenPosition(markerId);
+    
+    if (result == null) return null;
+    
+    return Offset(result['x']!, result['y']!);
+  }
+  
+  /// Get current map viewport information
+  /// Returns viewport data including center coordinates, zoom level, and size
+  /// 
+  /// **Usage Example:**
+  /// ```dart
+  /// final viewport = await MapBoxNavigation.instance.getMapViewport();
+  /// if (viewport != null) {
+  ///   print('Map center: ${viewport['centerLat']}, ${viewport['centerLng']}');
+  ///   print('Zoom level: ${viewport['zoom']}');
+  /// }
+  /// ```
+  Future<MapViewport?> getMapViewport() async {
+    final result = await FlutterMapboxNavigationPlatform.instance
+        .getMapViewport();
+    
+    if (result == null) return null;
+    
+    return MapViewport(
+      center: LatLng(
+        result['centerLat'] as double,
+        result['centerLng'] as double,
+      ),
+      zoomLevel: result['zoom'] as double,
+      size: Size(
+        result['width'] as double,
+        result['height'] as double,
+      ),
+      bearing: result['bearing'] as double? ?? 0.0,
+      tilt: result['tilt'] as double? ?? 0.0,
+    );
   }
 }

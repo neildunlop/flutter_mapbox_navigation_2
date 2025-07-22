@@ -16,6 +16,7 @@ class CustomInfoPanelEndNavButtonBinder(
     val activity: Activity
 ) : UIBinder {
     override fun bind(viewGroup: ViewGroup): MapboxNavigationObserver {
+        android.util.Log.d("CustomInfoPanelEndNavButtonBinder", "🔴 Creating exit navigation button")
         val button = MapboxExtendableButton(
             viewGroup.context,
             null,
@@ -27,11 +28,14 @@ class CustomInfoPanelEndNavButtonBinder(
         button.updateMargins(
             right = button.resources.getDimensionPixelSize(R.dimen.mapbox_infoPanel_paddingEnd)
         )
+        android.util.Log.d("CustomInfoPanelEndNavButtonBinder", "🔴 Exit button added to viewGroup")
 
         return object : UIComponent() {
             override fun onAttached(mapboxNavigation: MapboxNavigation) {
                 super.onAttached(mapboxNavigation)
+                android.util.Log.d("CustomInfoPanelEndNavButtonBinder", "🔴 Exit button UIComponent attached - setting click listener")
                 button.setOnClickListener {
+                    android.util.Log.d("CustomInfoPanelEndNavButtonBinder", "🔴 EXIT BUTTON CLICKED - stopping navigation")
                     mapboxNavigation.stopTripSession()
                     PluginUtilities.sendEvent(MapBoxEvents.NAVIGATION_CANCELLED)
                     activity.finish()

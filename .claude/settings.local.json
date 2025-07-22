@@ -9,7 +9,9 @@
       "mcp__ide__getDiagnostics",
       "Bash(flutter analyze:*)",
       "Bash(flutter:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git push:*)",
+      "Bash(gradle build)"
     ],
     "deny": []
   }

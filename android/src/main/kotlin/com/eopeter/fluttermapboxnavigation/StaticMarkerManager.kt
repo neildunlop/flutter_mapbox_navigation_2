@@ -5,6 +5,7 @@ import com.eopeter.fluttermapboxnavigation.models.StaticMarker
 import io.flutter.plugin.common.EventChannel
 import kotlin.math.abs
 import android.content.Context
+import android.util.Log
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
@@ -18,6 +19,10 @@ import com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions
 import com.mapbox.maps.plugin.annotation.generated.createPointAnnotationManager
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotation
 import com.mapbox.maps.extension.style.layers.properties.generated.IconAnchor
+import com.eopeter.fluttermapboxnavigation.models.MapBoxEvents
+import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities
+import com.google.gson.Gson
+import org.json.JSONObject
 
 /**
  * Manages static markers for the Mapbox Navigation plugin
@@ -43,6 +48,7 @@ class StaticMarkerManager {
     private var style: Style? = null
     private var pointAnnotationManager: PointAnnotationManager? = null
     private val pointAnnotations = mutableMapOf<String, PointAnnotation>()
+    private var markerTapListener: ((StaticMarker) -> Unit)? = null
 
     companion object {
         @Volatile
@@ -60,6 +66,24 @@ class StaticMarkerManager {
      */
     fun setContext(context: Context?) {
         this.context = context
+    }
+
+    /**
+     * Sets the marker tap listener for custom handling
+     */
+    fun setMarkerTapListener(listener: ((StaticMarker) -> Unit)?) {
+        this.markerTapListener = listener
+    }
+
+    /**
+     * Manually trigger marker tap listener for external callers
+     */
+    fun triggerMarkerTapListener(marker: StaticMarker) {
+        Log.d("StaticMarkerManager", "🎯 triggerMarkerTapListener called for: ${marker.title}")
+        Log.d("StaticMarkerManager", "🎯 markerTapListener exists: ${markerTapListener != null}")
+        markerTapListener?.invoke(marker) ?: run {
+            Log.w("StaticMarkerManager", "⚠️ No marker tap listener set - cannot trigger")
+        }
     }
 
     /**
@@ -112,14 +136,35 @@ class StaticMarkerManager {
      */
     private fun setupMarkerClickListener() {
         pointAnnotationManager?.addClickListener { annotation ->
+            println("🎯 Annotation click detected: ${annotation.geometry}")
             // Find the marker associated with this annotation
             val markerId = pointAnnotations.entries.find { it.value == annotation }?.key
             markerId?.let { id ->
                 markers[id]?.let { marker ->
-                    onMarkerTap(marker)
+                    println("🎯 Annotation click for marker: ${marker.title} at (${marker.latitude}, ${marker.longitude})")
+                    
+                    // Check if Flutter overlays are enabled
+                    val flutterOverlaysEnabled = try {
+                        FlutterMapboxNavigationPlugin.enableFlutterStyleOverlays
+                    } catch (e: Exception) {
+                        println("🎯 Could not check Flutter overlay flag: ${e.message}")
+                        false
+                    }
+                    
+                    // Use custom marker tap listener if set, otherwise use default behavior
+                    if (markerTapListener != null) {
+                        println("🎯 Using custom marker tap listener for: ${marker.title}")
+                        markerTapListener?.invoke(marker)
+                    } else if (!flutterOverlaysEnabled) {
+                        // Only send to Flutter if Flutter overlays are NOT enabled
+                        println("🎯 Sending marker tap to Flutter (Flutter overlays disabled)")
+                        onMarkerTap(marker)
+                    } else {
+                        println("🎯 Skipping Flutter event (Flutter overlays enabled - NavigationActivity will handle)")
+                    }
                 }
             }
-            true // Consume the click event to prevent map tap
+            false // Allow map click to also fire for NavigationActivity handling
         }
     }
     
@@ -275,9 +320,6 @@ class StaticMarkerManager {
             val markerData = marker.toJson()
             eventSink?.success(markerData)
             
-            // Also show native Android notification (for full-screen navigation)
-            showNativeMarkerNotification(marker)
-            
             println("🎯 Marker tapped: ${marker.title}")
         } catch (e: Exception) {
             println("❌ Failed to handle marker tap: ${e.message}")
@@ -286,78 +328,47 @@ class StaticMarkerManager {
     }
     
     /**
-     * Shows a native Android notification for marker taps (used in full-screen navigation)
+     * Handles marker tap events for full-screen navigation
+     * Routes events to Flutter instead of showing native dialogs
      */
-    private fun showNativeMarkerNotification(marker: StaticMarker) {
-        context?.let { ctx ->
-            try {
-                // Make sure we have an Activity context for showing dialogs
-                val activityContext = if (ctx is android.app.Activity) {
-                    ctx
-                } else {
-                    // Try to get the current activity from application context
-                    null
+    fun onMarkerTapFullScreen(marker: StaticMarker) {
+        try {
+            // Create event data for full-screen navigation
+            // Create a flat structure to avoid JSON nesting issues
+            val eventData = mutableMapOf<String, Any>(
+                "type" to "marker_tap",
+                "mode" to "fullscreen"
+            )
+            
+            // Add all marker fields directly to avoid nested JSON
+            val markerData = marker.toJson()
+            markerData.forEach { (key, value) ->
+                // Only add non-null values to avoid type casting issues
+                if (value != null) {
+                    eventData["marker_$key"] = value
                 }
-                
-                if (activityContext != null) {
-                    val builder = android.app.AlertDialog.Builder(activityContext)
-                        .setTitle("📍 ${marker.title}")
-                        .setMessage("${marker.category}${if (marker.description != null) "\n\n${marker.description}" else ""}")
-                        .setPositiveButton("Close") { dialog, _ -> dialog.dismiss() }
-                    
-                    // Add metadata if available
-                    if (marker.metadata != null && marker.metadata.isNotEmpty()) {
-                        builder.setNeutralButton("Details") { _, _ ->
-                            showDetailedMarkerInfo(marker)
-                        }
-                    }
-                    
-                    val dialog = builder.create()
-                    dialog.show()
-                    
-                    println("✅ Native marker notification shown")
-                }
-            } catch (e: Exception) {
-                println("❌ Failed to show native notification: ${e.message}")
-                e.printStackTrace()
             }
+            
+            // Send to main navigation event channel
+            sendFullScreenEvent(MapBoxEvents.MARKER_TAP_FULLSCREEN, eventData)
+            
+            println("🎯 Full-screen marker tapped: ${marker.title}")
+        } catch (e: Exception) {
+            println("❌ Failed to handle full-screen marker tap: ${e.message}")
+            e.printStackTrace()
         }
     }
     
     /**
-     * Shows detailed marker information in a native dialog
+     * Sends full-screen navigation events to Flutter
      */
-    private fun showDetailedMarkerInfo(marker: StaticMarker) {
-        context?.let { ctx ->
-            try {
-                val details = StringBuilder().apply {
-                    append("📍 ${marker.title}\n")
-                    append("Category: ${marker.category}\n")
-                    append("Location: ${marker.latitude}, ${marker.longitude}\n")
-                    
-                    if (marker.description != null) {
-                        append("\nDescription:\n${marker.description}\n")
-                    }
-                    
-                    if (marker.metadata != null && marker.metadata.isNotEmpty()) {
-                        append("\nDetails:\n")
-                        marker.metadata.forEach { (key, value) ->
-                            append("• $key: $value\n")
-                        }
-                    }
-                }
-                
-                android.app.AlertDialog.Builder(ctx)
-                    .setTitle("Marker Details")
-                    .setMessage(details.toString())
-                    .setPositiveButton("Close") { dialog, _ -> dialog.dismiss() }
-                    .create()
-                    .show()
-                    
-                println("✅ Detailed marker info shown")
-            } catch (e: Exception) {
-                println("❌ Failed to show detailed info: ${e.message}")
-            }
+    private fun sendFullScreenEvent(eventType: MapBoxEvents, data: Map<String, Any>) {
+        try {
+            val jsonData = JSONObject(data).toString()
+            PluginUtilities.sendEvent(eventType, jsonData)
+        } catch (e: Exception) {
+            println("❌ Failed to send full-screen event: ${e.message}")
+            e.printStackTrace()
         }
     }
 
@@ -378,13 +389,23 @@ class StaticMarkerManager {
      * Returns the marker near a given point, or null if no marker is found
      */
     fun getMarkerNearPoint(latitude: Double, longitude: Double): StaticMarker? {
-        val tapThreshold = 0.001 // ~100m threshold for tap detection
+        val tapThreshold = 0.01 // ~1km threshold for tap detection - increased tolerance
         
-        return markers.values.find { marker ->
+        println("🎯 getMarkerNearPoint called with: lat=$latitude, lon=$longitude")
+        println("🎯 Available markers: ${markers.size}")
+        
+        val foundMarker = markers.values.find { marker ->
             val latDiff = abs(marker.latitude - latitude)
             val lonDiff = abs(marker.longitude - longitude)
-            latDiff < tapThreshold && lonDiff < tapThreshold
+            println("🎯 Checking marker ${marker.title}: lat=${marker.latitude}, lon=${marker.longitude}")
+            println("🎯 Differences: latDiff=$latDiff, lonDiff=$lonDiff, threshold=$tapThreshold")
+            val isNear = latDiff < tapThreshold && lonDiff < tapThreshold
+            println("🎯 Is near: $isNear")
+            isNear
         }
+        
+        println("🎯 Found marker: ${foundMarker?.title ?: "none"}")
+        return foundMarker
     }
 
     /**

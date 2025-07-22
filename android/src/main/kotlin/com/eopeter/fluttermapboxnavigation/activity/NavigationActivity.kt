@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -21,6 +22,7 @@ import com.eopeter.fluttermapboxnavigation.models.MapBoxRouteProgressEvent
 import com.eopeter.fluttermapboxnavigation.models.Waypoint
 import com.eopeter.fluttermapboxnavigation.models.WaypointSet
 import com.eopeter.fluttermapboxnavigation.utilities.CustomInfoPanelEndNavButtonBinder
+import com.eopeter.fluttermapboxnavigation.utilities.MarkerPopupBinder
 import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities
 import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities.Companion.sendEvent
 import com.eopeter.fluttermapboxnavigation.StaticMarkerManager
@@ -59,6 +61,8 @@ import com.mapbox.navigation.base.formatter.DistanceFormatterOptions
 import com.mapbox.navigation.base.formatter.DistanceFormatter
 import com.mapbox.navigation.base.formatter.UnitType
 import org.json.JSONObject
+import androidx.appcompat.app.AlertDialog
+import com.eopeter.fluttermapboxnavigation.models.StaticMarker
 
 class NavigationActivity : AppCompatActivity() {
     private var finishBroadcastReceiver: BroadcastReceiver? = null
@@ -71,6 +75,7 @@ class NavigationActivity : AppCompatActivity() {
     private var isNavigationInProgress = false
     private lateinit var binding: NavigationActivityBinding
     private lateinit var turnByTurn: TurnByTurn
+    
 
     private val navigationStateListener = object : NavigationViewListener() {
         override fun onFreeDrive() {
@@ -95,13 +100,19 @@ class NavigationActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("NavigationActivity", "🚀 NavigationActivity onCreate() called")
         super.onCreate(savedInstanceState)
+        Log.d("NavigationActivity", "🚀 super.onCreate() completed")
+        Log.d("NavigationActivity", "🎨 Setting theme and inflating layout...")
         setTheme(R.style.AppTheme)
         binding = NavigationActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        Log.d("NavigationActivity", "🎨 Layout inflated and content view set")
+        Log.d("NavigationActivity", "🗺️ Registering navigation listeners...")
         binding.navigationView.addListener(navigationStateListener)
         binding.navigationView.registerMapObserver(onMapClick)
         binding.navigationView.registerMapObserver(staticMarkerMapObserver)
+        Log.d("NavigationActivity", "🗺️ Navigation listeners registered successfully")
         accessToken =
             PluginUtilities.getResourceFromContext(this.applicationContext, "mapbox_access_token")
 
@@ -211,8 +222,14 @@ class NavigationActivity : AppCompatActivity() {
             accessToken ?: ""
         )
 
+        Log.d("NavigationActivity", "📱 Initializing turn-by-turn navigation...")
         turnByTurn.initFlutterChannelHandlers()
         turnByTurn.initNavigation()
+        Log.d("NavigationActivity", "📱 Turn-by-turn initialization completed")
+        
+        // Use Mapbox Drop-in UI customization instead of separate Flutter overlays
+        Log.d("NavigationActivity", "🎯 Setting up Mapbox Drop-in UI customization for marker interactions")
+        setupDropInUICustomization()
 
         // Check for location permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -236,6 +253,11 @@ class NavigationActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        
+        Log.d("NavigationActivity", "🧹 NavigationActivity onDestroy - cleaning up overlays")
+        
+        Log.d("NavigationActivity", "🧹 NavigationActivity cleanup completed")
+        
         if (FlutterMapboxNavigationPlugin.longPressDestinationEnabled) {
             binding.navigationView.unregisterMapObserver(onMapLongClick)
         }
@@ -526,23 +548,33 @@ class NavigationActivity : AppCompatActivity() {
         }
 
         override fun onMapClick(point: Point): Boolean {
+            Log.d("NavigationActivity", "🗺️ onMapClick called at (${point.latitude()}, ${point.longitude()})")
             // Check if the tap is near any markers and handle it
             val tappedMarker = StaticMarkerManager.getInstance().getMarkerNearPoint(
                 point.latitude(), 
                 point.longitude()
             )
+            Log.d("NavigationActivity", "🗺️ Marker found near tap: ${tappedMarker?.title ?: "none"}")
             
             if (tappedMarker != null) {
-                // Trigger marker tap directly for full-screen navigation
-                StaticMarkerManager.getInstance().onMarkerTap(tappedMarker)
-                return true // Consume the event to prevent waypoint creation
+                Log.d("NavigationActivity", "Marker tapped: ${tappedMarker.title}")
+                
+                // Trigger the marker tap through StaticMarkerManager's listener
+                // This will call the MarkerPopupBinder's listener
+                Log.d("NavigationActivity", "Triggering marker tap listener for ViewBinder")
+                StaticMarkerManager.getInstance().triggerMarkerTapListener(tappedMarker)
+                
+                return true // Consume the event to prevent navigation interference
             }
             
-            var waypoint = mapOf<String, String>(
-                Pair("latitude", point.latitude().toString()),
-                Pair("longitude", point.longitude().toString())
+            // Send map tap event to Flutter for full-screen navigation
+            val eventData = mapOf(
+                "type" to "map_tap",
+                "mode" to "fullscreen",
+                "latitude" to point.latitude(),
+                "longitude" to point.longitude()
             )
-            sendEvent(MapBoxEvents.ON_MAP_TAP, JSONObject(waypoint).toString())
+            sendEvent(MapBoxEvents.MAP_TAP_FULLSCREEN, JSONObject(eventData).toString())
             return false
         }
     }
@@ -571,6 +603,21 @@ class NavigationActivity : AppCompatActivity() {
             requestRoutes(waypointSet)
         }
     }
+    
+    private fun setupDropInUICustomization() {
+        Log.d("NavigationActivity", "🎯 Setting up Drop-in UI customization for marker interactions")
+        
+        // Use ViewBinder customization to inject Flutter-rendered marker popups
+        binding.navigationView.customizeViewBinders {
+            // Use infoPanelContentBinder to show marker details above the info panel
+            infoPanelContentBinder = MarkerPopupBinder(this@NavigationActivity)
+            // Keep the existing end navigation button binder
+            infoPanelEndNavigationButtonBinder = CustomInfoPanelEndNavButtonBinder(this@NavigationActivity)
+        }
+        
+        Log.d("NavigationActivity", "✅ Drop-in UI ViewBinder customization complete")
+    }
+    
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
