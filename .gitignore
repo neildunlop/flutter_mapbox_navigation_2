@@ -40,6 +40,10 @@ example/android/gradle.properties
 example/ios/Runner/Info.plist
 !example/ios/Runner/Info.plist.template
 
+# Plugin gradle.properties with Mapbox download token
+android/gradle.properties
+!android/gradle.properties.template
+
 # Mapbox access token
 mapbox_access_token.txt
 mapbox_access_token.json

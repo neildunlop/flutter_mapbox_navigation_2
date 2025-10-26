@@ -11,7 +11,10 @@
       "Bash(flutter:*)",
       "Bash(find:*)",
       "Bash(git push:*)",
-      "Bash(gradle build)"
+      "Bash(gradle build)",
+      "Bash(tail:*)",
+      "Bash(test:*)",
+      "Bash(git check-ignore:*)"
     ],
     "deny": []
   }

@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart';
+import 'fullscreen_navigation.dart';
 
 void main() {
   runApp(const SampleNavigationApp());
@@ -403,6 +405,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
 
   // Show Flutter popup for a marker (with fallback positioning)
   void _showFlutterPopupForMarker(StaticMarker marker) {
+    print('🎯 _showFlutterPopupForMarker called for: ${marker.title}');
     // For now, just use a fixed position since platform implementation isn't ready
     // TODO: Implement getMarkerScreenPosition in Android/iOS platform code
     const screenPosition = Offset(200, 150);
@@ -412,6 +415,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
       marker,
       screenPosition: screenPosition,
     );
+    print('🎯 MarkerPopupManager.showPopupForMarker call completed');
   }
 
   // Handle static marker taps from platform (when user clicks markers on map)
@@ -486,6 +490,70 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
         );
       });
     }
+  }
+
+  // Handle marker tap events from full-screen navigation
+  void _handleFullScreenMarkerTap(dynamic eventData) {
+    try {
+      print('🎯 Full-screen marker tap event received: $eventData');
+      
+      if (eventData is String) {
+        // Parse JSON event data from full-screen navigation
+        final data = json.decode(eventData);
+        final type = data['type'] as String?;
+        
+        if (type == 'marker_tap') {
+          // Reconstruct StaticMarker from event data
+          final marker = StaticMarker(
+            id: data['marker_id'] as String,
+            latitude: data['marker_latitude'] as double,
+            longitude: data['marker_longitude'] as double,
+            title: data['marker_title'] as String,
+            category: data['marker_category'] as String,
+            description: data['marker_description'] as String?,
+            iconId: data['marker_iconId'] as String?,
+            customColor: data['marker_customColor'] != null 
+              ? Color(data['marker_customColor'] as int)
+              : null,
+            metadata: _extractMarkerMetadata(data),
+          );
+          
+          setState(() {
+            _lastTappedMarker = '${marker.title} (${marker.category}) [Full-screen]';
+          });
+          
+          // Use screen position if provided, otherwise use center
+          final screenPosition = data['screen_x'] != null && data['screen_y'] != null
+            ? Offset(data['screen_x'] as double, data['screen_y'] as double)
+            : const Offset(200, 150);
+          
+          // Show Flutter popup overlay for full-screen navigation
+          MarkerPopupManager().showPopupForMarker(
+            marker,
+            screenPosition: screenPosition,
+          );
+          
+          print('✅ Full-screen Flutter popup shown for: ${marker.title}');
+        }
+      }
+    } catch (e) {
+      print('❌ Error handling full-screen marker tap: $e');
+    }
+  }
+
+  // Extract marker metadata from flat event data structure
+  Map<String, dynamic>? _extractMarkerMetadata(Map<String, dynamic> data) {
+    final metadata = <String, dynamic>{};
+    
+    // Look for marker_metadata_ prefixed keys
+    data.forEach((key, value) {
+      if (key.startsWith('marker_metadata_')) {
+        final metadataKey = key.replaceFirst('marker_metadata_', '');
+        metadata[metadataKey] = value;
+      }
+    });
+    
+    return metadata.isEmpty ? null : metadata;
   }
 
   // Show detailed marker information
@@ -713,7 +781,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                       alignment: WrapAlignment.center,
                       children: [
                         ElevatedButton(
-                          child: const Text("Start A to B (Metric)"),
+                          child: const Text("🎯 Start Flutter Full-Screen"),
                           onPressed: () async {
                             var wayPoints = <WayPoint>[];
                             wayPoints.add(_home);
@@ -723,10 +791,29 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                             opt.voiceInstructionsEnabled = true;
                             opt.bannerInstructionsEnabled = true;
                             opt.units = VoiceUnits.metric;
-                            await MapBoxNavigation.instance
-                                .startNavigation(wayPoints: wayPoints, options: opt);
-                            // Auto-add markers to this navigation view
+                            
+                            // Add static markers first
                             await _addStaticMarkers();
+                            
+                            // Navigate to Flutter full-screen route
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => FullScreenNavigationPage(
+                                  wayPoints: wayPoints,
+                                  options: opt,
+                                  markers: _sampleMarkers, // Pass the existing markers
+                                  markerConfiguration: MarkerConfiguration(
+                                    popupBuilder: _buildMarkerPopup,
+                                    popupDuration: const Duration(seconds: 6),
+                                    popupOffset: const Offset(0, -80),
+                                    hidePopupOnTapOutside: true,
+                                    onMarkerTap: _onMarkerTap,
+                                    enableClustering: true,
+                                    maxDistanceFromRoute: 10.0,
+                                  ),
+                                ),
+                              ),
+                            );
                           },
                         ),
                         ElevatedButton(
@@ -985,6 +1072,10 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
     _durationRemaining = await MapBoxNavigation.instance.getDurationRemaining();
 
     switch (e.eventType) {
+      case MapBoxEvent.map_tap_fullscreen:
+        // Handle marker tap events from full-screen navigation
+        _handleFullScreenMarkerTap(e.data);
+        break;
       case MapBoxEvent.progress_change:
         var progressEvent = e.data as RouteProgressEvent;
         if (progressEvent.currentStepInstruction != null) {

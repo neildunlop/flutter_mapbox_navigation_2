@@ -8,10 +8,12 @@ import com.eopeter.fluttermapboxnavigation.FlutterMapboxNavigationPlugin
 import com.eopeter.fluttermapboxnavigation.StaticMarkerManager
 import com.eopeter.fluttermapboxnavigation.activity.NavigationActivity
 import com.eopeter.fluttermapboxnavigation.models.StaticMarker
+import com.eopeter.fluttermapboxnavigation.models.MapBoxEvents
 import com.mapbox.navigation.ui.base.lifecycle.UIBinder
 import com.mapbox.navigation.ui.base.lifecycle.UIComponent
 import com.mapbox.navigation.core.lifecycle.MapboxNavigationObserver
 import com.mapbox.navigation.core.MapboxNavigation
+import org.json.JSONObject
 
 /**
  * Custom UIBinder for injecting Flutter-rendered marker popups into Mapbox Drop-in UI
@@ -101,37 +103,52 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
     
     private fun showMarkerPopup(marker: StaticMarker) {
         try {
-            Log.d("MarkerPopupBinder", "🎯 SHOWING MARKER POPUP for: ${marker.title}")
-            Log.d("MarkerPopupBinder", "🎯 PopupView exists: ${popupView != null}")
+            Log.d("MarkerPopupBinder", "🎯 SHOWING FLUTTER POPUP for: ${marker.title}")
             
             currentMarker = marker
             
-            // Show the popup view with marker information
-            popupView?.let { view ->
-                val popupText = "🎯 MARKER TAPPED!\n\n" +
-                               "Title: ${marker.title}\n" +
-                               "Category: ${marker.category}\n" +
-                               "Description: ${marker.description ?: "No description"}"
-                
-                view.text = popupText
-                view.visibility = android.view.View.VISIBLE
-                
-                Log.d("MarkerPopupBinder", "🎯 Popup view visibility set to VISIBLE")
-                Log.d("MarkerPopupBinder", "🎯 Popup view text: $popupText")
-                
-                // Auto-hide after 5 seconds
-                view.postDelayed({
-                    Log.d("MarkerPopupBinder", "🎯 Auto-hiding popup after 5 seconds")
-                    hideMarkerPopup()
-                }, 5000)
-            } ?: run {
-                Log.e("MarkerPopupBinder", "❌ PopupView is null - cannot show popup!")
+            // Get screen position for the marker
+            val screenPosition = StaticMarkerManager.getInstance().getScreenPosition(
+                marker.latitude, 
+                marker.longitude
+            )
+            
+            // Create event data for Flutter popup system
+            val eventData = mutableMapOf<String, Any>(
+                "type" to "marker_tap",
+                "mode" to "fullscreen",
+                "marker_id" to marker.id,
+                "marker_title" to marker.title,
+                "marker_category" to marker.category,
+                "marker_latitude" to marker.latitude,
+                "marker_longitude" to marker.longitude
+            )
+            
+            // Add optional fields if available
+            marker.description?.let { eventData["marker_description"] = it }
+            marker.iconId?.let { eventData["marker_iconId"] = it }
+            marker.customColor?.let { eventData["marker_customColor"] = it }
+            marker.metadata?.let { metadata ->
+                // Convert metadata map to flat structure
+                metadata.forEach { (key, value) ->
+                    eventData["marker_metadata_$key"] = value
+                }
             }
             
-            Log.d("MarkerPopupBinder", "✅ Marker popup show method completed")
+            // Add screen position if available
+            screenPosition?.let { (x, y) ->
+                eventData["screen_x"] = x
+                eventData["screen_y"] = y
+            }
+            
+            // Send event to Flutter for popup handling
+            val jsonObject = JSONObject(eventData as Map<String, Any?>)
+            PluginUtilities.sendEvent(MapBoxEvents.MAP_TAP_FULLSCREEN, jsonObject.toString())
+            
+            Log.d("MarkerPopupBinder", "✅ Flutter popup event sent: ${jsonObject}")
             
         } catch (e: Exception) {
-            Log.e("MarkerPopupBinder", "❌ Error showing marker popup", e)
+            Log.e("MarkerPopupBinder", "❌ Error showing Flutter popup", e)
             e.printStackTrace()
         }
     }

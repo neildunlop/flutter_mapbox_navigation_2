@@ -133,6 +133,16 @@ class _MarkerPopupOverlayState extends State<MarkerPopupOverlay>
 
   @override
   Widget build(BuildContext context) {
+    print('🎯 MarkerPopupOverlay building');
+    print('🎯 selectedMarker: ${widget.selectedMarker?.title ?? "null"}');
+    print('🎯 markerScreenPosition: ${widget.markerScreenPosition}');
+    print('🎯 popupBuilder exists: ${widget.configuration.popupBuilder != null}');
+    
+    final shouldShowPopup = widget.selectedMarker != null && 
+        widget.markerScreenPosition != null &&
+        widget.configuration.popupBuilder != null;
+    print('🎯 shouldShowPopup: $shouldShowPopup');
+    
     return GestureDetector(
       onTap: widget.configuration.hidePopupOnTapOutside ? _hidePopup : null,
       child: Stack(
@@ -141,10 +151,19 @@ class _MarkerPopupOverlayState extends State<MarkerPopupOverlay>
           widget.child,
           
           // Popup overlay
-          if (widget.selectedMarker != null && 
-              widget.markerScreenPosition != null &&
-              widget.configuration.popupBuilder != null)
+          if (shouldShowPopup) ...[
             _buildPopupOverlay(),
+            // Add a debug indicator to see if we get here
+            Positioned(
+              top: 10,
+              left: 10,
+              child: Container(
+                color: Colors.red,
+                padding: EdgeInsets.all(4),
+                child: Text('POPUP ACTIVE', style: TextStyle(color: Colors.white)),
+              ),
+            ),
+          ],
         ],
       ),
     );

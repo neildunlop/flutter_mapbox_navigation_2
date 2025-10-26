@@ -10,6 +10,8 @@ class MarkerPopupManager extends ChangeNotifier {
   static final MarkerPopupManager _instance = MarkerPopupManager._internal();
   factory MarkerPopupManager() => _instance;
   MarkerPopupManager._internal();
+  
+  bool _disposed = false;
 
   /// Currently selected marker for popup display
   StaticMarker? _selectedMarker;
@@ -52,39 +54,65 @@ class MarkerPopupManager extends ChangeNotifier {
   
   /// Show popup for a specific marker
   void showPopupForMarker(StaticMarker marker, {Offset? screenPosition}) {
-    // Cancel any existing auto-hide timer
-    _autoHideTimer?.cancel();
-    
-    _selectedMarker = marker;
-    
-    if (screenPosition != null) {
-      _markerScreenPosition = screenPosition;
-    } else {
-      _updateMarkerScreenPosition();
+    try {
+      print('🎯 MarkerPopupManager.showPopupForMarker called for: ${marker.title}');
+      print('🎯 Current state - disposed: $_disposed, hasListeners: $hasListeners');
+      
+      // Cancel any existing auto-hide timer
+      _autoHideTimer?.cancel();
+      
+      _selectedMarker = marker;
+      
+      if (screenPosition != null) {
+        _markerScreenPosition = screenPosition;
+        print('🎯 Using provided screen position: $screenPosition');
+      } else {
+        _updateMarkerScreenPosition();
+        print('🎯 Updated marker screen position: $_markerScreenPosition');
+      }
+      
+      // Schedule auto-hide if configured
+      if (_configuration?.popupDuration != null && _configuration!.popupDuration.inMilliseconds > 0) {
+        _autoHideTimer = Timer(_configuration!.popupDuration, () {
+          hidePopup();
+        });
+        print('🎯 Auto-hide scheduled for ${_configuration!.popupDuration}');
+      }
+      
+      // Always notify listeners, but safely
+      try {
+        notifyListeners();
+        print('✅ Listeners notified successfully');
+      } catch (e) {
+        print('❌ Error notifying listeners: $e');
+      }
+      
+      // NOTE: Don't call onMarkerTap callback here to avoid infinite loops
+      // The callback is already handled by the caller (platform channel)
+    } catch (e) {
+      print('Error showing popup (manager may be disposed): $e');
     }
-    
-    // Schedule auto-hide if configured
-    if (_configuration?.popupDuration != null && _configuration!.popupDuration.inMilliseconds > 0) {
-      _autoHideTimer = Timer(_configuration!.popupDuration, () {
-        hidePopup();
-      });
-    }
-    
-    notifyListeners();
-    
-    // NOTE: Don't call onMarkerTap callback here to avoid infinite loops
-    // The callback is already handled by the caller (platform channel)
   }
   
   /// Hide the current popup
   void hidePopup() {
-    _autoHideTimer?.cancel();
-    _autoHideTimer = null;
-    
-    _selectedMarker = null;
-    _markerScreenPosition = null;
-    
-    notifyListeners();
+    try {
+      _autoHideTimer?.cancel();
+      _autoHideTimer = null;
+      
+      _selectedMarker = null;
+      _markerScreenPosition = null;
+      
+      // Always notify listeners, but safely
+      try {
+        notifyListeners();
+        print('✅ Listeners notified for hidePopup');
+      } catch (e) {
+        print('❌ Error notifying listeners in hidePopup: $e');
+      }
+    } catch (e) {
+      print('Error hiding popup (manager may be disposed): $e');
+    }
   }
   
   /// Update the screen position of the current marker based on map viewport
@@ -140,10 +168,34 @@ class MarkerPopupManager extends ChangeNotifier {
     );
   }
   
-  /// Dispose resources
+  /// Clean up resources without disposing the singleton
+  void cleanup() {
+    _autoHideTimer?.cancel();
+    _autoHideTimer = null;
+    _selectedMarker = null;
+    _markerScreenPosition = null;
+    _mapViewport = null;
+    _configuration = null;
+  }
+  
+  /// Override dispose to prevent the singleton from being disposed
   @override
   void dispose() {
-    _autoHideTimer?.cancel();
+    // Don't actually dispose the singleton, just mark it as disposed for debugging
+    _disposed = true;
+    // Don't call super.dispose() to prevent actual disposal
+    print('MarkerPopupManager dispose() called but prevented (singleton protection)');
+  }
+  
+  /// Reset the disposed state and reinitialize if needed
+  void reset() {
+    _disposed = false;
+    cleanup();
+  }
+  
+  /// Method to actually dispose when app shuts down (not used in normal flow)
+  void _actualDispose() {
+    cleanup();
     super.dispose();
   }
 }
@@ -170,6 +222,7 @@ class _MarkerPopupProviderState extends State<MarkerPopupProvider> {
   void initState() {
     super.initState();
     _popupManager = MarkerPopupManager();
+    _popupManager.reset(); // Reset in case it was previously marked as disposed
     _popupManager.setConfiguration(widget.configuration);
     _popupManager.addListener(_onPopupStateChanged);
   }
@@ -191,13 +244,20 @@ class _MarkerPopupProviderState extends State<MarkerPopupProvider> {
   @override
   void dispose() {
     _popupManager.removeListener(_onPopupStateChanged);
+    // Just hide any active popup, don't cleanup or dispose the singleton
+    _popupManager.hidePopup();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    print('🎯 MarkerPopupProvider building - hasPopupBuilder: ${widget.configuration.popupBuilder != null}');
+    print('🎯 Selected marker: ${_popupManager.selectedMarker?.title ?? "none"}');
+    print('🎯 Screen position: ${_popupManager.markerScreenPosition}');
+    
     if (widget.configuration.popupBuilder == null) {
       // No popup builder provided, just return the child
+      print('❌ No popup builder provided, returning child only');
       return widget.child;
     }
     

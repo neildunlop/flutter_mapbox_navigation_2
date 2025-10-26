@@ -8,3 +8,6 @@
 /captures
 .cxx
 
+# Mapbox tokens - NEVER commit these to version control
+gradle.properties
+

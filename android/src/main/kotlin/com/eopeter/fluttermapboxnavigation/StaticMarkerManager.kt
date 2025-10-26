@@ -695,4 +695,52 @@ class StaticMarkerManager {
         
         return bitmap
     }
+
+    /**
+     * Converts geographic coordinates to screen position
+     * Returns null if MapView is not available or coordinates cannot be projected
+     */
+    fun getScreenPosition(latitude: Double, longitude: Double): Pair<Double, Double>? {
+        return try {
+            val mapView = this.mapView ?: return null
+            val mapboxMap = mapView.getMapboxMap()
+            
+            val point = Point.fromLngLat(longitude, latitude)
+            val screenCoordinate = mapboxMap.pixelForCoordinate(point)
+            
+            Pair(screenCoordinate.x, screenCoordinate.y)
+        } catch (e: Exception) {
+            Log.e("StaticMarkerManager", "Failed to get screen position: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Gets current map viewport information
+     * Returns viewport data as a Map for Flutter consumption
+     */
+    fun getMapViewport(): Map<String, Any>? {
+        return try {
+            val mapView = this.mapView ?: return null
+            val mapboxMap = mapView.getMapboxMap()
+            val cameraState = mapboxMap.cameraState
+            
+            mapOf(
+                "center" to mapOf(
+                    "latitude" to cameraState.center.latitude(),
+                    "longitude" to cameraState.center.longitude()
+                ),
+                "zoom" to cameraState.zoom,
+                "bearing" to cameraState.bearing,
+                "pitch" to cameraState.pitch,
+                "size" to mapOf(
+                    "width" to mapView.width,
+                    "height" to mapView.height
+                )
+            )
+        } catch (e: Exception) {
+            Log.e("StaticMarkerManager", "Failed to get map viewport: ${e.message}")
+            null
+        }
+    }
 } 

@@ -170,6 +170,12 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             "getStaticMarkers" -> {
                 getStaticMarkers(result)
             }
+            "getMarkerScreenPosition" -> {
+                getMarkerScreenPosition(call, result)
+            }
+            "getMapViewport" -> {
+                getMapViewport(result)
+            }
             else -> result.notImplemented()
         }
     }
@@ -461,6 +467,44 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             result.success(markersJson)
         } catch (e: Exception) {
             result.error("GET_MARKERS_ERROR", "Failed to get static markers: ${e.message}", null)
+        }
+    }
+
+    private fun getMarkerScreenPosition(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val latitude = arguments?.get("latitude") as? Double
+            val longitude = arguments?.get("longitude") as? Double
+
+            if (latitude == null || longitude == null) {
+                result.error("INVALID_ARGUMENTS", "Latitude and longitude are required", null)
+                return
+            }
+
+            val screenPosition = markerManager.getScreenPosition(latitude, longitude)
+            if (screenPosition != null) {
+                result.success(mapOf(
+                    "x" to screenPosition.first,
+                    "y" to screenPosition.second
+                ))
+            } else {
+                result.error("POSITION_ERROR", "Could not convert coordinates to screen position", null)
+            }
+        } catch (e: Exception) {
+            result.error("SCREEN_POSITION_ERROR", "Failed to get marker screen position: ${e.message}", null)
+        }
+    }
+
+    private fun getMapViewport(result: Result) {
+        try {
+            val viewport = markerManager.getMapViewport()
+            if (viewport != null) {
+                result.success(viewport)
+            } else {
+                result.error("VIEWPORT_ERROR", "Map viewport not available", null)
+            }
+        } catch (e: Exception) {
+            result.error("VIEWPORT_ERROR", "Failed to get map viewport: ${e.message}", null)
         }
     }
 
