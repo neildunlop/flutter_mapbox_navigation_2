@@ -44,12 +44,12 @@ void main() {
     test('should start navigation with metric units', () async {
       final waypoints = [
         WayPoint(
-          name: "Start",
+          name: 'Start',
           latitude: 51.5074,
           longitude: -0.1278,
         ),
         WayPoint(
-          name: "End",
+          name: 'End',
           latitude: 51.5074,
           longitude: -0.1278,
         ),
@@ -58,9 +58,9 @@ void main() {
       final options = MapBoxOptions(
         initialLatitude: 51.5074,
         initialLongitude: -0.1278,
-        zoom: 13.0,
-        tilt: 0.0,
-        bearing: 0.0,
+        zoom: 13,
+        tilt: 0,
+        bearing: 0,
         enableRefresh: true,
         alternatives: true,
         voiceInstructionsEnabled: true,
@@ -69,7 +69,7 @@ void main() {
         mode: MapBoxNavigationMode.drivingWithTraffic,
         units: VoiceUnits.metric,
         simulateRoute: true,
-        language: "en",
+        language: 'en',
       );
 
       final result = await navigation.startNavigation(
@@ -82,12 +82,12 @@ void main() {
     test('should start navigation with imperial units', () async {
       final waypoints = [
         WayPoint(
-          name: "Start",
+          name: 'Start',
           latitude: 51.5074,
           longitude: -0.1278,
         ),
         WayPoint(
-          name: "End",
+          name: 'End',
           latitude: 51.5074,
           longitude: -0.1278,
         ),
@@ -96,9 +96,9 @@ void main() {
       final options = MapBoxOptions(
         initialLatitude: 51.5074,
         initialLongitude: -0.1278,
-        zoom: 13.0,
-        tilt: 0.0,
-        bearing: 0.0,
+        zoom: 13,
+        tilt: 0,
+        bearing: 0,
         enableRefresh: true,
         alternatives: true,
         voiceInstructionsEnabled: true,
@@ -107,7 +107,7 @@ void main() {
         mode: MapBoxNavigationMode.drivingWithTraffic,
         units: VoiceUnits.imperial,
         simulateRoute: true,
-        language: "en",
+        language: 'en',
       );
 
       final result = await navigation.startNavigation(
@@ -120,12 +120,12 @@ void main() {
     test('should maintain units when adding waypoints', () async {
       final initialWaypoints = [
         WayPoint(
-          name: "Start",
+          name: 'Start',
           latitude: 51.5074,
           longitude: -0.1278,
         ),
         WayPoint(
-          name: "End",
+          name: 'End',
           latitude: 51.5074,
           longitude: -0.1278,
         ),
@@ -134,9 +134,9 @@ void main() {
       final options = MapBoxOptions(
         initialLatitude: 51.5074,
         initialLongitude: -0.1278,
-        zoom: 13.0,
-        tilt: 0.0,
-        bearing: 0.0,
+        zoom: 13,
+        tilt: 0,
+        bearing: 0,
         enableRefresh: true,
         alternatives: true,
         voiceInstructionsEnabled: true,
@@ -145,7 +145,7 @@ void main() {
         mode: MapBoxNavigationMode.drivingWithTraffic,
         units: VoiceUnits.metric,
         simulateRoute: true,
-        language: "en",
+        language: 'en',
       );
 
       final startResult = await navigation.startNavigation(
@@ -156,7 +156,7 @@ void main() {
 
       final additionalWaypoints = [
         WayPoint(
-          name: "Stop 1",
+          name: 'Stop 1',
           latitude: 51.5074,
           longitude: -0.1278,
         ),
@@ -170,17 +170,17 @@ void main() {
     test('should handle unit changes with multiple waypoints', () async {
       final waypoints = [
         WayPoint(
-          name: "Start",
+          name: 'Start',
           latitude: 51.5074,
           longitude: -0.1278,
         ),
         WayPoint(
-          name: "Stop 1",
+          name: 'Stop 1',
           latitude: 51.5074,
           longitude: -0.1278,
         ),
         WayPoint(
-          name: "End",
+          name: 'End',
           latitude: 51.5074,
           longitude: -0.1278,
         ),
@@ -189,9 +189,9 @@ void main() {
       final options = MapBoxOptions(
         initialLatitude: 51.5074,
         initialLongitude: -0.1278,
-        zoom: 13.0,
-        tilt: 0.0,
-        bearing: 0.0,
+        zoom: 13,
+        tilt: 0,
+        bearing: 0,
         enableRefresh: true,
         alternatives: true,
         voiceInstructionsEnabled: true,
@@ -200,7 +200,7 @@ void main() {
         mode: MapBoxNavigationMode.drivingWithTraffic,
         units: VoiceUnits.metric,
         simulateRoute: true,
-        language: "en",
+        language: 'en',
       );
 
       final result = await navigation.startNavigation(
@@ -213,7 +213,7 @@ void main() {
     test('should handle unit changes with silent waypoints', () async {
       final waypoints = [
         WayPoint(
-          name: "Start",
+          name: 'Start',
           latitude: 51.5074,
           longitude: -0.1278,
         ),
@@ -224,7 +224,7 @@ void main() {
           isSilent: true,
         ),
         WayPoint(
-          name: "End",
+          name: 'End',
           latitude: 51.5074,
           longitude: -0.1278,
         ),
@@ -233,9 +233,9 @@ void main() {
       final options = MapBoxOptions(
         initialLatitude: 51.5074,
         initialLongitude: -0.1278,
-        zoom: 13.0,
-        tilt: 0.0,
-        bearing: 0.0,
+        zoom: 13,
+        tilt: 0,
+        bearing: 0,
         enableRefresh: true,
         alternatives: true,
         voiceInstructionsEnabled: true,
@@ -244,7 +244,7 @@ void main() {
         mode: MapBoxNavigationMode.drivingWithTraffic,
         units: VoiceUnits.metric,
         simulateRoute: true,
-        language: "en",
+        language: 'en',
       );
 
       final result = await navigation.startNavigation(

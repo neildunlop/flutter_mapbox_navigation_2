@@ -80,9 +80,9 @@ void main() {
       final options = MapBoxOptions(
         initialLatitude: 51.5074,
         initialLongitude: -0.1278,
-        zoom: 13.0,
-        tilt: 0.0,
-        bearing: 0.0,
+        zoom: 13,
+        tilt: 0,
+        bearing: 0,
         enableRefresh: true,
         alternatives: true,
         voiceInstructionsEnabled: true,
@@ -93,7 +93,7 @@ void main() {
         simulateRoute: true,
         animateBuildRoute: true,
         longPressDestinationEnabled: true,
-        language: "en",
+        language: 'en',
       );
 
       // Act
@@ -179,7 +179,7 @@ void main() {
       final options = MapBoxOptions(
         initialLatitude: 51.5074,
         initialLongitude: -0.1278,
-        zoom: 15.0,
+        zoom: 15,
         tilt: 45.0,
         bearing: 90.0,
         enableRefresh: false,
@@ -192,7 +192,7 @@ void main() {
         simulateRoute: false,
         animateBuildRoute: false,
         longPressDestinationEnabled: false,
-        language: "en",
+        language: 'en',
       );
 
       // Act

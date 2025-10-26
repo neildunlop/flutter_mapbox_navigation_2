@@ -88,7 +88,9 @@ class MethodChannelFlutterMapboxNavigation
   }
 
   @override
-  Future<WaypointResult> addWayPoints({required List<WayPoint> wayPoints}) async {
+  Future<WaypointResult> addWayPoints({
+    required List<WayPoint> wayPoints,
+  }) async {
     assert(wayPoints.isNotEmpty, 'Error: WayPoints must be at least 1');
     try {
       final pointList = _getPointListFromWayPoints(wayPoints);
@@ -172,7 +174,10 @@ class MethodChannelFlutterMapboxNavigation
         'markerIds': markerIds,
       };
       
-      final result = await methodChannel.invokeMethod('removeStaticMarkers', args);
+      final result = await methodChannel.invokeMethod(
+        'removeStaticMarkers',
+        args,
+      );
       return result as bool?;
     } catch (e) {
       log('Error removing static markers: $e');
@@ -200,7 +205,10 @@ class MethodChannelFlutterMapboxNavigation
         'configuration': configuration.toJson(),
       };
       
-      final result = await methodChannel.invokeMethod('updateMarkerConfiguration', args);
+      final result = await methodChannel.invokeMethod(
+        'updateMarkerConfiguration',
+        args,
+      );
       return result as bool?;
     } catch (e) {
       log('Error updating marker configuration: $e');
@@ -289,7 +297,6 @@ class MethodChannelFlutterMapboxNavigation
 
     for (var i = 0; i < wayPoints.length; i++) {
       final wayPoint = wayPoints[i];
-      assert(wayPoint.name != null, 'Error: waypoints need name');
       assert(wayPoint.latitude != null, 'Error: waypoints need latitude');
       assert(wayPoint.longitude != null, 'Error: waypoints need longitude');
 

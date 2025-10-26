@@ -9,7 +9,16 @@
       "mcp__ide__getDiagnostics",
       "Bash(flutter analyze:*)",
       "Bash(flutter:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(echo $PATH)",
+      "Bash(sed:*)",
+      "Bash(grep:*)",
+      "Bash(timeout 30 flutter test --reporter=json)",
+      "Bash(java:*)",
+      "Bash(echo $JAVA_HOME)",
+      "Bash(export JAVA_HOME=\"/opt/homebrew/opt/openjdk@21\")",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")"
     ],
     "deny": []
   }

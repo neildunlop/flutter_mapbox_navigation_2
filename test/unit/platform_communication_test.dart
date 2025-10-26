@@ -65,7 +65,6 @@ void main() {
         language: "en",
       );
 
-      final result = await platform.startNavigation(waypoints, options);
       await platform.startNavigation(waypoints, options);
     });
 

@@ -78,7 +78,6 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
   bool _isNavigating = false;
   bool _inFreeDrive = false;
   late MapBoxOptions _navigationOption;
-  bool _isMetric = true;
   
   // Static marker state
   bool _markersAdded = false;
@@ -787,94 +786,6 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
         break;
     }
     setState(() {});
-  }
-
-  void _onMapReady() {
-    _navigationOption = MapBoxOptions(
-      initialLatitude: 37.4220,
-      initialLongitude: -122.0841,
-      zoom: 15.0,
-      tilt: 0.0,
-      bearing: 0.0,
-      enableRefresh: true,
-      alternatives: true,
-      voiceInstructionsEnabled: true,
-      bannerInstructionsEnabled: true,
-      allowsUTurnAtWayPoints: true,
-      mode: MapBoxNavigationMode.drivingWithTraffic,
-      units: VoiceUnits.metric,
-      simulateRoute: true,
-      language: "en",
-    );
-  }
-
-  void _startNavigation() async {
-    var wayPoints = <WayPoint>[];
-    wayPoints.add(_origin);
-    wayPoints.add(_destination);
-
-    await MapBoxNavigation.instance.startNavigation(
-      wayPoints: wayPoints,
-      options: MapBoxOptions(
-        initialLatitude: _origin.latitude!,
-        initialLongitude: _origin.longitude!,
-        zoom: 15.0,
-        tilt: 0.0,
-        bearing: 0.0,
-        enableRefresh: true,
-        alternatives: true,
-        voiceInstructionsEnabled: true,
-        bannerInstructionsEnabled: true,
-        allowsUTurnAtWayPoints: true,
-        mode: MapBoxNavigationMode.drivingWithTraffic,
-        units: VoiceUnits.metric,
-        simulateRoute: true,
-        language: "en",
-      ),
-    );
-  }
-
-  void _startFreeDrive() async {
-    await MapBoxNavigation.instance.startFreeDrive(
-      options: MapBoxOptions(
-        initialLatitude: _origin.latitude!,
-        initialLongitude: _origin.longitude!,
-        zoom: 15.0,
-        tilt: 0.0,
-        bearing: 0.0,
-        enableRefresh: true,
-        alternatives: true,
-        voiceInstructionsEnabled: true,
-        bannerInstructionsEnabled: true,
-        allowsUTurnAtWayPoints: true,
-        mode: MapBoxNavigationMode.drivingWithTraffic,
-        units: VoiceUnits.metric,
-        simulateRoute: true,
-        language: "en",
-      ),
-    );
-  }
-
-  void _toggleMetric() {
-    setState(() {
-      _isMetric = !_isMetric;
-      _navigationOption = MapBoxOptions(
-        initialLatitude: _navigationOption.initialLatitude,
-        initialLongitude: _navigationOption.initialLongitude,
-        zoom: _navigationOption.zoom,
-        tilt: _navigationOption.tilt,
-        bearing: _navigationOption.bearing,
-        enableRefresh: _navigationOption.enableRefresh,
-        alternatives: _navigationOption.alternatives,
-        voiceInstructionsEnabled: _navigationOption.voiceInstructionsEnabled,
-        bannerInstructionsEnabled: _navigationOption.bannerInstructionsEnabled,
-        allowsUTurnAtWayPoints: _navigationOption.allowsUTurnAtWayPoints,
-        mode: _navigationOption.mode,
-        units: _isMetric ? VoiceUnits.metric : VoiceUnits.imperial,
-        simulateRoute: _navigationOption.simulateRoute,
-        language: _navigationOption.language,
-      );
-    });
   }
 
   Future<void> _addMarkersToEmbeddedView() async {

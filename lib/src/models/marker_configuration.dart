@@ -26,7 +26,7 @@ class MarkerConfiguration {
   final int? maxMarkersToShow;
   
   /// Callback function when a marker is tapped
-  final Function(StaticMarker)? onMarkerTap;
+  final void Function(StaticMarker)? onMarkerTap;
   
   /// Default icon ID to use when marker doesn't specify one
   final String? defaultIconId;
@@ -34,6 +34,7 @@ class MarkerConfiguration {
   /// Default color to use when marker doesn't specify one
   final Color? defaultColor;
 
+  /// Creates a new marker configuration with the given settings
   const MarkerConfiguration({
     this.showDuringNavigation = true,
     this.showInFreeDrive = true,
@@ -88,7 +89,7 @@ class MarkerConfiguration {
     double? minZoomLevel,
     bool? enableClustering,
     int? maxMarkersToShow,
-    Function(StaticMarker)? onMarkerTap,
+    void Function(StaticMarker)? onMarkerTap,
     String? defaultIconId,
     Color? defaultColor,
   }) {

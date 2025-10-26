@@ -84,7 +84,7 @@ class MapBoxNavigationViewController {
 
       final pointMap = <String, dynamic>{
         'Order': i,
-        'Name': wayPoint.name ?? '',
+        'Name': wayPoint.name,
         'Latitude': wayPoint.latitude,
         'Longitude': wayPoint.longitude,
         'IsSilent': wayPoint.isSilent ?? false,
