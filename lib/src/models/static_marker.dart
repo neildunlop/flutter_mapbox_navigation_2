@@ -29,6 +29,9 @@ class StaticMarker {
   /// Optional priority level for marker display (higher = more important)
   final int? priority;
   
+  /// Size multiplier for the marker (1.0 = default, 2.0 = double size, 0.5 = half size)
+  final double? size;
+  
   /// Whether the marker is currently visible
   final bool isVisible;
   
@@ -45,6 +48,7 @@ class StaticMarker {
     this.iconId,
     this.customColor,
     this.priority,
+    this.size,
     this.isVisible = true,
     this.metadata,
   });
@@ -63,6 +67,7 @@ class StaticMarker {
           ? Color(json['customColor'] as int) 
           : null,
       priority: json['priority'] as int?,
+      size: json['size'] as double?,
       isVisible: json['isVisible'] as bool? ?? true,
       metadata: json['metadata'] != null 
           ? Map<String, dynamic>.from(json['metadata'] as Map)
@@ -82,6 +87,7 @@ class StaticMarker {
       'iconId': iconId,
       'customColor': customColor?.value,
       'priority': priority,
+      'size': size,
       'isVisible': isVisible,
       'metadata': metadata,
     };
@@ -98,6 +104,7 @@ class StaticMarker {
     String? iconId,
     Color? customColor,
     int? priority,
+    double? size,
     bool? isVisible,
     Map<String, dynamic>? metadata,
   }) {
@@ -111,6 +118,7 @@ class StaticMarker {
       iconId: iconId ?? this.iconId,
       customColor: customColor ?? this.customColor,
       priority: priority ?? this.priority,
+      size: size ?? this.size,
       isVisible: isVisible ?? this.isVisible,
       metadata: metadata ?? this.metadata,
     );

@@ -221,6 +221,16 @@ import Flutter
                 }
             }
             
+            // Set marker size (default 1.0, use marker.metadata["size"] if provided)
+            let markerSize: Double
+            if let metadata = marker.metadata,
+               let size = metadata["size"] as? Double {
+                markerSize = size
+            } else {
+                markerSize = 1.0 // Default size
+            }
+            annotation.iconSize = markerSize
+            
             // Set text properties
             annotation.textColor = StyleColor(.black)
             annotation.textSize = 12.0

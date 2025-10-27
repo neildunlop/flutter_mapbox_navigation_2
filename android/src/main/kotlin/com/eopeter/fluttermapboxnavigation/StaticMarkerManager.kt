@@ -514,12 +514,21 @@ class StaticMarkerManager {
                     val iconBitmap = getMarkerIconBitmap(marker)
                     println("🔧 Icon bitmap created for ${marker.title}: ${iconBitmap.width}x${iconBitmap.height}")
                     
+                    // Calculate marker size (default 2.5, use marker.size if provided)
+                    val markerSize = when {
+                        marker.metadata?.containsKey("size") == true -> {
+                            val size = marker.metadata["size"] as? Double ?: 2.5
+                            size // Keep as Double
+                        }
+                        else -> 2.5 // Default size as Double
+                    }
+                    
                     // Create point annotation options with proper positioning and visibility
                     val pointAnnotationOptions = PointAnnotationOptions()
                         .withPoint(Point.fromLngLat(marker.longitude, marker.latitude))
                         .withIconImage(iconBitmap)
                         .withIconAnchor(IconAnchor.CENTER) // Center anchor for better visibility
-                        .withIconSize(2.5) // Larger size to ensure visibility above navigation layers
+                        .withIconSize(markerSize) // Use marker-specific size
                         .withIconOpacity(1.0) // Ensure full opacity
                     
                     println("🔧 Point annotation options created for ${marker.title}")

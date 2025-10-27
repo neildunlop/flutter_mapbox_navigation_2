@@ -48,6 +48,9 @@ class MarkerConfiguration {
   /// Default color to use when marker doesn't specify one
   final Color? defaultColor;
 
+  /// Default size multiplier for markers (1.0 = default, 2.0 = double size)
+  final double defaultSize;
+
   /// Creates a new marker configuration with the given settings
   const MarkerConfiguration({
     this.showDuringNavigation = true,
@@ -64,6 +67,7 @@ class MarkerConfiguration {
     this.hidePopupOnTapOutside = true,
     this.defaultIconId,
     this.defaultColor,
+    this.defaultSize = 1.0,
   });
 
   /// Creates a MarkerConfiguration from a JSON map
@@ -80,6 +84,7 @@ class MarkerConfiguration {
       defaultColor: json['defaultColor'] != null 
           ? Color(json['defaultColor'] as int) 
           : null,
+      defaultSize: json['defaultSize'] as double? ?? 1.0,
     );
   }
 
@@ -95,6 +100,7 @@ class MarkerConfiguration {
       'maxMarkersToShow': maxMarkersToShow,
       'defaultIconId': defaultIconId,
       'defaultColor': defaultColor?.value,
+      'defaultSize': defaultSize,
     };
   }
 
@@ -114,6 +120,7 @@ class MarkerConfiguration {
     bool? hidePopupOnTapOutside,
     String? defaultIconId,
     Color? defaultColor,
+    double? defaultSize,
   }) {
     return MarkerConfiguration(
       showDuringNavigation: showDuringNavigation ?? this.showDuringNavigation,
@@ -130,6 +137,7 @@ class MarkerConfiguration {
       hidePopupOnTapOutside: hidePopupOnTapOutside ?? this.hidePopupOnTapOutside,
       defaultIconId: defaultIconId ?? this.defaultIconId,
       defaultColor: defaultColor ?? this.defaultColor,
+      defaultSize: defaultSize ?? this.defaultSize,
     );
   }
 

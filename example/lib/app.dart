@@ -85,43 +85,45 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
   String? _lastTappedMarker;
   // bool _justFinishedFlutterNavigation = false; // TODO: Remove if not needed
 
-  // SIMPLE TEST: Just one huge marker at Vegas center for debugging
   final List<StaticMarker> _sampleMarkers = [
     // MOUNTAIN VIEW / GOOGLE HQ AREA TEST MARKERS
     const StaticMarker(
       id: 'google_hq_test',
       latitude: 37.4220, // Amphitheatre Parkway, Mountain View
       longitude: -122.0841,
-      title: '🔴 GOOGLE HQ TEST MARKER',
+      title: '🔴 LARGE MARKER (3x size)',
       category: 'pin',
-      description: 'Test marker at Google headquarters',
+      description: 'Large test marker at Google headquarters',
       iconId: MarkerIcons.pin,
       customColor: Colors.red,
       priority: 10,
-      metadata: {'type': 'test', 'location': 'google_hq'},
+      size: 3.0, // 3x size to demonstrate scaling
+      metadata: {'type': 'test', 'location': 'google_hq', 'size': 3.0},
     ),
     const StaticMarker(
       id: 'computer_history_test',
       latitude: 37.4143,
       longitude: -122.0768,
-      title: '🟡 COMPUTER HISTORY MUSEUM',
+      title: '🟡 SMALL MARKER (0.5x size)',
       category: 'scenic',
-      description: 'Test marker at Computer History Museum',
+      description: 'Small test marker at Computer History Museum',
       iconId: MarkerIcons.scenic,
       customColor: Colors.orange,
       priority: 8,
-      metadata: {'type': 'test', 'location': 'museum'},
+      size: 0.5, // Half size to demonstrate small markers
+      metadata: {'type': 'test', 'location': 'museum', 'size': 0.5},
     ),
     const StaticMarker(
       id: 'shoreline_test',
       latitude: 37.4267,
       longitude: -122.0806,
-      title: '🟢 SHORELINE AMPHITHEATRE',
+      title: '🟢 NORMAL MARKER (default size)',
       category: 'restaurant',
-      description: 'Test marker at Shoreline Amphitheatre',
+      description: 'Default size marker at Shoreline Amphitheatre',
       iconId: MarkerIcons.restaurant,
       customColor: Colors.green,
       priority: 7,
+      // No size specified = uses default size (1.0)
       metadata: {'type': 'test', 'location': 'venue'},
     ),
     const StaticMarker(
