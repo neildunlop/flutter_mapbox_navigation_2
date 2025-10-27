@@ -34,11 +34,22 @@ build/
 # Token files - ignore the actual files but keep templates
 example/android/app/src/main/res/values/mapbox_access_token.xml
 !example/android/app/src/main/res/values/mapbox_access_token.xml.template
+**/values/mapbox_access_token.xml
+!**/values/mapbox_access_token.xml.template
 example/android/app/src/main/res/values/strings.xml
 example/android/gradle.properties
 !example/android/gradle.properties.template
 example/ios/Runner/Info.plist
 !example/ios/Runner/Info.plist.template
+
+# Gradle properties files containing sensitive tokens
+gradle.properties
+android/gradle.properties
+**/gradle.properties
+!**/gradle.properties.template
+
+# Global gradle properties (user home)
+.gradle/gradle.properties
 
 # Mapbox access token
 mapbox_access_token.txt
@@ -47,6 +58,13 @@ mapbox_access_token.dart
 lib/config/mapbox_access_token.dart
 tokens/
 tokens/*
+
+# Additional sensitive files
+**/*access_token*
+**/*secret*
+**/*private*
+**/local.properties
+**/.netrc
 
 # Flutter/Dart specific
 .dart_tool/
