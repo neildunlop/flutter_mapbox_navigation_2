@@ -10,7 +10,7 @@ class PopupExamplePage extends StatefulWidget {
 }
 
 class _PopupExamplePageState extends State<PopupExamplePage> {
-  MapBoxNavigationViewController? _controller;
+  // MapBoxNavigationViewController? _controller; // TODO: Remove if not needed
   String _lastInteraction = 'None';
   
   late List<StaticMarker> _markers;
@@ -118,7 +118,7 @@ class _PopupExamplePageState extends State<PopupExamplePage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: marker.customColor?.withOpacity(0.2) ?? Colors.blue.withOpacity(0.2),
+                  color: marker.customColor?.withValues(alpha: 0.2) ?? Colors.blue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -337,7 +337,7 @@ class _PopupExamplePageState extends State<PopupExamplePage> {
   }
 
   void _onNavigationViewCreated(MapBoxNavigationViewController controller) async {
-    _controller = controller;
+    // _controller = controller;
     await controller.initialize();
     
     // Add markers to the map

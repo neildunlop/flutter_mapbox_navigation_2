@@ -191,14 +191,15 @@ EOF
 ```
 
 **Step 3: Verify Gradle/Java Compatibility**
-- Android Gradle Plugin: Minimum 8.2.1 (for Java 21 compatibility)
-- Kotlin: Minimum 2.1.0 (for Flutter compatibility)
+- Android Gradle Plugin: Minimum 8.6.0 (for Flutter compatibility)
+- Kotlin: Minimum 2.1.0 (for Flutter compatibility) 
 - Java: OpenJDK 21
+- Gradle: 8.7
 
 Update `example/android/settings.gradle`:
 ```gradle
 plugins {
-    id "com.android.application" version "8.2.1" apply false
+    id "com.android.application" version "8.6.0" apply false
     id "org.jetbrains.kotlin.android" version "2.1.0" apply false
 }
 ```
@@ -216,7 +217,7 @@ plugins {
 - Using public token (`pk.xxx`) instead of secret token (`sk.xxx`) for downloads
 
 **Java Compatibility Errors:**
-- AGP version < 8.2.1 with Java 21
+- AGP version < 8.6.0 with current Flutter versions
 - Need to upgrade both AGP and Kotlin versions
 
 **Build Context Issues:**

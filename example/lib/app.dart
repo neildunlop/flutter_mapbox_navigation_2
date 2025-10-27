@@ -82,7 +82,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
   // Static marker state
   bool _markersAdded = false;
   String? _lastTappedMarker;
-  bool _justFinishedFlutterNavigation = false;
+  // bool _justFinishedFlutterNavigation = false; // TODO: Remove if not needed
 
   // SIMPLE TEST: Just one huge marker at Vegas center for debugging
   final List<StaticMarker> _sampleMarkers = [
@@ -258,7 +258,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: marker.customColor?.withOpacity(0.2) ?? Colors.blue.withOpacity(0.2),
+                  color: marker.customColor?.withValues(alpha: 0.2) ?? Colors.blue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -572,20 +572,24 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
           _markersAdded = true;
         });
         
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Static markers added successfully!'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Static markers added successfully!'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text('Error adding markers: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error adding markers: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -600,20 +604,24 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
           _lastTappedMarker = null;
         });
         
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Static markers removed'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Static markers removed'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text('Error removing markers: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error removing markers: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 
@@ -788,7 +796,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                             await _addStaticMarkers();
                             
                             // Set flag to indicate we're using Flutter-styled navigation with native overlays
-                            _justFinishedFlutterNavigation = true;
+                            // _justFinishedFlutterNavigation = true;
                             
                             // Use the new Drop-in UI approach (recommended)
                             await MapBoxNavigation.instance.startFlutterStyledNavigation(
@@ -1041,27 +1049,33 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
         setState(() {
           _markersAdded = true;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Static markers added to embedded view successfully!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Static markers added to embedded view successfully!'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
       } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to add static markers to embedded view.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to add static markers to embedded view.'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text('Error adding markers: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error adding markers: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 }

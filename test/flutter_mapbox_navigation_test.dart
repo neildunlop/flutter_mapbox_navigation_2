@@ -23,6 +23,14 @@ class MockFlutterMapboxNavigationPlatform
   Future<bool?> finishNavigation() => Future.value(true);
 
   @override
+  Future<Map<String, double>?> getMarkerScreenPosition(String markerId) =>
+      Future.value({'x': 100.0, 'y': 200.0});
+
+  @override
+  Future<Map<String, dynamic>?> getMapViewport() =>
+      Future.value({'lat': 37.7749, 'lng': -122.4194, 'zoom': 10.0});
+
+  @override
   Future<double?> getDistanceRemaining() => Future.value(3.5);
 
   @override

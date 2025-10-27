@@ -272,7 +272,9 @@ class MethodChannelFlutterMapboxNavigation
   Future<Map<String, dynamic>?> getMapViewport() async {
     try {
       final result = await methodChannel.invokeMethod('getMapViewport');
-      return result != null ? Map<String, dynamic>.from(result) : null;
+      return result != null 
+          ? Map<String, dynamic>.from(result as Map) 
+          : null;
     } catch (e) {
       log('Error getting map viewport: $e');
       return null;

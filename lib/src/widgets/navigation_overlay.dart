@@ -91,7 +91,7 @@ class _NavigationOverlayState extends State<NavigationOverlay>
     print('_showMarkerOverlay called with arguments: $arguments');
     
     try {
-      final Map<String, dynamic> markerData = Map<String, dynamic>.from(arguments);
+      final Map<String, dynamic> markerData = Map<String, dynamic>.from(arguments as Map);
       print('Parsed marker data: $markerData');
       
       setState(() {
