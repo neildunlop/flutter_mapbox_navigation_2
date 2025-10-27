@@ -5,13 +5,13 @@ import Foundation
     @objc public var showDuringNavigation: Bool
     @objc public var showInFreeDrive: Bool
     @objc public var showOnEmbeddedMap: Bool
-    @objc public var maxDistanceFromRoute: Double?
-    @objc public var maxMarkersToShow: Int?
+    public var maxDistanceFromRoute: Double?
+    public var maxMarkersToShow: Int?
     @objc public var minZoomLevel: Double
     @objc public var maxZoomLevel: Double
-    @objc public var onMarkerTapCallback: String?
+    public var onMarkerTapCallback: String?
     
-    @objc public init(
+    public init(
         enableClustering: Bool = true,
         showDuringNavigation: Bool = true,
         showInFreeDrive: Bool = true,
@@ -60,7 +60,7 @@ import Foundation
         return json
     }
     
-    @objc public static func fromJson(_ json: [String: Any]) -> MarkerConfiguration {
+    public static func fromJson(_ json: [String: Any]) -> MarkerConfiguration {
         let enableClustering = json["enableClustering"] as? Bool ?? true
         let showDuringNavigation = json["showDuringNavigation"] as? Bool ?? true
         let showInFreeDrive = json["showInFreeDrive"] as? Bool ?? true

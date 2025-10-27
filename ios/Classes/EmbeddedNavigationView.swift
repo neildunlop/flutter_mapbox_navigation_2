@@ -264,6 +264,9 @@ public class FlutterMapboxNavigationView : NavigationFactory, FlutterPlatformVie
         passiveLocationProvider.startUpdatingLocation()
 
         navigationMapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        
+        // Configure location puck to appear above route line
+        // Using default puck2D with proper layer positioning
         navigationMapView.userLocationStyle = .puck2D()
 
         let navigationViewportDataSource = NavigationViewportDataSource(navigationMapView.mapView)

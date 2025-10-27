@@ -52,9 +52,13 @@ flutter pub get
 cd example
 flutter run
 
-# iOS specific
+# iOS specific (requires CocoaPods and .netrc setup first)
 cd example/ios
-pod install
+pod install --repo-update
+
+# Run on iOS simulator
+cd example
+flutter run -d "iPhone"
 
 # Android - ensure all gradle.properties files have downloads token
 # See Security Configuration section for complete setup
@@ -71,6 +75,16 @@ java -version
 
 # Check Gradle version compatibility
 ./gradlew --version
+
+# iOS troubleshooting
+# Clean pods if dependencies are corrupted
+cd example/ios && rm -rf Pods Podfile.lock && pod install --repo-update
+
+# Verify CocoaPods installation
+pod --version
+
+# Check .netrc file exists and has correct permissions
+ls -la ~/.netrc
 ```
 
 ### Platform-Specific Commands
@@ -205,9 +219,45 @@ plugins {
 ```
 
 #### iOS Setup
-1. Create `.netrc` file with Mapbox download token
-2. Add `MBXAccessToken` to Info.plist  
-3. Configure location permissions
+
+**Prerequisites:**
+1. **Install CocoaPods** (if not already installed):
+   ```bash
+   brew install cocoapods
+   ```
+
+2. **Configure Mapbox Authentication:**
+   Create `.netrc` file in home directory with download token:
+   ```bash
+   cat > ~/.netrc << EOF
+   machine api.mapbox.com
+   login mapbox
+   password sk.your_secret_token_here
+   EOF
+   chmod 600 ~/.netrc
+   ```
+
+3. **Install iOS Dependencies:**
+   ```bash
+   cd ios
+   pod install --repo-update
+   ```
+
+4. **Configure Info.plist:**
+   - Copy `Info.plist.template` to `Info.plist`
+   - Replace `YOUR_MAPBOX_ACCESS_TOKEN_HERE` with your public API token (`pk.xxx`)
+   - Or use the template and let Flutter generate it during build
+
+**Common iOS Build Issues:**
+
+- **CocoaPods not found**: Install via `brew install cocoapods`
+- **401 authentication errors**: Ensure `.netrc` file has correct secret token with `DOWNLOADS:READ` scope
+- **Swift compilation errors**: Check for @objc compatibility issues with optional types and dictionary parameters
+- **Missing Info.plist**: Ensure `Info.plist` exists with valid `MBXAccessToken`
+- **Version warnings**: Add `version: 1.0.0+1` to `pubspec.yaml`
+
+**Location Permissions:**
+The template already includes required location permissions for background navigation
 
 #### Common Authentication Issues
 

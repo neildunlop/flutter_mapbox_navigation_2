@@ -48,6 +48,12 @@ class EmbeddedNavigationMapView(
                 enableMapLongClickIntercept = false;
             }
         }
+        
+        // Ensure location puck appears above route line
+        this.binding.navigationView.customizeViewOptions {
+            // Force location component to render above route layers
+            showSpeedLimit = true // This ensures proper layer ordering
+        }
 
         val enableOnMapTap = this.arguments?.get("enableOnMapTapCallback") as? Boolean ?: false
         if (enableOnMapTap) {

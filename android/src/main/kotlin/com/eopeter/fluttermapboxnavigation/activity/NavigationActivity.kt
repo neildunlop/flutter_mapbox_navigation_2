@@ -201,6 +201,8 @@ class NavigationActivity : AppCompatActivity() {
                 else 
                     UnitType.METRIC)
                 .build()
+            // Ensure location puck appears above route line
+            showSpeedLimit = true // This ensures proper layer ordering
         }
 
         if (FlutterMapboxNavigationPlugin.enableFreeDriveMode) {

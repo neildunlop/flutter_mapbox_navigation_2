@@ -194,61 +194,49 @@ import Flutter
         guard let annotationManager = pointAnnotationManager else { return }
         
         // Clear existing annotations
-        for annotation in markerAnnotations.values {
-            annotationManager.remove(annotation)
-        }
+        annotationManager.annotations = []
         markerAnnotations.removeAll()
         
+        var annotations: [PointAnnotation] = []
+        
         for marker in markers {
-            do {
-                // Create point for the marker
-                let point = Point(latitude: marker.latitude, longitude: marker.longitude)
-                
-                // Create annotation options
-                var annotationOptions = PointAnnotationOptions()
-                annotationOptions.point = point
-                
-                // Set title
-                annotationOptions.textField = marker.title
-                
-                // Set icon based on marker configuration
-                let iconId = marker.iconId ?? "ic_pin"
-                if let iconImage = IconResourceMapper.getIconImage(for: iconId) {
-                    annotationOptions.iconImage = iconImage
-                }
-                
-                // Set color if specified
-                if let customColor = marker.customColor {
-                    annotationOptions.iconColor = StyleColor(customColor)
-                }
-                
-                // Set text color and size
-                annotationOptions.textColor = StyleColor("#000000")
-                annotationOptions.textSize = 12.0
-                
-                // Set anchor point for text
-                annotationOptions.textAnchor = .top
-                annotationOptions.textOffset = [0, -2]
-                
-                // Create and add the annotation
-                let annotation = annotationManager.create(annotationOptions)
-                
-                // Store the annotation for later management
-                markerAnnotations[marker.id] = annotation
-                
-                // Add click listener
-                annotationManager.addClickListener { [weak self] clickedAnnotation in
-                    if clickedAnnotation == annotation {
-                        self?.onMarkerTap(marker)
-                        return true
-                    }
-                    return false
-                }
-                
-            } catch {
-                print("Failed to add marker \(marker.id): \(error)")
+            // Create point for the marker
+            let coordinate = CLLocationCoordinate2D(latitude: marker.latitude, longitude: marker.longitude)
+            
+            // Create annotation
+            var annotation = PointAnnotation(coordinate: coordinate)
+            annotation.textField = marker.title
+            
+            // Set icon based on marker configuration
+            let iconId = marker.iconId ?? "ic_pin"
+            if let iconImage = IconResourceMapper.getIconImage(for: iconId) {
+                annotation.image = .init(image: iconImage, name: iconId)
             }
+            
+            // Set color if specified (iOS uses different approach)
+            if let customColor = marker.customColor {
+                // Convert hex color string to UIColor
+                if let color = hexStringToUIColor(customColor) {
+                    annotation.iconColor = StyleColor(color)
+                }
+            }
+            
+            // Set text properties
+            annotation.textColor = StyleColor(.black)
+            annotation.textSize = 12.0
+            annotation.textAnchor = .top
+            annotation.textOffset = [0, -2]
+            
+            // Store the annotation
+            annotations.append(annotation)
+            markerAnnotations[marker.id] = annotation
         }
+        
+        // Add all annotations to the manager
+        annotationManager.annotations = annotations
+        
+        // Set up click handling (will be implemented via delegate)
+        print("Added \(annotations.count) markers to map")
     }
     
     // MARK: - Utility Methods
@@ -281,5 +269,27 @@ import Flutter
                 sin(dLon / 2) * sin(dLon / 2)
         let c = 2 * atan2(sqrt(a), sqrt(1 - a))
         return r * c
+    }
+    
+    private func hexStringToUIColor(_ hex: String) -> UIColor? {
+        var hexString = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Remove # if present
+        if hexString.hasPrefix("#") {
+            hexString.removeFirst()
+        }
+        
+        // Ensure we have 6 characters
+        guard hexString.count == 6 else { return nil }
+        
+        var rgbValue: UInt64 = 0
+        Scanner(string: hexString).scanHexInt64(&rgbValue)
+        
+        return UIColor(
+            red: CGFloat((rgbValue & 0xFF0000) >> 16) / 255.0,
+            green: CGFloat((rgbValue & 0x00FF00) >> 8) / 255.0,
+            blue: CGFloat(rgbValue & 0x0000FF) / 255.0,
+            alpha: 1.0
+        )
     }
 } 

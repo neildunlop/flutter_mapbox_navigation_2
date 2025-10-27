@@ -7,14 +7,14 @@ import MapboxMaps
     @objc public let longitude: Double
     @objc public let title: String
     @objc public let category: String
-    @objc public let description: String?
-    @objc public let iconId: String?
-    @objc public let customColor: String?
+    @objc public let markerDescription: String?
+    public let iconId: String?
+    public let customColor: String?
     @objc public let priority: Int
     @objc public let isVisible: Bool
-    @objc public let metadata: [String: Any]?
+    public let metadata: [String: Any]?
     
-    @objc public init(
+    public init(
         id: String,
         latitude: Double,
         longitude: Double,
@@ -32,7 +32,7 @@ import MapboxMaps
         self.longitude = longitude
         self.title = title
         self.category = category
-        self.description = description
+        self.markerDescription = description
         self.iconId = iconId
         self.customColor = customColor
         self.priority = priority
@@ -53,8 +53,8 @@ import MapboxMaps
             "isVisible": isVisible
         ]
         
-        if let description = description {
-            json["description"] = description
+        if let markerDescription = markerDescription {
+            json["description"] = markerDescription
         }
         
         if let iconId = iconId {
@@ -72,7 +72,7 @@ import MapboxMaps
         return json
     }
     
-    @objc public static func fromJson(_ json: [String: Any]) -> StaticMarker? {
+    public static func fromJson(_ json: [String: Any]) -> StaticMarker? {
         guard let id = json["id"] as? String,
               let latitude = json["latitude"] as? Double,
               let longitude = json["longitude"] as? Double,
@@ -105,7 +105,7 @@ import MapboxMaps
     
     // MARK: - Mapbox Integration
     
-    @objc public func toMapboxPoint() -> Point {
+    public func toMapboxPoint() -> Point {
         return Point(CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
     }
     
@@ -130,12 +130,13 @@ import MapboxMaps
         longitude = try container.decode(Double.self, forKey: .longitude)
         title = try container.decode(String.self, forKey: .title)
         category = try container.decode(String.self, forKey: .category)
-        description = try container.decodeIfPresent(String.self, forKey: .description)
+        markerDescription = try container.decodeIfPresent(String.self, forKey: .description)
         iconId = try container.decodeIfPresent(String.self, forKey: .iconId)
         customColor = try container.decodeIfPresent(String.self, forKey: .customColor)
         priority = try container.decode(Int.self, forKey: .priority)
         isVisible = try container.decode(Bool.self, forKey: .isVisible)
-        metadata = try container.decodeIfPresent([String: Any].self, forKey: .metadata)
+        // Note: Can't decode [String: Any] directly, skipping metadata for Codable
+        metadata = nil
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -145,11 +146,11 @@ import MapboxMaps
         try container.encode(longitude, forKey: .longitude)
         try container.encode(title, forKey: .title)
         try container.encode(category, forKey: .category)
-        try container.encodeIfPresent(description, forKey: .description)
+        try container.encodeIfPresent(markerDescription, forKey: .description)
         try container.encodeIfPresent(iconId, forKey: .iconId)
         try container.encodeIfPresent(customColor, forKey: .customColor)
         try container.encode(priority, forKey: .priority)
         try container.encode(isVisible, forKey: .isVisible)
-        try container.encodeIfPresent(metadata, forKey: .metadata)
+        // Note: Can't encode [String: Any] directly, skipping metadata for Codable
     }
 } 
