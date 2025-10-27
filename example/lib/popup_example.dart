@@ -118,7 +118,7 @@ class _PopupExamplePageState extends State<PopupExamplePage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: marker.customColor?.withValues(alpha: 0.2) ?? Colors.blue.withValues(alpha: 0.2),
+                  color: (marker.customColor ?? Colors.blue).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(

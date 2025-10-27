@@ -24,7 +24,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace 'com.fahad.app'
-    compileSdkVersion flutter.compileSdkVersion
+    compileSdk = 35
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'

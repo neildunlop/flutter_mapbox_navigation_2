@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart';
+import 'popup_example.dart';
 
 void main() {
   runApp(const SampleNavigationApp());
@@ -258,7 +259,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: marker.customColor?.withValues(alpha: 0.2) ?? Colors.blue.withValues(alpha: 0.2),
+                  color: (marker.customColor ?? Colors.blue).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -629,7 +630,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Plugin example app'),
+        title: const Text('Mapbox Navigation Demo'),
       ),
       body: Center(
         child: Column(children: <Widget>[
@@ -677,6 +678,19 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                             foregroundColor: Colors.white,
                           ),
                           child: const Text("Test Popup"),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const PopupExamplePage(),
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.deepOrange,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text("Advanced Popup Demo"),
                         ),
                         ElevatedButton(
                           onPressed: _controller != null && !_markersAdded ? _addMarkersToEmbeddedView : null,
