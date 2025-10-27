@@ -19,9 +19,6 @@ import com.mapbox.navigation.core.MapboxNavigation
  */
 class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
     
-    private var currentMarker: StaticMarker? = null
-    private var popupView: android.widget.TextView? = null
-    
     override fun bind(viewGroup: ViewGroup): MapboxNavigationObserver {
         Log.d("MarkerPopupBinder", "🎯 MarkerPopupBinder.bind() called")
         
@@ -34,10 +31,10 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
                 Log.d("MarkerPopupBinder", "🎯 UIComponent onAttached - setting up marker listener")
                 
                 // Listen for marker tap events from StaticMarkerManager
-                Log.d("MarkerPopupBinder", "📡 Setting marker tap listener")
+                Log.d("MarkerPopupBinder", "📡 Setting marker tap listener to forward to Flutter")
                 StaticMarkerManager.getInstance().setMarkerTapListener { marker ->
-                    Log.d("MarkerPopupBinder", "🎯 MARKER TAP LISTENER CALLED: ${marker.title} - showing popup")
-                    showMarkerPopup(marker)
+                    Log.d("MarkerPopupBinder", "🎯 MARKER TAP LISTENER CALLED: ${marker.title} - forwarding to Flutter")
+                    forwardMarkerTapToFlutter(marker)
                 }
             }
             
@@ -53,100 +50,55 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
     }
     
     private fun setupFlutterView(parent: ViewGroup) {
-        try {
-            Log.d("MarkerPopupBinder", "🎯 Setting up placeholder view for marker popups")
-            Log.d("MarkerPopupBinder", "🎯 Parent ViewGroup: ${parent::class.java.simpleName}, children: ${parent.childCount}")
-            
-            // Create a simple placeholder view to test the ViewBinder structure
-            popupView = android.widget.TextView(activity)
-            popupView!!.text = "🎯 MARKER POPUP READY"
-            popupView!!.visibility = android.view.View.GONE
-            popupView!!.setBackgroundColor(android.graphics.Color.YELLOW)
-            popupView!!.setPadding(32, 32, 32, 32)
-            popupView!!.textSize = 16f
-            popupView!!.setTextColor(android.graphics.Color.BLACK)
-            
-            val layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT
-            )
-            layoutParams.topMargin = 100 // Add some top margin to make it visible
-            
-            parent.addView(popupView, layoutParams)
-            
-            Log.d("MarkerPopupBinder", "✅ Placeholder view added to parent. Parent now has ${parent.childCount} children")
-            Log.d("MarkerPopupBinder", "✅ PopupView created: ${popupView != null}")
-            
-        } catch (e: Exception) {
-            Log.e("MarkerPopupBinder", "❌ Error setting up placeholder view", e)
-            e.printStackTrace()
-        }
+        Log.d("MarkerPopupBinder", "🎯 MarkerPopupBinder setup - will forward marker taps to Flutter")
+        // No native view setup needed since we're forwarding to Flutter
     }
     
     private fun cleanupFlutterView(parent: ViewGroup) {
-        try {
-            popupView?.let { view ->
-                parent.removeView(view)
-            }
-            
-            popupView = null
-            currentMarker = null
-            
-            Log.d("MarkerPopupBinder", "🧹 View cleanup complete")
-            
-        } catch (e: Exception) {
-            Log.e("MarkerPopupBinder", "❌ Error cleaning up view", e)
-        }
+        Log.d("MarkerPopupBinder", "🧹 MarkerPopupBinder cleanup complete")
+        // No cleanup needed since we're not using native views
     }
     
-    private fun showMarkerPopup(marker: StaticMarker) {
+    private fun forwardMarkerTapToFlutter(marker: StaticMarker) {
         try {
-            Log.d("MarkerPopupBinder", "🎯 SHOWING MARKER POPUP for: ${marker.title}")
-            Log.d("MarkerPopupBinder", "🎯 PopupView exists: ${popupView != null}")
+            Log.d("MarkerPopupBinder", "🎯 FORWARDING MARKER TAP TO FLUTTER: ${marker.title}")
             
-            currentMarker = marker
+            // Show immediate native Toast for better UX during full-screen navigation
+            showNativeToast(marker)
             
-            // Show the popup view with marker information
-            popupView?.let { view ->
-                val popupText = "🎯 MARKER TAPPED!\n\n" +
-                               "Title: ${marker.title}\n" +
-                               "Category: ${marker.category}\n" +
-                               "Description: ${marker.description ?: "No description"}"
-                
-                view.text = popupText
-                view.visibility = android.view.View.VISIBLE
-                
-                Log.d("MarkerPopupBinder", "🎯 Popup view visibility set to VISIBLE")
-                Log.d("MarkerPopupBinder", "🎯 Popup view text: $popupText")
-                
-                // Auto-hide after 5 seconds
-                view.postDelayed({
-                    Log.d("MarkerPopupBinder", "🎯 Auto-hiding popup after 5 seconds")
-                    hideMarkerPopup()
-                }, 5000)
-            } ?: run {
-                Log.e("MarkerPopupBinder", "❌ PopupView is null - cannot show popup!")
-            }
+            // Also send the marker tap event to Flutter for consistency
+            StaticMarkerManager.getInstance().onMarkerTapFullScreen(marker)
             
-            Log.d("MarkerPopupBinder", "✅ Marker popup show method completed")
+            Log.d("MarkerPopupBinder", "✅ Marker tap forwarded to Flutter successfully")
             
         } catch (e: Exception) {
-            Log.e("MarkerPopupBinder", "❌ Error showing marker popup", e)
+            Log.e("MarkerPopupBinder", "❌ Error forwarding marker tap to Flutter", e)
             e.printStackTrace()
         }
     }
     
-    fun hideMarkerPopup() {
+    private fun showNativeToast(marker: StaticMarker) {
         try {
-            Log.d("MarkerPopupBinder", "🎯 Hiding marker popup")
+            val message = buildString {
+                append("📍 ${marker.title}")
+                if (!marker.description.isNullOrEmpty()) {
+                    append("\n${marker.description}")
+                }
+                append("\nCategory: ${marker.category}")
+            }
             
-            currentMarker = null
+            // Show Toast notification that appears above navigation UI
+            android.widget.Toast.makeText(
+                activity,
+                message,
+                android.widget.Toast.LENGTH_LONG
+            ).show()
             
-            // Hide the popup view
-            popupView?.visibility = android.view.View.GONE
+            Log.d("MarkerPopupBinder", "🔔 Native Toast shown for: ${marker.title}")
             
         } catch (e: Exception) {
-            Log.e("MarkerPopupBinder", "❌ Error hiding marker popup", e)
+            Log.e("MarkerPopupBinder", "❌ Error showing native toast", e)
         }
     }
+    
 }

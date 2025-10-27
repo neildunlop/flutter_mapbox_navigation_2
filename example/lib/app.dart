@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -35,41 +36,41 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
   String? _platformVersion;
   String? _instruction;
   final _origin = WayPoint(
-      name: "Way Point 1",
-      latitude: 38.9111117447887,
-      longitude: -77.04012393951416,
-      isSilent: true);
+      name: "Google HQ",
+      latitude: 37.4220,
+      longitude: -122.0841,
+      isSilent: false);
   final _stop1 = WayPoint(
-      name: "Way Point 2",
-      latitude: 38.91113678979344,
-      longitude: -77.03847169876099,
+      name: "Computer History Museum",
+      latitude: 37.4143,
+      longitude: -122.0768,
       isSilent: true);
   final _stop2 = WayPoint(
-      name: "Way Point 3",
-      latitude: 38.91040213277608,
-      longitude: -77.03848242759705,
+      name: "Shoreline Amphitheatre",
+      latitude: 37.4267,
+      longitude: -122.0806,
       isSilent: false);
   final _stop3 = WayPoint(
-      name: "Way Point 4",
-      latitude: 38.909650771013034,
-      longitude: -77.03850388526917,
+      name: "LinkedIn HQ",
+      latitude: 37.4249,
+      longitude: -122.0657,
       isSilent: true);
   final _destination = WayPoint(
-      name: "Way Point 5",
-      latitude: 38.90894949285854,
-      longitude: -77.03651905059814,
+      name: "Stanford University",
+      latitude: 37.4275,
+      longitude: -122.1697,
       isSilent: false);
 
   final _home = WayPoint(
-      name: "Home",
-      latitude: 37.77440680146262,
-      longitude: -122.43539772352648,
+      name: "Google HQ (Start)",
+      latitude: 37.4220,
+      longitude: -122.0841,
       isSilent: false);
 
   final _store = WayPoint(
-      name: "Store",
-      latitude: 37.76556957793795,
-      longitude: -122.42409811526268,
+      name: "Downtown Palo Alto",
+      latitude: 37.4419,
+      longitude: -122.1430,
       isSilent: false);
 
   bool _isMultipleStop = false;
@@ -78,6 +79,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
   bool _routeBuilt = false;
   bool _isNavigating = false;
   bool _inFreeDrive = false;
+  bool _isFullScreenNavigation = false; // Track if we're in full-screen vs embedded navigation
   late MapBoxOptions _navigationOption;
   
   // Static marker state
@@ -139,54 +141,57 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
       metadata: {'type': 'test', 'location': 'office'},
     ),
     
-    // WASHINGTON DC MULTI-STOP ROUTE AREA TEST MARKERS
+    // MORE MOUNTAIN VIEW / PALO ALTO AREA MARKERS
     const StaticMarker(
-      id: 'white_house_test',
-      latitude: 38.8977,
-      longitude: -77.0365,
-      title: '⚪ WHITE HOUSE TEST',
-      category: 'police',
-      description: 'Test marker near White House',
-      iconId: MarkerIcons.police,
-      customColor: Colors.purple,
-      priority: 10,
-      metadata: {'type': 'test', 'location': 'government'},
-    ),
-    const StaticMarker(
-      id: 'lincoln_memorial_test',
-      latitude: 38.8893,
-      longitude: -77.0502,
-      title: '🏛️ LINCOLN MEMORIAL',
-      category: 'scenic',
-      description: 'Test marker at Lincoln Memorial',
-      iconId: MarkerIcons.scenic,
-      customColor: Colors.brown,
-      priority: 9,
-      metadata: {'type': 'test', 'location': 'monument'},
-    ),
-    const StaticMarker(
-      id: 'capitol_test',
-      latitude: 38.8899,
-      longitude: -77.0091,
-      title: '🏛️ US CAPITOL',
-      category: 'hospital',
-      description: 'Test marker at US Capitol',
+      id: 'stanford_test',
+      latitude: 37.4275, // Stanford University
+      longitude: -122.1697,
+      title: '🎓 STANFORD UNIVERSITY',
+      category: 'hospital', // Using hospital icon as academic building
+      description: 'Test marker at Stanford University',
       iconId: MarkerIcons.hospital,
-      customColor: Colors.teal,
-      priority: 8,
-      metadata: {'type': 'test', 'location': 'government'},
+      customColor: Colors.red,
+      priority: 9,
+      size: 1.5, // Medium-large size
+      metadata: {'type': 'test', 'location': 'university', 'size': 1.5},
     ),
     const StaticMarker(
-      id: 'washington_monument_test',
-      latitude: 38.8895,
-      longitude: -77.0353,
-      title: '🗼 WASHINGTON MONUMENT',
+      id: 'palo_alto_test',
+      latitude: 37.4419, // Downtown Palo Alto
+      longitude: -122.1430,
+      title: '🏪 DOWNTOWN PALO ALTO',
+      category: 'restaurant',
+      description: 'Test marker in downtown Palo Alto',
+      iconId: MarkerIcons.restaurant,
+      customColor: Colors.orange,
+      priority: 8,
+      metadata: {'type': 'test', 'location': 'downtown'},
+    ),
+    const StaticMarker(
+      id: 'apple_park_test',
+      latitude: 37.3349, // Apple Park, Cupertino
+      longitude: -122.0090,
+      title: '🍎 APPLE PARK',
+      category: 'hotel', // Using hotel icon for office building
+      description: 'Test marker at Apple Park campus',
+      iconId: MarkerIcons.hotel,
+      customColor: Colors.grey,
+      priority: 9,
+      size: 2.0, // Large size for major landmark
+      metadata: {'type': 'test', 'location': 'office', 'size': 2.0},
+    ),
+    const StaticMarker(
+      id: 'san_jose_test',
+      latitude: 37.3382, // Downtown San Jose
+      longitude: -121.8863,
+      title: '🏙️ SAN JOSE DOWNTOWN',
       category: 'petrol_station',
-      description: 'Test marker at Washington Monument',
+      description: 'Test marker in downtown San Jose',
       iconId: MarkerIcons.petrolStation,
       customColor: Colors.cyan,
       priority: 7,
-      metadata: {'type': 'test', 'location': 'monument'},
+      size: 0.8, // Slightly smaller size
+      metadata: {'type': 'test', 'location': 'downtown', 'size': 0.8},
     ),
   ];
 
@@ -209,6 +214,9 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
     // setState to update our non-existent appearance.
     if (!mounted) return;
 
+    // Reduce Mapbox SDK logging (optional)
+    // Note: This might not affect all Mapbox logs as some are at native level
+
     _navigationOption = MapBoxOptions(
       initialLatitude: 37.4220,
       initialLongitude: -122.0841,
@@ -225,7 +233,10 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
       simulateRoute: true,
       language: "en",
     );
-    MapBoxNavigation.instance.registerRouteEventListener(_onEmbeddedRouteEvent);
+    MapBoxNavigation.instance.registerRouteEventListener(_onRouteEvent);
+    
+    // Register full-screen event listener for marker taps during full-screen navigation
+    MapBoxNavigation.instance.registerFullScreenEventListener(_onFullScreenEvent);
     
     // Register static marker tap listener
     MapBoxNavigation.instance.registerStaticMarkerTapListener(_onMarkerTap);
@@ -424,69 +435,91 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
     
     if (!mounted) return;
     
-    // Show Flutter popup for embedded navigation view
-    if (!_isNavigating) {
-      // For embedded navigation, show the Flutter popup overlay
+    // Show Flutter popup overlays for embedded navigation only
+    // Full-screen navigation marker taps are handled by _handleFullScreenMarkerTapEvent
+    // which is triggered by platform-specific event forwarding
+    if (!_isFullScreenNavigation) {
       _showFlutterPopupForMarker(marker);
-    } else {
-      // For full-screen navigation, show SnackBar as fallback
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('📍 ${marker.title}\n${marker.description ?? ''}'),
-          duration: const Duration(seconds: 3),
-          backgroundColor: Colors.blue.shade800,
-          action: SnackBarAction(
-            label: 'Details',
-            textColor: Colors.white,
-            onPressed: () {
-              _showMarkerDetails(marker);
-            },
-          ),
-        ),
-      );
     }
+    // Note: Full-screen navigation marker taps are handled by _handleFullScreenMarkerTapEvent
+    // which is triggered by platform-specific event forwarding (Android: MarkerPopupBinder, iOS: StaticMarkerManager)
+  }
+
+  // Show a persistent notification overlay for full-screen navigation
+  void _showPersistentMarkerNotification(StaticMarker marker) {
+    print('🔔 _showPersistentMarkerNotification called for: ${marker.title}');
+    print('🔔 Context: $context');
+    print('🔔 Mounted: $mounted');
     
-    // Also show a dialog in full-screen mode for better visibility
-    if (_isNavigating) {
-      showDialog(
-        context: context,
-        barrierDismissible: true,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.location_on, color: Colors.blue),
-              SizedBox(width: 8),
-              Expanded(child: Text(marker.title, style: TextStyle(fontSize: 16))),
-            ],
-          ),
-          content: Column(
+    try {
+      // Use a more prominent SnackBar that's harder to miss
+      ScaffoldMessenger.of(context).clearSnackBars(); // Clear any existing ones
+      print('🔔 Cleared existing snackbars');
+      
+      final snackBar = SnackBar(
+        content: Container(
+          padding: const EdgeInsets.all(12),
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Category: ${marker.category}'),
+              Row(
+                children: [
+                  Icon(Icons.location_on, color: Colors.white, size: 24),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      marker.title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               if (marker.description != null) ...[
-                const SizedBox(height: 8),
-                Text(marker.description!),
+                const SizedBox(height: 4),
+                Text(
+                  marker.description!,
+                  style: const TextStyle(fontSize: 14, color: Colors.white),
+                ),
               ],
+              const SizedBox(height: 4),
+              Text(
+                'Category: ${marker.category}',
+                style: const TextStyle(fontSize: 12, color: Colors.white70),
+              ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Close'),
-            ),
-            if (marker.metadata != null && marker.metadata!.isNotEmpty)
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _showMarkerDetails(marker);
-                },
-                child: Text('More Details'),
-              ),
-          ],
-        );
-      });
+        ),
+        backgroundColor: Colors.blue.shade800,
+        duration: const Duration(seconds: 8), // Show longer for full-screen
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        action: SnackBarAction(
+          label: 'Details',
+          textColor: Colors.white,
+          onPressed: () {
+            _showMarkerDetails(marker);
+          },
+        ),
+      );
+      
+      print('🔔 About to show snackbar');
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      print('🔔 SnackBar shown successfully');
+      
+    } catch (e) {
+      print('❌ Error in _showPersistentMarkerNotification: $e');
+      // Fallback - simple notification
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Marker tapped: ${marker.title}'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -738,6 +771,11 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                         ElevatedButton(
                           child: const Text("Start A to B (Metric)"),
                           onPressed: () async {
+                            setState(() {
+                              _isNavigating = true; // Set navigation state immediately
+                              _isFullScreenNavigation = true; // Track full-screen mode
+                            });
+                            
                             var wayPoints = <WayPoint>[];
                             wayPoints.add(_home);
                             wayPoints.add(_store);
@@ -755,6 +793,11 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                         ElevatedButton(
                           child: const Text("Start A to B (Imperial)"),
                           onPressed: () async {
+                            setState(() {
+                              _isNavigating = true; // Set navigation state immediately
+                              _isFullScreenNavigation = true; // Track full-screen mode
+                            });
+                            
                             var wayPoints = <WayPoint>[];
                             wayPoints.add(_home);
                             wayPoints.add(_store);
@@ -773,6 +816,11 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                           child: const Text("Start Multi Stop"),
                           onPressed: () async {
                             _isMultipleStop = true;
+                            setState(() {
+                              _isNavigating = true; // Set navigation state immediately
+                              _isFullScreenNavigation = true; // Track full-screen mode
+                            });
+                            
                             var wayPoints = <WayPoint>[];
                             wayPoints.add(_origin);
                             wayPoints.add(_stop1);
@@ -804,6 +852,11 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                         ElevatedButton(
                           child: const Text("Flutter Full-Screen"),
                           onPressed: () async {
+                            setState(() {
+                              _isNavigating = true; // Set navigation state immediately
+                              _isFullScreenNavigation = true; // Track full-screen mode
+                            });
+                            
                             var wayPoints = <WayPoint>[];
                             wayPoints.add(_home);
                             wayPoints.add(_store);
@@ -830,6 +883,11 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                         ElevatedButton(
                           child: const Text("Free Drive"),
                           onPressed: () async {
+                            setState(() {
+                              _isNavigating = true; // Set navigation state immediately for free drive
+                              _isFullScreenNavigation = true; // Track full-screen mode
+                            });
+                            
                             await MapBoxNavigation.instance.startFreeDrive();
                             // Auto-add markers to free drive view
                             await _addStaticMarkers();
@@ -969,7 +1027,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
               color: Colors.grey,
               child: MapBoxNavigationViewWithPopups(
                   options: _navigationOption,
-                  onRouteEvent: _onEmbeddedRouteEvent,
+                  onRouteEvent: _onRouteEvent,
                   markerConfiguration: MarkerConfiguration(
                     popupBuilder: _buildMarkerPopup,
                     popupDuration: const Duration(seconds: 6),
@@ -1003,7 +1061,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
     );
   }
 
-  Future<void> _onEmbeddedRouteEvent(e) async {
+  Future<void> _onRouteEvent(e) async {
     _distanceRemaining = await MapBoxNavigation.instance.getDistanceRemaining();
     _durationRemaining = await MapBoxNavigation.instance.getDurationRemaining();
 
@@ -1041,12 +1099,96 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
         setState(() {
           _routeBuilt = false;
           _isNavigating = false;
+          _isFullScreenNavigation = false; // Reset full-screen mode tracking
         });
+        break;
+      case MapBoxEvent.marker_tap_fullscreen:
+        // Handle marker tap events from full-screen navigation
+        _handleFullScreenMarkerTapEvent(e);
         break;
       default:
         break;
     }
     setState(() {});
+  }
+
+  void _onFullScreenEvent(FullScreenEvent event) {
+    print('🎯 Full-screen event received: ${event.type}');
+    switch (event.type) {
+      case 'marker_tap':
+        if (event.marker != null) {
+          print('🎯 Full-screen marker tap: ${event.marker!.title}');
+          print('🎯 Using native notification for full-screen navigation');
+          // For full-screen navigation, use native platform notifications since
+          // Flutter ScaffoldMessenger isn't visible during native navigation
+          _showNativeMarkerNotification(event.marker!);
+        } else {
+          print('⚠️ Full-screen marker tap event received but marker is null');
+          // Fallback notification
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Marker tapped in full-screen navigation'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        break;
+      default:
+        print('🎯 Unknown full-screen event type: ${event.type}');
+        break;
+    }
+  }
+
+  void _showNativeMarkerNotification(StaticMarker marker) {
+    // For full-screen navigation, the native platform (Android/iOS) shows
+    // the notification directly. Flutter events are mainly for logging/consistency.
+    print('🔔 Native notification should be shown by platform for: ${marker.title}');
+    print('🔔 Platform (Android: Toast, iOS: Alert) handles the UI during full-screen navigation');
+    
+    // The actual notification is shown by the platform (see MarkerPopupBinder.showNativeToast)
+    // This method exists mainly for consistent logging and potential future enhancements
+  }
+
+  void _handleFullScreenMarkerTapEvent(dynamic eventData) {
+    try {
+      // Parse the marker data from the route event
+      // The data comes as a JSON string from Android
+      final String jsonString = eventData.data as String;
+      final Map<String, dynamic> data = json.decode(jsonString);
+      
+      // Reconstruct the marker from the flattened data
+      final marker = StaticMarker(
+        id: data['marker_id'] as String,
+        latitude: data['marker_latitude'] as double,
+        longitude: data['marker_longitude'] as double,
+        title: data['marker_title'] as String,
+        category: data['marker_category'] as String,
+        description: data['marker_description'] as String?,
+        iconId: data['marker_iconId'] as String?,
+        customColor: data['marker_customColor'] != null 
+            ? Color(data['marker_customColor'] as int) 
+            : null,
+        priority: data['marker_priority'] as int?,
+        size: data['marker_size'] as double?,
+        isVisible: data['marker_isVisible'] as bool? ?? true,
+        metadata: data['marker_metadata'] != null 
+            ? Map<String, dynamic>.from(data['marker_metadata'] as Map)
+            : null,
+      );
+      
+      // Show the persistent notification for this marker
+      _showPersistentMarkerNotification(marker);
+      
+    } catch (e) {
+      debugPrint('Error handling full-screen marker tap: $e');
+      // Fallback - show a generic notification
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Marker tapped in full-screen navigation'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   Future<void> _addMarkersToEmbeddedView() async {

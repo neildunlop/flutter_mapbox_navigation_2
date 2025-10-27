@@ -9,6 +9,7 @@ import Flutter
     private var mapView: MapView?
     private var pointAnnotationManager: PointAnnotationManager?
     private var markerAnnotations: [String: PointAnnotation] = [:]
+    private weak var navigationFactory: NavigationFactory?
     
     // MARK: - Singleton
     
@@ -42,6 +43,10 @@ import Flutter
     
     @objc public func setEventSink(_ eventSink: FlutterEventSink?) {
         self.eventSink = eventSink
+    }
+    
+    @objc public func setNavigationFactory(_ navigationFactory: NavigationFactory?) {
+        self.navigationFactory = navigationFactory
     }
     
     // MARK: - Marker Management
@@ -119,6 +124,46 @@ import Flutter
             eventSink?(markerData)
         } catch {
             print("Error sending marker tap event: \(error)")
+        }
+    }
+    
+    @objc public func onMarkerTapFullScreen(_ marker: StaticMarker) {
+        do {
+            // Create event data for full-screen navigation (iOS)
+            var eventData: [String: Any] = [
+                "type": "marker_tap",
+                "mode": "fullscreen"
+            ]
+            
+            // Add all marker fields with "marker_" prefix to match Android format
+            let markerJson = marker.toJson()
+            for (key, value) in markerJson {
+                eventData["marker_\(key)"] = value
+            }
+            
+            // Send to main navigation event channel
+            sendFullScreenEvent(eventType: "marker_tap_fullscreen", data: eventData)
+            
+            print("🎯 iOS Full-screen marker tapped: \(marker.title)")
+        } catch {
+            print("❌ iOS Failed to handle full-screen marker tap: \(error)")
+        }
+    }
+    
+    private func sendFullScreenEvent(eventType: String, data: [String: Any]) {
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: data, options: [])
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+            
+            // Send via NavigationFactory (same pattern as Android PluginUtilities.sendEvent)
+            if let factory = navigationFactory {
+                factory.sendEvent(eventType: .marker_tap_fullscreen, data: jsonString)
+            } else {
+                print("⚠️ NavigationFactory not set - cannot send full-screen marker event")
+            }
+            
+        } catch {
+            print("❌ iOS Failed to send full-screen event: \(error)")
         }
     }
     
@@ -268,6 +313,26 @@ import Flutter
                                           markerLat: marker.latitude, markerLng: marker.longitude)
             return distance <= maxDistanceKm
         }
+    }
+    
+    @objc public func getMarkerNearPoint(latitude: Double, longitude: Double) -> StaticMarker? {
+        let tapThreshold: Double = 0.01 // ~1km threshold for tap detection - increased tolerance
+        
+        print("🎯 iOS getMarkerNearPoint called with: lat=\(latitude), lon=\(longitude)")
+        print("🎯 iOS Available markers: \(markers.count)")
+        
+        let foundMarker = markers.values.first { marker in
+            let latDiff = abs(marker.latitude - latitude)
+            let lonDiff = abs(marker.longitude - longitude)
+            print("🎯 iOS Checking marker \(marker.title): lat=\(marker.latitude), lon=\(marker.longitude)")
+            print("🎯 iOS Differences: latDiff=\(latDiff), lonDiff=\(lonDiff), threshold=\(tapThreshold)")
+            let isNear = latDiff < tapThreshold && lonDiff < tapThreshold
+            print("🎯 iOS Is near: \(isNear)")
+            return isNear
+        }
+        
+        print("🎯 iOS Found marker: \(foundMarker?.title ?? "none")")
+        return foundMarker
     }
     
     private func calculateDistance(latitude: Double, longitude: Double, markerLat: Double, markerLng: Double) -> Double {

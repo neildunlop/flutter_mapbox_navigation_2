@@ -25,6 +25,9 @@ public class FlutterMapboxNavigationPlugin: NavigationFactory, FlutterPlugin {
     let instance = FlutterMapboxNavigationPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
 
+    // Set up StaticMarkerManager to use this NavigationFactory for sending route events
+    StaticMarkerManager.shared.setNavigationFactory(instance)
+
     eventChannel.setStreamHandler(instance)
     markerEventChannel.setStreamHandler(MarkerEventStreamHandler())
 

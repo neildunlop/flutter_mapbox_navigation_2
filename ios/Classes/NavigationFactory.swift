@@ -205,6 +205,9 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
             self._navigationViewController!.navigationMapView!.localizeLabels()
             self._navigationViewController!.showsReportFeedback = _showReportFeedbackButton
             self._navigationViewController!.showsEndOfRouteFeedback = _showEndOfRouteFeedback
+            
+            // Add marker tap detection for full-screen navigation
+            setupFullScreenMarkerTapDetection()
         }
         let flutterViewController = UIApplication.shared.delegate?.window??.rootViewController as! FlutterViewController
         flutterViewController.present(self._navigationViewController!, animated: true, completion: nil)
@@ -483,5 +486,72 @@ extension NavigationFactory : NavigationViewControllerDelegate {
             _eventSink = nil
             
         }
+    }
+    
+    // MARK: - Full-Screen Marker Tap Detection
+    
+    private func setupFullScreenMarkerTapDetection() {
+        guard let navigationViewController = _navigationViewController,
+              let mapView = navigationViewController.navigationMapView?.mapView else {
+            print("⚠️ Cannot setup marker tap detection - NavigationViewController or MapView not available")
+            return
+        }
+        
+        // Set up StaticMarkerManager to use this map view for full-screen navigation
+        StaticMarkerManager.shared.setMapView(mapView)
+        
+        // Add tap gesture recognizer for marker detection
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleFullScreenMapTap(_:)))
+        tapGesture.numberOfTapsRequired = 1
+        tapGesture.delegate = self
+        mapView.addGestureRecognizer(tapGesture)
+        
+        print("✅ iOS Full-screen marker tap detection set up")
+    }
+    
+    @objc private func handleFullScreenMapTap(_ gesture: UITapGestureRecognizer) {
+        guard let navigationViewController = _navigationViewController,
+              let mapView = navigationViewController.navigationMapView?.mapView else {
+            return
+        }
+        
+        // Convert tap location to map coordinate
+        let tapLocation = gesture.location(in: mapView)
+        let coordinate = mapView.mapboxMap.coordinate(for: tapLocation)
+        
+        print("🎯 iOS Full-screen map tap at: \(coordinate.latitude), \(coordinate.longitude)")
+        
+        // Check if tap is near any marker
+        if let tappedMarker = StaticMarkerManager.shared.getMarkerNearPoint(
+            latitude: coordinate.latitude, 
+            longitude: coordinate.longitude
+        ) {
+            print("🎯 iOS Full-screen marker found: \(tappedMarker.title)")
+            // Forward marker tap to Flutter
+            StaticMarkerManager.shared.onMarkerTapFullScreen(tappedMarker)
+        } else {
+            print("🎯 iOS Full-screen tap - no marker found")
+            // Send regular map tap event
+            let waypoint: [String: Double] = [
+                "latitude": coordinate.latitude,
+                "longitude": coordinate.longitude,
+            ]
+            do {
+                let encodedData = try JSONEncoder().encode(waypoint)
+                if let jsonString = String(data: encodedData, encoding: .utf8) {
+                    sendEvent(eventType: .on_map_tap, data: jsonString)
+                }
+            } catch {
+                print("❌ Failed to encode map tap data: \(error)")
+            }
+        }
+    }
+}
+
+// MARK: - UIGestureRecognizerDelegate for Full-Screen Navigation
+
+extension NavigationFactory: UIGestureRecognizerDelegate {
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
     }
 }
