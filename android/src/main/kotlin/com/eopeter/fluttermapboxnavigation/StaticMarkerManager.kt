@@ -621,20 +621,52 @@ class StaticMarkerManager {
         // First try to match by iconId if available
         marker.iconId?.let { iconId ->
             when (iconId.lowercase()) {
-                "scenic" -> return R.drawable.ic_scenic
+                // General icons
+                "pin" -> return R.drawable.ic_pin
+                "star" -> return R.drawable.ic_star
+                "heart" -> return R.drawable.ic_heart
+                "flag" -> return R.drawable.ic_flag
+                "warning" -> return R.drawable.ic_warning
+                "info" -> return R.drawable.ic_info
+                "question" -> return R.drawable.ic_question
+                
+                // Transportation
                 "petrol_station", "petrol", "gas" -> return R.drawable.ic_petrol_station
-                "restaurant", "food" -> return R.drawable.ic_restaurant
-                "hotel", "accommodation" -> return R.drawable.ic_hotel
+                "charging_station", "charging" -> return R.drawable.ic_charging_station
                 "parking" -> return R.drawable.ic_parking
+                "bus_stop" -> return R.drawable.ic_bus_stop
+                "train_station" -> return R.drawable.ic_train_station
+                "airport" -> return R.drawable.ic_airport
+                "port" -> return R.drawable.ic_port
+                
+                // Food & Services
+                "restaurant", "food" -> return R.drawable.ic_restaurant
+                "cafe" -> return R.drawable.ic_cafe
+                "hotel", "accommodation" -> return R.drawable.ic_hotel
+                "shop" -> return R.drawable.ic_shop
+                "pharmacy" -> return R.drawable.ic_pharmacy
                 "hospital", "medical" -> return R.drawable.ic_hospital
                 "police" -> return R.drawable.ic_police
-                "charging_station", "charging" -> return R.drawable.ic_charging_station
-                "construction" -> return R.drawable.ic_construction
-                "accident" -> return R.drawable.ic_accident
+                "fire_station" -> return R.drawable.ic_fire_station
+                
+                // Scenic & Recreation
+                "scenic" -> return R.drawable.ic_scenic
+                "park" -> return R.drawable.ic_park
+                "beach" -> return R.drawable.ic_beach
+                "mountain" -> return R.drawable.ic_mountain
+                "lake" -> return R.drawable.ic_lake
+                "waterfall" -> return R.drawable.ic_waterfall
+                "viewpoint" -> return R.drawable.ic_viewpoint
+                "hiking" -> return R.drawable.ic_hiking
+                
+                // Safety & Traffic
                 "speed_camera" -> return R.drawable.ic_speed_camera
-                "star" -> return R.drawable.ic_pin // Use pin as fallback for star
-                "flag" -> return R.drawable.ic_pin // Use pin as fallback for flag
-                "pin" -> return R.drawable.ic_pin
+                "accident" -> return R.drawable.ic_accident
+                "construction" -> return R.drawable.ic_construction
+                "traffic_light" -> return R.drawable.ic_traffic_light
+                "speed_bump" -> return R.drawable.ic_speed_bump
+                "school_zone" -> return R.drawable.ic_school_zone
+                
                 else -> {
                     // Unknown iconId, fall through to category matching
                     println("⚠️ Unknown iconId: $iconId, falling back to category matching")
@@ -644,17 +676,43 @@ class StaticMarkerManager {
         
         // Fallback to category matching
         return when (marker.category.lowercase()) {
-            "scenic" -> R.drawable.ic_scenic
+            // Transportation
             "petrol_station", "fuel" -> R.drawable.ic_petrol_station
-            "restaurant", "food" -> R.drawable.ic_restaurant
-            "hotel", "accommodation" -> R.drawable.ic_hotel
+            "charging_station" -> R.drawable.ic_charging_station
             "parking" -> R.drawable.ic_parking
+            "bus_stop" -> R.drawable.ic_bus_stop
+            "train_station" -> R.drawable.ic_train_station
+            "airport" -> R.drawable.ic_airport
+            "port" -> R.drawable.ic_port
+            
+            // Food & Services
+            "restaurant", "food" -> R.drawable.ic_restaurant
+            "cafe" -> R.drawable.ic_cafe
+            "hotel", "accommodation" -> R.drawable.ic_hotel
+            "shop" -> R.drawable.ic_shop
+            "pharmacy" -> R.drawable.ic_pharmacy
             "hospital", "medical" -> R.drawable.ic_hospital
             "police", "safety" -> R.drawable.ic_police
-            "charging_station" -> R.drawable.ic_charging_station
-            "construction" -> R.drawable.ic_construction
-            "accident" -> R.drawable.ic_accident
+            "fire_station" -> R.drawable.ic_fire_station
+            
+            // Scenic & Recreation
+            "scenic" -> R.drawable.ic_scenic
+            "park" -> R.drawable.ic_park
+            "beach" -> R.drawable.ic_beach
+            "mountain" -> R.drawable.ic_mountain
+            "lake" -> R.drawable.ic_lake
+            "waterfall" -> R.drawable.ic_waterfall
+            "viewpoint" -> R.drawable.ic_viewpoint
+            "hiking" -> R.drawable.ic_hiking
+            
+            // Safety & Traffic
             "speed_camera" -> R.drawable.ic_speed_camera
+            "accident" -> R.drawable.ic_accident
+            "construction" -> R.drawable.ic_construction
+            "traffic_light" -> R.drawable.ic_traffic_light
+            "speed_bump" -> R.drawable.ic_speed_bump
+            "school_zone" -> R.drawable.ic_school_zone
+            
             else -> R.drawable.ic_pin // Default pin icon
         }
     }
