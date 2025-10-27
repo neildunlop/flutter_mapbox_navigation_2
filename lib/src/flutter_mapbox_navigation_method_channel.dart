@@ -25,8 +25,8 @@ class MethodChannelFlutterMapboxNavigation
   @visibleForTesting
   final markerEventChannel = const EventChannel('flutter_mapbox_navigation/marker_events');
 
-  late StreamSubscription<RouteEvent> _routeEventSubscription;
-  late StreamSubscription<StaticMarker> _markerEventSubscription;
+  StreamSubscription<RouteEvent>? _routeEventSubscription;
+  StreamSubscription<StaticMarker>? _markerEventSubscription;
   ValueSetter<RouteEvent>? _onRouteEvent;
   ValueSetter<StaticMarker>? _onMarkerTap;
   ValueSetter<FullScreenEvent>? _onFullScreenEvent;
@@ -242,11 +242,44 @@ class MethodChannelFlutterMapboxNavigation
   }
 
   @override
-  Future<dynamic> registerStaticMarkerTapListener(
+  Future<void> registerStaticMarkerTapListener(
     ValueSetter<StaticMarker> listener,
   ) async {
-    _onMarkerTap = listener;
-    _markerEventSubscription = markerEventsListener!.listen(_onMarkerTapData);
+    try {
+      _onMarkerTap = listener;
+      
+      // Cancel any existing subscription to prevent memory leaks
+      await _markerEventSubscription?.cancel();
+      
+      // Register the listener with timeout and error handling
+      _markerEventSubscription = markerEventsListener!
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: (sink) {
+              log('Marker events listener timed out');
+              sink.addError(
+                PlatformException(
+                  code: 'MARKER_EVENTS_TIMEOUT',
+                  message: 'Marker events stream timed out after 10 seconds',
+                ),
+              );
+            },
+          )
+          .listen(
+            _onMarkerTapData,
+            onError: (error) => _handleMarkerEventError(error),
+            cancelOnError: false, // Keep listening even if individual events fail
+          );
+      
+      log('Static marker tap listener registered successfully');
+    } catch (e) {
+      log('Failed to register static marker tap listener: $e');
+      throw PlatformException(
+        code: 'MARKER_LISTENER_REGISTRATION_FAILED',
+        message: 'Failed to register marker tap listener: $e',
+        details: e.toString(),
+      );
+    }
   }
   
   @override
@@ -322,7 +355,7 @@ class MethodChannelFlutterMapboxNavigation
     if (_onRouteEvent != null) _onRouteEvent?.call(event);
     switch (event.eventType) {
       case MapBoxEvent.navigation_finished:
-        _routeEventSubscription.cancel();
+        _routeEventSubscription?.cancel();
         break;
       // ignore: no_default_cases
       default:
@@ -331,7 +364,45 @@ class MethodChannelFlutterMapboxNavigation
   }
 
   void _onMarkerTapData(StaticMarker marker) {
-    if (_onMarkerTap != null) _onMarkerTap?.call(marker);
+    try {
+      if (_onMarkerTap != null) _onMarkerTap?.call(marker);
+    } catch (e) {
+      log('Error handling marker tap data: $e');
+      _handleMarkerEventError(e);
+    }
+  }
+
+  void _handleMarkerEventError(dynamic error) {
+    log('Marker event error: $error');
+    
+    if (error is PlatformException) {
+      switch (error.code) {
+        case 'MARKER_EVENTS_TIMEOUT':
+          log('Marker events stream timed out - attempting to reconnect');
+          _attemptMarkerListenerReconnection();
+          break;
+        case 'MARKER_NOT_FOUND':
+          log('Marker not found: ${error.message}');
+          break;
+        default:
+          log('Unknown platform exception in marker events: ${error.message}');
+      }
+    } else {
+      log('Unexpected marker event error: $error');
+    }
+  }
+
+  void _attemptMarkerListenerReconnection() {
+    if (_onMarkerTap != null) {
+      log('Attempting to reconnect marker listener');
+      Future.delayed(const Duration(seconds: 2), () {
+        try {
+          registerStaticMarkerTapListener(_onMarkerTap!);
+        } catch (e) {
+          log('Failed to reconnect marker listener: $e');
+        }
+      });
+    }
   }
 
   RouteEvent _parseRouteEvent(String jsonString) {

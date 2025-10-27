@@ -167,7 +167,7 @@ abstract class FlutterMapboxNavigationPlatform extends PlatformInterface {
   }
 
   /// Event listener for static marker tap events
-  Future<dynamic> registerStaticMarkerTapListener(
+  Future<void> registerStaticMarkerTapListener(
     ValueSetter<StaticMarker> listener,
   ) async {
     throw UnimplementedError('registerStaticMarkerTapListener() has not been implemented.');

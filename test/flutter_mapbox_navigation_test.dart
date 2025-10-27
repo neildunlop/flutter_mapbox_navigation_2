@@ -31,6 +31,13 @@ class MockFlutterMapboxNavigationPlatform
       Future.value({'lat': 37.7749, 'lng': -122.4194, 'zoom': 10.0});
 
   @override
+  Future<void> registerStaticMarkerTapListener(
+    ValueSetter<StaticMarker> listener,
+  ) async {
+    // Mock implementation - store listener for testing
+  }
+
+  @override
   Future<double?> getDistanceRemaining() => Future.value(3.5);
 
   @override
@@ -74,11 +81,6 @@ class MockFlutterMapboxNavigationPlatform
   Future<List<StaticMarker>?> getStaticMarkers() =>
       Future.value([]);
 
-  @override
-  Future<dynamic> registerStaticMarkerTapListener(
-    ValueSetter<StaticMarker> listener,
-  ) =>
-      Future.value();
       
   @override
   Future<dynamic> registerFullScreenEventListener(
