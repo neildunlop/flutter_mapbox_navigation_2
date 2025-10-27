@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Project Overview
+
+This is `flutter_mapbox_navigation`, a Flutter plugin providing turn-by-turn navigation using the Mapbox SDK. The plugin offers both full-screen and embedded navigation views with comprehensive features including waypoint management, static markers, voice instructions, and multi-stop routing.
+
 ## Common Development Commands
 
 ### Testing and Analysis
@@ -22,6 +26,9 @@ flutter test test/unit/waypoint_test.dart
 
 # Run tests with coverage
 flutter test --coverage
+
+# Generate HTML coverage report (requires lcov)
+genhtml coverage/lcov.info -o coverage/html
 
 # Clean project
 flutter clean
@@ -75,6 +82,12 @@ pod install --repo-update
 # Android - Build debug APK
 cd example
 flutter build apk --debug
+
+# iOS: Clean pods
+cd example/ios && rm -rf Pods Podfile.lock && pod install
+
+# Validate iOS podspec
+pod lib lint flutter_mapbox_navigation.podspec
 ```
 
 ## Architecture Overview
@@ -231,3 +244,35 @@ The project has comprehensive test coverage across:
 3. **Error Handling**: Provide meaningful error messages through platform channels
 4. **Code Style**: Follow existing patterns - Kotlin for Android, Swift for iOS
 5. **Documentation**: Update README.md and relevant docs/ files when adding features
+
+## New Features (From Recent Merge)
+
+### Full-Screen Navigation Optimizations
+- Enhanced navigation activity with improved UI components
+- Custom popup system for marker interactions
+- Platform view integration for better performance
+- Navigation overlay system for Flutter widgets
+
+### Marker Popup System
+- Interactive marker popups with custom content
+- Coordinate conversion utilities
+- Marker popup manager for centralized control
+- Rich metadata display for static markers
+
+### Navigation Overlay Architecture
+- Full-screen overlay widgets
+- Navigation wrapper components
+- Enhanced event handling for fullscreen navigation
+- Platform view factory for native integration
+
+## Branch Strategy
+- **Main branch**: `master`
+- Feature branches should be created from `master`
+- Current merge includes full-screen optimization features
+
+## Documentation
+Comprehensive documentation available in `docs/` directory including:
+- Architecture overview
+- Testing strategy  
+- Feature comparisons
+- Popup usage guide (new)

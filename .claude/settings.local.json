@@ -10,6 +10,9 @@
       "Bash(flutter analyze:*)",
       "Bash(flutter:*)",
       "Bash(find:*)",
+      "Bash(git push:*)",
+      "Bash(gradle build)"
+      "Bash(find:*)",
       "Bash(cat:*)",
       "Bash(echo $PATH)",
       "Bash(sed:*)",

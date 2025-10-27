@@ -27,8 +27,9 @@ class MethodChannelFlutterMapboxNavigation
 
   late StreamSubscription<RouteEvent> _routeEventSubscription;
   late StreamSubscription<StaticMarker> _markerEventSubscription;
-  late ValueSetter<RouteEvent>? _onRouteEvent;
-  late ValueSetter<StaticMarker>? _onMarkerTap;
+  ValueSetter<RouteEvent>? _onRouteEvent;
+  ValueSetter<StaticMarker>? _onMarkerTap;
+  ValueSetter<FullScreenEvent>? _onFullScreenEvent;
 
   @override
   Future<String?> getPlatformVersion() async {
@@ -141,6 +142,14 @@ class MethodChannelFlutterMapboxNavigation
     _onRouteEvent = listener;
   }
 
+  /// Register a callback for full-screen navigation events
+  @override
+  Future<dynamic> registerFullScreenEventListener(
+    ValueSetter<FullScreenEvent> listener,
+  ) async {
+    _onFullScreenEvent = listener;
+  }
+
   // MARK: Static Marker Methods
 
   @override
@@ -239,6 +248,59 @@ class MethodChannelFlutterMapboxNavigation
     _onMarkerTap = listener;
     _markerEventSubscription = markerEventsListener!.listen(_onMarkerTapData);
   }
+  
+  @override
+  Future<Map<String, double>?> getMarkerScreenPosition(String markerId) async {
+    try {
+      final result = await methodChannel.invokeMethod('getMarkerScreenPosition', {
+        'markerId': markerId,
+      });
+      
+      if (result == null) return null;
+      
+      return {
+        'x': (result['x'] as num).toDouble(),
+        'y': (result['y'] as num).toDouble(),
+      };
+    } catch (e) {
+      log('Error getting marker screen position: $e');
+      return null;
+    }
+  }
+  
+  @override
+  Future<Map<String, dynamic>?> getMapViewport() async {
+    try {
+      final result = await methodChannel.invokeMethod('getMapViewport');
+      return result != null ? Map<String, dynamic>.from(result) : null;
+    } catch (e) {
+      log('Error getting map viewport: $e');
+      return null;
+    }
+  }
+
+  /// Start Flutter-styled Drop-in Navigation (new approach)
+  Future<bool?> startFlutterStyledNavigation(
+    List<WayPoint> wayPoints,
+    MapBoxOptions options, {
+    bool showDebugOverlay = false,
+  }) async {
+    assert(wayPoints.length > 1, 'Error: WayPoints must be at least 2');
+
+    final pointList = _getPointListFromWayPoints(wayPoints);
+    var i = 0;
+    final wayPointMap = {for (var e in pointList) i++: e};
+
+    final args = options.toMap();
+    args['wayPoints'] = wayPointMap;
+    args['showDebugOverlay'] = showDebugOverlay;
+
+    _routeEventSubscription = routeEventsListener!.listen(_onProgressData);
+    final result = await methodChannel.invokeMethod('startFlutterNavigation', args);
+    if (result is bool) return result;
+    log(result.toString());
+    return false;
+  }
 
   /// Events Handling
   Stream<RouteEvent>? get routeEventsListener {
@@ -273,17 +335,51 @@ class MethodChannelFlutterMapboxNavigation
   RouteEvent _parseRouteEvent(String jsonString) {
     RouteEvent event;
     final map = json.decode(jsonString);
-    final progressEvent =
-        RouteProgressEvent.fromJson(map as Map<String, dynamic>);
-    if (progressEvent.isProgressEvent!) {
+    
+    // Check if this is a full-screen event by looking at eventType
+    if (map is Map<String, dynamic> && 
+        (map['eventType'] == 'marker_tap_fullscreen' || map['eventType'] == 'map_tap_fullscreen')) {
+      // The data field is now a JSON object, not a string
+      final Map<String, dynamic> dataMap = Map<String, dynamic>.from(map['data'] as Map);
+      final String dataString = json.encode(dataMap);
+      _handleFullScreenEvent(dataString);
+      
+      // Create RouteEvent for backward compatibility
+      final eventType = map['eventType'] == 'marker_tap_fullscreen' 
+          ? MapBoxEvent.marker_tap_fullscreen 
+          : MapBoxEvent.map_tap_fullscreen;
+      
       event = RouteEvent(
-        eventType: MapBoxEvent.progress_change,
-        data: progressEvent,
+        eventType: eventType,
+        data: dataString,
       );
     } else {
-      event = RouteEvent.fromJson(map);
+      // Handle regular route events
+      final progressEvent =
+          RouteProgressEvent.fromJson(map as Map<String, dynamic>);
+      if (progressEvent.isProgressEvent!) {
+        event = RouteEvent(
+          eventType: MapBoxEvent.progress_change,
+          data: progressEvent,
+        );
+      } else {
+        event = RouteEvent.fromJson(map);
+      }
     }
     return event;
+  }
+  
+  void _handleFullScreenEvent(String jsonString) {
+    try {
+      final fullScreenEvent = FullScreenEvent.fromJson(jsonString);
+      if (_onFullScreenEvent != null) {
+        _onFullScreenEvent!(fullScreenEvent);
+      } else {
+        log('Full-screen event listener not registered, ignoring event');
+      }
+    } catch (e) {
+      log('Failed to parse full-screen event: $e');
+    }
   }
 
   StaticMarker _parseMarkerEvent(Map<String, dynamic> markerData) {

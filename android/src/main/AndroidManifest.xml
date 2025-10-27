@@ -13,6 +13,11 @@
             android:theme="@style/AppTheme"
             tools:replace="android:theme" />
             
+        <activity 
+            android:name="com.eopeter.fluttermapboxnavigation.activity.FlutterStyledNavigationActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme" />
+            
         <receiver
             android:name="com.eopeter.fluttermapboxnavigation.receivers.NavigationReceiver"
             android:exported="false"

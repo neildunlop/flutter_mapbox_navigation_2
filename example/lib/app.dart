@@ -82,6 +82,7 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
   // Static marker state
   bool _markersAdded = false;
   String? _lastTappedMarker;
+  bool _justFinishedFlutterNavigation = false;
 
   // SIMPLE TEST: Just one huge marker at Vegas center for debugging
   final List<StaticMarker> _sampleMarkers = [
@@ -239,32 +240,214 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
     });
   }
 
-  // Handle static marker taps
+  // Build custom popup for markers
+  Widget _buildMarkerPopup(StaticMarker marker, BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(
+        maxWidth: 280,
+        maxHeight: 200, // Limit height to prevent overflow
+      ),
+      child: SingleChildScrollView( // Make content scrollable if too tall
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+          // Header with icon and title
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: marker.customColor?.withOpacity(0.2) ?? Colors.blue.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _getIconForCategory(marker.category),
+                  color: marker.customColor ?? Colors.blue,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      marker.title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      marker.category.replaceAll('_', ' ').toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: marker.customColor ?? Colors.blue,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          if (marker.description != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              marker.description!,
+              style: const TextStyle(fontSize: 14),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          
+          // Show some metadata if available (condensed)
+          if (marker.metadata?.isNotEmpty == true) ...[
+            const SizedBox(height: 6),
+            ...marker.metadata!.entries.take(1).map((entry) => // Show only 1 to save space
+              Text(
+                '${entry.key}: ${entry.value}',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+          
+          const SizedBox(height: 8),
+          
+          // Action buttons (compact)
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _navigateToMarker(marker),
+                  icon: const Icon(Icons.directions, size: 14),
+                  label: const Text('Navigate', style: TextStyle(fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: marker.customColor ?? Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              OutlinedButton.icon(
+                onPressed: () => _showMarkerDetails(marker),
+                icon: const Icon(Icons.info_outline, size: 14),
+                label: const Text('Details', style: TextStyle(fontSize: 12)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+    );
+  }
+
+  IconData _getIconForCategory(String category) {
+    switch (category) {
+      case 'restaurant':
+        return Icons.restaurant;
+      case 'petrol_station':
+        return Icons.local_gas_station;
+      case 'hotel':
+        return Icons.hotel;
+      case 'hospital':
+        return Icons.local_hospital;
+      case 'scenic':
+        return Icons.landscape;
+      default:
+        return Icons.place;
+    }
+  }
+
+  void _navigateToMarker(StaticMarker marker) {
+    setState(() {
+      _lastTappedMarker = 'Navigate to: ${marker.title}';
+    });
+    
+    // Hide the popup
+    MarkerPopupManager().hidePopup();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Navigation to ${marker.title} would start here'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // Test popup functionality
+  void _testPopup() {
+    if (_sampleMarkers.isNotEmpty) {
+      final marker = _sampleMarkers.first;
+      
+      setState(() {
+        _lastTappedMarker = 'Test popup: ${marker.title}';
+      });
+      
+      // Show popup manually for testing
+      _showFlutterPopupForMarker(marker);
+    }
+  }
+
+  // Show Flutter popup for a marker (with fallback positioning)
+  void _showFlutterPopupForMarker(StaticMarker marker) {
+    // For now, just use a fixed position since platform implementation isn't ready
+    // TODO: Implement getMarkerScreenPosition in Android/iOS platform code
+    const screenPosition = Offset(200, 150);
+    
+    // Show the Flutter popup overlay
+    MarkerPopupManager().showPopupForMarker(
+      marker,
+      screenPosition: screenPosition,
+    );
+  }
+
+  // Handle static marker taps from platform (when user clicks markers on map)
   void _onMarkerTap(StaticMarker marker) {
     setState(() {
       _lastTappedMarker = '${marker.title} (${marker.category})';
     });
     
-    // Show both SnackBar and Dialog for better visibility during navigation
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('📍 ${marker.title}\n${marker.description ?? ''}'),
-        duration: const Duration(seconds: 4),
-        backgroundColor: Colors.blue.shade800,
-        action: SnackBarAction(
-          label: 'Details',
-          textColor: Colors.white,
-          onPressed: () {
-            _showMarkerDetails(marker);
-          },
-        ),
-      ),
-    );
+    if (!mounted) return;
     
-    // Also show a brief overlay dialog for immediate visibility
-    showDialog(
-      context: context,
-      barrierDismissible: true,
+    // Show Flutter popup for embedded navigation view
+    if (!_isNavigating) {
+      // For embedded navigation, show the Flutter popup overlay
+      _showFlutterPopupForMarker(marker);
+    } else {
+      // For full-screen navigation, show SnackBar as fallback
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('📍 ${marker.title}\n${marker.description ?? ''}'),
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.blue.shade800,
+          action: SnackBarAction(
+            label: 'Details',
+            textColor: Colors.white,
+            onPressed: () {
+              _showMarkerDetails(marker);
+            },
+          ),
+        ),
+      );
+    }
+    
+    // Also show a dialog in full-screen mode for better visibility
+    if (_isNavigating) {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Row(
@@ -300,8 +483,8 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
               ),
           ],
         );
-      },
-    );
+      });
+    }
   }
 
   // Show detailed marker information
@@ -376,6 +559,11 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
           maxDistanceFromRoute: 10.0, // 10km from route
           enableClustering: true,
           onMarkerTap: _onMarkerTap,
+          // Enable Flutter popup overlays
+          popupBuilder: _buildMarkerPopup,
+          popupDuration: const Duration(seconds: 6),
+          popupOffset: const Offset(0, -80),
+          hidePopupOnTapOutside: true,
         ),
       );
       
@@ -473,6 +661,14 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                         ElevatedButton(
                           onPressed: _markersAdded ? _removeStaticMarkers : null,
                           child: const Text("Remove Markers"),
+                        ),
+                        ElevatedButton(
+                          onPressed: _markersAdded ? _testPopup : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text("Test Popup"),
                         ),
                         ElevatedButton(
                           onPressed: _controller != null && !_markersAdded ? _addMarkersToEmbeddedView : null,
@@ -579,6 +775,32 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
                                 isSilent: false);
                             MapBoxNavigation.instance
                                 .addWayPoints(wayPoints: [stop]);
+                          },
+                        ),
+                        ElevatedButton(
+                          child: const Text("Flutter Full-Screen"),
+                          onPressed: () async {
+                            var wayPoints = <WayPoint>[];
+                            wayPoints.add(_home);
+                            wayPoints.add(_store);
+                            
+                            // Add markers before starting navigation
+                            await _addStaticMarkers();
+                            
+                            // Set flag to indicate we're using Flutter-styled navigation with native overlays
+                            _justFinishedFlutterNavigation = true;
+                            
+                            // Use the new Drop-in UI approach (recommended)
+                            await MapBoxNavigation.instance.startFlutterStyledNavigation(
+                              wayPoints: wayPoints,
+                              options: MapBoxOptions(
+                                simulateRoute: true,
+                                voiceInstructionsEnabled: true,
+                                bannerInstructionsEnabled: true,
+                                units: VoiceUnits.metric,
+                              ),
+                              showDebugOverlay: true,
+                            );
                           },
                         ),
                         ElevatedButton(
@@ -721,9 +943,24 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
             height: 300,
             child: Container(
               color: Colors.grey,
-              child: MapBoxNavigationView(
+              child: MapBoxNavigationViewWithPopups(
                   options: _navigationOption,
                   onRouteEvent: _onEmbeddedRouteEvent,
+                  markerConfiguration: MarkerConfiguration(
+                    popupBuilder: _buildMarkerPopup,
+                    popupDuration: const Duration(seconds: 6),
+                    popupOffset: const Offset(0, -80),
+                    hidePopupOnTapOutside: true,
+                    onMarkerTap: _onMarkerTap,
+                    enableClustering: true,
+                    maxDistanceFromRoute: 10.0,
+                  ),
+                  initialViewport: MapViewport(
+                    center: LatLng(_navigationOption.initialLatitude!, _navigationOption.initialLongitude!),
+                    zoomLevel: _navigationOption.zoom!,
+                    size: const Size(400, 300), // Will be updated by LayoutBuilder
+                  ),
+                  enableCoordinateConversion: true,
                   onCreated:
                       (MapBoxNavigationViewController controller) async {
                     _controller = controller;
@@ -790,12 +1027,13 @@ class _SampleNavigationHomeState extends State<SampleNavigationHome> {
 
   Future<void> _addMarkersToEmbeddedView() async {
     try {
+      // Use a simpler configuration since MapBoxNavigationViewWithPopups handles popups
       final success = await MapBoxNavigation.instance.addStaticMarkers(
         markers: _sampleMarkers,
         configuration: MarkerConfiguration(
-          maxDistanceFromRoute: 10.0, // 10km from route
+          maxDistanceFromRoute: 10.0,
           enableClustering: true,
-          onMarkerTap: _onMarkerTap,
+          onMarkerTap: _onMarkerTap, // This will trigger our Flutter popup logic
         ),
       );
 

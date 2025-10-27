@@ -1,6 +1,7 @@
 export 'event_data.dart';
 export 'events.dart';
 export 'feedback.dart';
+export 'fullscreen_event.dart';
 export 'marker_configuration.dart';
 export 'marker_icons.dart';
 export 'navmode.dart';
