@@ -84,9 +84,14 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
     }
 
     private fun showMarkerInfo(marker: StaticMarker) {
-        // Get the root FrameLayout
-        val rootView = activity.findViewById<FrameLayout>(android.R.id.content)
-            ?: activity.window.decorView.findViewById<ViewGroup>(android.R.id.content)
+        // Get the root FrameLayout - try multiple approaches
+        var rootView: ViewGroup? = activity.findViewById<FrameLayout>(android.R.id.content)
+        if (rootView == null) {
+            rootView = activity.window.decorView.findViewById<ViewGroup>(android.R.id.content)
+        }
+        if (rootView == null) {
+            rootView = activity.window.decorView as? ViewGroup
+        }
 
         if (rootView == null) {
             Log.e("MarkerPopupOverlay", "Could not find root view")
@@ -111,7 +116,12 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
         }
 
         // Add to root view
-        rootView.addView(markerInfoCard, layoutParams)
+        try {
+            rootView.addView(markerInfoCard, layoutParams)
+        } catch (e: Exception) {
+            Log.e("MarkerPopupOverlay", "Failed to add card: ${e.message}")
+            return
+        }
 
         // Animate in
         markerInfoCard?.let { card ->
@@ -126,7 +136,6 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
         }
 
         isVisible = true
-        Log.d("MarkerPopupOverlay", "Showing marker info for: ${marker.title}")
     }
 
     private fun hideMarkerInfo() {
@@ -171,20 +180,22 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
                 gravity = Gravity.CENTER_VERTICAL
             }
 
-            // Icon circle - use theme category color
+            // Icon circle - use marker's own color method for consistency with map markers
+            val iconContainerSize = dpToPx(40)  // Match the trip progress panel icon size
             val iconContainer = FrameLayout(context).apply {
-                val size = theme.iconSize.toInt()
-                layoutParams = LinearLayout.LayoutParams(size, size)
-                background = createCircleDrawable(getMarkerColor(marker))
+                layoutParams = LinearLayout.LayoutParams(iconContainerSize, iconContainerSize)
+                background = createCircleDrawable(marker.getMarkerColor())
             }
 
             val iconView = ImageView(context).apply {
-                val iconSize = dpToPx(22)
-                layoutParams = FrameLayout.LayoutParams(iconSize, iconSize).apply {
+                val innerIconSize = dpToPx(24)  // Match the trip progress panel inner icon size
+                layoutParams = FrameLayout.LayoutParams(innerIconSize, innerIconSize).apply {
                     gravity = Gravity.CENTER
                 }
-                setImageResource(getMarkerIconResource(marker))
-                setColorFilter(Color.WHITE)
+                // Use StaticMarkerManager's icon mapping for consistency with map markers
+                setImageResource(StaticMarkerManager.getInstance().getDrawableIdForMarker(marker))
+                // Use SRC_IN mode to properly tint the icon white
+                setColorFilter(Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN)
             }
             iconContainer.addView(iconView)
             headerLayout.addView(iconContainer)
@@ -211,12 +222,12 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
             }
             titleContainer.addView(titleView)
 
-            // Category - use marker category color
+            // Category - use marker's own color for consistency
             if (marker.category.isNotEmpty()) {
                 val categoryView = TextView(context).apply {
                     text = formatCategory(marker.category)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                    setTextColor(getMarkerColor(marker))
+                    setTextColor(marker.getMarkerColor())
                     setPadding(0, dpToPx(2), 0, 0)
                 }
                 titleContainer.addView(categoryView)
@@ -287,32 +298,6 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
         return GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(color)
-        }
-    }
-
-    private fun getMarkerColor(marker: StaticMarker): Int {
-        // Use custom color if provided
-        marker.customColor?.let { return it }
-
-        // Use theme category color if defined
-        return theme.getCategoryColor(marker.category)
-    }
-
-    private fun getMarkerIconResource(marker: StaticMarker): Int {
-        val iconId = marker.iconId?.lowercase() ?: marker.category.lowercase()
-
-        return when (iconId) {
-            "flag", "checkpoint" -> R.drawable.ic_flag
-            "pin", "waypoint" -> R.drawable.ic_pin
-            "scenic" -> R.drawable.ic_scenic
-            "petrol_station", "petrol", "gas", "fuel" -> R.drawable.ic_petrol_station
-            "restaurant", "food" -> R.drawable.ic_restaurant
-            "hotel", "accommodation" -> R.drawable.ic_hotel
-            "parking" -> R.drawable.ic_parking
-            "hospital", "medical" -> R.drawable.ic_hospital
-            "police" -> R.drawable.ic_police
-            "charging_station", "charging" -> R.drawable.ic_charging_station
-            else -> R.drawable.ic_pin
         }
     }
 

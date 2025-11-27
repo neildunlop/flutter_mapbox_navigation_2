@@ -135,10 +135,10 @@ data class TripProgressTheme(
     companion object {
         /**
          * Default category colors aligned with app's design system.
-         * Primary: #2E6578 (teal), Tertiary: #5D5D70 (muted purple-gray)
+         * Primary: #2E6578 (teal), Checkpoint: #1565C0 (dark blue)
          */
         val defaultCategoryColors = mapOf(
-            "checkpoint" to Color.parseColor("#5D5D70"),     // Tertiary - muted purple-gray (app tertiary)
+            "checkpoint" to Color.parseColor("#1565C0"),     // Dark blue (Material Blue 800)
             "waypoint" to Color.parseColor("#2E6578"),       // Primary teal (app primary)
             "poi" to Color.parseColor("#4CAF50"),            // Green
             "scenic" to Color.parseColor("#8BC34A"),         // Light Green

@@ -73,11 +73,11 @@ data class StaticMarker(
     /**
      * Gets the default color for the marker category.
      * Colors aligned with app's design system:
-     * Primary: #2E6578 (teal), Tertiary: #5D5D70 (muted purple-gray)
+     * Primary: #2E6578 (teal), Checkpoint: #1565C0 (dark blue)
      */
     private fun getDefaultColorForCategory(): Int {
         return when (category.lowercase()) {
-            "checkpoint" -> Color.parseColor("#5D5D70") // Tertiary - muted purple-gray (app tertiary)
+            "checkpoint" -> Color.parseColor("#1565C0") // Dark blue (Material Blue 800)
             "waypoint" -> Color.parseColor("#2E6578")   // Primary teal (app primary)
             "scenic", "park", "beach", "mountain", "lake", "waterfall", "viewpoint", "hiking" -> Color.parseColor("#8BC34A") // Light Green
             "petrol_station", "charging_station", "parking" -> Color.parseColor("#607D8B") // Blue Grey

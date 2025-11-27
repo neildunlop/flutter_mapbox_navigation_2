@@ -59,6 +59,12 @@ import com.mapbox.navigation.base.formatter.DistanceFormatter
 import com.mapbox.navigation.base.formatter.UnitType
 import org.json.JSONObject
 import androidx.appcompat.app.AlertDialog
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.drawable.Drawable
+import com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions
 import com.eopeter.fluttermapboxnavigation.models.StaticMarker
 
 class NavigationActivity : AppCompatActivity(), NavigationObserverCallback {
@@ -242,6 +248,12 @@ class NavigationActivity : AppCompatActivity(), NavigationObserverCallback {
             // Our layout needs ~280dp for: header row, distance/time, progress bar,
             // waypoint count, ETA, and end navigation button
             infoPanelPeekHeight = resources.getDimensionPixelSize(R.dimen.custom_info_panel_peek_height)
+
+            // Customize destination marker to use our checkpoint flag icon with dark blue color
+            // Size 1.5 matches StaticMarkerManager markers for consistency
+            destinationMarkerAnnotationOptions = PointAnnotationOptions()
+                .withIconImage(createDestinationMarkerBitmap())
+                .withIconSize(1.5)
         }
         binding.navigationView.customizeViewOptions {
             mapStyleUriDay = styleUrlDay
@@ -924,7 +936,55 @@ class NavigationActivity : AppCompatActivity(), NavigationObserverCallback {
 
         Log.d("NavigationActivity", "✅ Drop-in UI customization complete with native trip progress binder")
     }
-    
+
+    /**
+     * Creates a custom destination marker bitmap with our flag icon on a dark blue circle background.
+     * This replaces the default Mapbox destination marker.
+     */
+    private fun createDestinationMarkerBitmap(): Bitmap {
+        // Dark blue color matching our checkpoint color (#1565C0 - Material Blue 800)
+        val backgroundColor = Color.parseColor("#1565C0")
+
+        // Create a circular background with the flag icon
+        val size = 80 // Size of the marker in pixels
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        // Draw circle background
+        val backgroundPaint = Paint().apply {
+            color = backgroundColor
+            isAntiAlias = true
+            style = Paint.Style.FILL
+        }
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f - 2f, backgroundPaint)
+
+        // Draw white border for visibility
+        val borderPaint = Paint().apply {
+            color = Color.WHITE
+            isAntiAlias = true
+            style = Paint.Style.STROKE
+            strokeWidth = 3f
+        }
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f - 2f, borderPaint)
+
+        // Draw the flag icon on top
+        try {
+            val flagDrawable: Drawable? = ContextCompat.getDrawable(this, R.drawable.ic_flag)
+            flagDrawable?.let { drawable ->
+                // Center the icon within the circle
+                val iconSize = (size * 0.5).toInt() // Icon is 50% of the circle size
+                val left = (size - iconSize) / 2
+                val top = (size - iconSize) / 2
+                drawable.setBounds(left, top, left + iconSize, top + iconSize)
+                drawable.setTint(Color.WHITE) // White icon on dark background
+                drawable.draw(canvas)
+            }
+        } catch (e: Exception) {
+            Log.e("NavigationActivity", "Failed to draw flag icon: ${e.message}")
+        }
+
+        return bitmap
+    }
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1

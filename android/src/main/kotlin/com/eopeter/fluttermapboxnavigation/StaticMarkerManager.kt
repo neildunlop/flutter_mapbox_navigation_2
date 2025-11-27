@@ -322,12 +322,28 @@ class StaticMarkerManager {
      * Returns the marker near a given point, or null if no marker is found
      */
     fun getMarkerNearPoint(latitude: Double, longitude: Double): StaticMarker? {
-        val tapThreshold = 0.01
-        return markers.values.find { marker ->
+        // Threshold of 0.005 degrees (~500m) - tight enough for accuracy
+        // but allows for some tap offset on marker icons
+        val tapThreshold = 0.005
+
+        // Find the closest marker within threshold
+        var closestMarker: StaticMarker? = null
+        var closestDistance = Double.MAX_VALUE
+
+        markers.values.forEach { marker ->
             val latDiff = abs(marker.latitude - latitude)
             val lonDiff = abs(marker.longitude - longitude)
-            latDiff < tapThreshold && lonDiff < tapThreshold
+
+            // Calculate simple distance (not accounting for Earth curvature, but fine for small distances)
+            val distance = latDiff + lonDiff
+
+            if (latDiff < tapThreshold && lonDiff < tapThreshold && distance < closestDistance) {
+                closestDistance = distance
+                closestMarker = marker
+            }
         }
+
+        return closestMarker
     }
 
     /**
@@ -421,8 +437,8 @@ class StaticMarkerManager {
                     val pointAnnotationOptions = PointAnnotationOptions()
                         .withPoint(Point.fromLngLat(marker.longitude, marker.latitude))
                         .withIconImage(iconBitmap)
-                        .withIconAnchor(IconAnchor.BOTTOM)
-                        .withIconSize(2.5)
+                        .withIconAnchor(IconAnchor.CENTER) // Center anchor for circular markers
+                        .withIconSize(1.5) // Larger size for better visibility
                         .withIconOpacity(1.0)
 
                     val annotation = annotationManager.create(pointAnnotationOptions)
@@ -437,27 +453,74 @@ class StaticMarkerManager {
     }
 
     /**
-     * Gets the appropriate marker icon bitmap for a marker
+     * Gets the appropriate marker icon bitmap for a marker.
+     * Creates a circular marker with a colored background and white icon.
      */
     private fun getMarkerIconBitmap(marker: StaticMarker): Bitmap {
         val context = this.context ?: return getDefaultMarkerBitmap()
-        
+
+        // Get the marker color based on category
+        val markerColor = marker.getMarkerColor()
+
         // Get the drawable resource ID based on the marker's iconId or category
         val drawableId = getDrawableIdForMarker(marker)
-        
-        // Get the drawable and convert it to bitmap
-        val drawable = ContextCompat.getDrawable(context, drawableId)
-        return if (drawable != null) {
-            drawableToBitmap(drawable)
-        } else {
-            getDefaultMarkerBitmap()
+
+        // Create a circular marker with the icon
+        return createCircularMarkerBitmap(context, drawableId, markerColor)
+    }
+
+    /**
+     * Creates a circular marker bitmap with a colored background and white icon.
+     * Similar to the destination marker style for visual consistency.
+     */
+    private fun createCircularMarkerBitmap(context: Context, drawableId: Int, backgroundColor: Int): Bitmap {
+        val size = 80 // Size of the marker in pixels
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        // Draw circle background
+        val backgroundPaint = android.graphics.Paint().apply {
+            color = backgroundColor
+            isAntiAlias = true
+            style = android.graphics.Paint.Style.FILL
         }
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f - 2f, backgroundPaint)
+
+        // Draw white border for visibility
+        val borderPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.WHITE
+            isAntiAlias = true
+            style = android.graphics.Paint.Style.STROKE
+            strokeWidth = 3f
+        }
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f - 2f, borderPaint)
+
+        // Draw the icon on top
+        try {
+            val drawable: Drawable? = ContextCompat.getDrawable(context, drawableId)
+            drawable?.let { originalIcon ->
+                // Create a mutable copy to avoid modifying the cached drawable
+                val icon = originalIcon.mutate()
+                // Center the icon within the circle
+                val iconSize = (size * 0.5).toInt() // Icon is 50% of the circle size
+                val left = (size - iconSize) / 2
+                val top = (size - iconSize) / 2
+                icon.setBounds(left, top, left + iconSize, top + iconSize)
+                icon.setTint(android.graphics.Color.WHITE) // White icon on colored background
+                icon.draw(canvas)
+            }
+        } catch (e: Exception) {
+            Log.e("StaticMarkerManager", "Failed to draw icon: ${e.message}")
+        }
+
+        return bitmap
     }
     
     /**
-     * Gets the drawable resource ID for a marker based on its iconId or category
+     * Gets the drawable resource ID for a marker based on its iconId or category.
+     * This is public so it can be reused by MarkerPopupOverlay for consistent icons.
      */
-    private fun getDrawableIdForMarker(marker: StaticMarker): Int {
+    fun getDrawableIdForMarker(marker: StaticMarker): Int {
         // First try to match by iconId if available
         marker.iconId?.let { iconId ->
             when (iconId.lowercase()) {

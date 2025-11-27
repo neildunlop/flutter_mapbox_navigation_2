@@ -225,27 +225,42 @@ public class TripProgressOverlay {
     }
 
     private func createProgressCard() -> UIView {
-        // Main card container
-        let card = UIView()
-        card.backgroundColor = theme.backgroundColor
-        card.layer.cornerRadius = theme.cornerRadius
-        card.layer.shadowColor = UIColor.black.cgColor
-        card.layer.shadowOpacity = 0.12
-        card.layer.shadowOffset = CGSize(width: 0, height: 3)
-        card.layer.shadowRadius = 8
+        // Outer container with gray background for visual separation
+        let outerCard = UIView()
+        outerCard.backgroundColor = UIColor(red: 0.91, green: 0.91, blue: 0.91, alpha: 1.0)  // #E8E8E8
+        outerCard.layer.cornerRadius = theme.cornerRadius
+        outerCard.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]  // Only top corners rounded
+        outerCard.layer.shadowColor = UIColor.black.cgColor
+        outerCard.layer.shadowOpacity = 0.12
+        outerCard.layer.shadowOffset = CGSize(width: 0, height: 3)
+        outerCard.layer.shadowRadius = 8
 
-        // Content stack
+        // Inner white container for content
+        let innerCard = UIView()
+        innerCard.backgroundColor = .white
+        innerCard.layer.cornerRadius = 12
+        innerCard.translatesAutoresizingMaskIntoConstraints = false
+        outerCard.addSubview(innerCard)
+
+        NSLayoutConstraint.activate([
+            innerCard.topAnchor.constraint(equalTo: outerCard.topAnchor, constant: 10),
+            innerCard.leadingAnchor.constraint(equalTo: outerCard.leadingAnchor, constant: 10),
+            innerCard.trailingAnchor.constraint(equalTo: outerCard.trailingAnchor, constant: -10),
+            innerCard.bottomAnchor.constraint(equalTo: outerCard.bottomAnchor, constant: -10)
+        ])
+
+        // Content stack inside the inner white card
         let contentStack = UIStackView()
         contentStack.axis = .vertical
         contentStack.spacing = 10
         contentStack.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(contentStack)
+        innerCard.addSubview(contentStack)
 
         NSLayoutConstraint.activate([
-            contentStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
-            contentStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            contentStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-            contentStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16)
+            contentStack.topAnchor.constraint(equalTo: innerCard.topAnchor, constant: 12),
+            contentStack.leadingAnchor.constraint(equalTo: innerCard.leadingAnchor, constant: 16),
+            contentStack.trailingAnchor.constraint(equalTo: innerCard.trailingAnchor, constant: -16),
+            contentStack.bottomAnchor.constraint(equalTo: innerCard.bottomAnchor, constant: -16)
         ])
 
         // === Line 1: [◀] Icon + Waypoint Name [▶] ===
@@ -262,6 +277,12 @@ public class TripProgressOverlay {
             line1.addArrangedSubview(prevBtn)
         }
 
+        // Spacer between prev button and icon
+        let iconSpacer = UIView()
+        iconSpacer.translatesAutoresizingMaskIntoConstraints = false
+        iconSpacer.widthAnchor.constraint(equalToConstant: 8).isActive = true
+        line1.addArrangedSubview(iconSpacer)
+
         // Icon container
         let iconBg = UIView()
         iconBg.backgroundColor = theme.primaryColor
@@ -277,22 +298,23 @@ public class TripProgressOverlay {
         icon.image = UIImage(systemName: "flag.fill")
         icon.tintColor = .white
         icon.contentMode = .scaleAspectFit
+        icon.backgroundColor = .clear  // Ensure no background on the icon
         icon.translatesAutoresizingMaskIntoConstraints = false
         iconBg.addSubview(icon)
         NSLayoutConstraint.activate([
             icon.centerXAnchor.constraint(equalTo: iconBg.centerXAnchor),
             icon.centerYAnchor.constraint(equalTo: iconBg.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 16),
-            icon.heightAnchor.constraint(equalToConstant: 16)
+            icon.widthAnchor.constraint(equalToConstant: 24),
+            icon.heightAnchor.constraint(equalToConstant: 24)
         ])
         iconView = icon
 
         line1.addArrangedSubview(iconBg)
 
-        // Waypoint name (takes remaining space)
+        // Waypoint name (takes remaining space) - bigger text, closer to icon
         let nameLabel = UILabel()
         nameLabel.text = "Loading..."
-        nameLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        nameLabel.font = .systemFont(ofSize: 18, weight: .medium)
         nameLabel.textColor = theme.textPrimaryColor
         nameLabel.textAlignment = .center
         nameLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -384,14 +406,15 @@ public class TripProgressOverlay {
             contentStack.addArrangedSubview(endBtn)
         }
 
-        return card
+        return outerCard
     }
 
     private func createSkipButton(imageName: String) -> UIButton {
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: imageName), for: .normal)
         button.tintColor = theme.primaryColor
-        button.backgroundColor = theme.buttonBackgroundColor
+        // Darker button background to match Android (#E0E0E0)
+        button.backgroundColor = UIColor(red: 0.88, green: 0.88, blue: 0.88, alpha: 1.0)
         button.layer.cornerRadius = 8
         button.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([

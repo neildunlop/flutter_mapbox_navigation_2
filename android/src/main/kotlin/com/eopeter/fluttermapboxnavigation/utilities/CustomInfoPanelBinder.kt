@@ -155,7 +155,8 @@ class CustomInfoPanelBinder(
 
             // Update icon
             iconView?.setImageResource(iconProvider.getIconResource(data.nextWaypointIconId, data.nextWaypointCategory))
-            iconView?.background = createCircleDrawable(iconProvider.getCategoryColor(data.nextWaypointCategory, theme))
+            // Update the icon container background color (not the iconView itself)
+            (iconView?.parent as? android.widget.FrameLayout)?.background = createCircleDrawable(iconProvider.getCategoryColor(data.nextWaypointCategory, theme))
 
             // Update waypoint name
             val displayName = if (data.nextWaypointName.length > 22) {
@@ -248,17 +249,20 @@ class CustomInfoPanelBinder(
     private fun createInfoPanelView(context: Context): ViewGroup {
         Log.d(TAG, "🎨 Creating view with theme: backgroundColor=${String.format("#%08X", theme.backgroundColor)}, primaryColor=${String.format("#%08X", theme.primaryColor)}, textPrimaryColor=${String.format("#%08X", theme.textPrimaryColor)}")
 
-        // Main container - fills the info panel area
-        return LinearLayout(context).apply {
+        // Darker button background color
+        val darkerButtonBg = android.graphics.Color.parseColor("#E0E0E0")
+
+        // Outer container with gray background for visual separation
+        val outerContainer = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
 
-            // Add rounded top corners with subtle shadow effect
-            val bgDrawable = GradientDrawable().apply {
-                setColor(theme.backgroundColor)
+            // Gray background with rounded top corners
+            val outerBgDrawable = GradientDrawable().apply {
+                setColor(android.graphics.Color.parseColor("#E8E8E8"))  // Light gray surround
                 cornerRadii = floatArrayOf(
                     dpToPx(context, theme.cornerRadius.toInt()).toFloat(),
                     dpToPx(context, theme.cornerRadius.toInt()).toFloat(),
@@ -268,213 +272,241 @@ class CustomInfoPanelBinder(
                     0f, 0f
                 )
             }
-            background = bgDrawable
+            background = outerBgDrawable
             elevation = dpToPx(context, 4).toFloat()
 
-            // Generous padding for breathing room
-            setPadding(dpToPx(context, 20), dpToPx(context, 20), dpToPx(context, 20), dpToPx(context, 24))
+            // Outer padding creates the gray surround effect
+            setPadding(dpToPx(context, 10), dpToPx(context, 10), dpToPx(context, 10), dpToPx(context, 10))
+        }
 
-            // === ROW 1: Navigation Controls with Waypoint Name ===
-            val headerRow = LinearLayout(context).apply {
+        // Inner white container for content
+        val innerContainer = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+
+            // White background with rounded corners
+            val innerBgDrawable = GradientDrawable().apply {
+                setColor(android.graphics.Color.WHITE)
+                cornerRadius = dpToPx(context, 12).toFloat()
+            }
+            background = innerBgDrawable
+
+            // Content padding
+            setPadding(dpToPx(context, 16), dpToPx(context, 12), dpToPx(context, 16), dpToPx(context, 16))
+        }
+
+        // === ROW 1: Navigation Controls with Waypoint Name ===
+        val headerRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        // Prev button
+        if (config.showSkipButtons) {
+            prevButton = ImageView(context).apply {
+                val size = dpToPx(context, 36)
+                layoutParams = LinearLayout.LayoutParams(size, size).apply {
+                    marginEnd = dpToPx(context, 6)
+                }
+                setImageResource(R.drawable.ic_chevron_left)
+                setColorFilter(theme.primaryColor)
+                background = createRoundedRectDrawable(darkerButtonBg, dpToPx(context, 8).toFloat())
+                setPadding(dpToPx(context, 8), dpToPx(context, 8), dpToPx(context, 8), dpToPx(context, 8))
+                setOnClickListener {
+                    if (isEnabled) {
+                        playButtonSound()
+                        onSkipPrevious?.invoke()
+                    }
+                }
+            }
+            headerRow.addView(prevButton)
+        }
+
+        // Icon container - larger size for better visibility, with left margin for spacing from prev button
+        val iconSize = dpToPx(context, 40)
+        val iconContainer = FrameLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(iconSize, iconSize).apply {
+                marginStart = dpToPx(context, 8)  // Add space between prev button and icon
+            }
+            background = createCircleDrawable(theme.primaryColor)
+        }
+
+        iconView = ImageView(context).apply {
+            val innerIconSize = dpToPx(context, 24)
+            layoutParams = FrameLayout.LayoutParams(innerIconSize, innerIconSize).apply {
+                gravity = Gravity.CENTER
+            }
+            setImageResource(R.drawable.ic_flag)
+            setColorFilter(android.graphics.Color.WHITE)
+            // Ensure no background on the icon itself
+            background = null
+        }
+        iconContainer.addView(iconView)
+        headerRow.addView(iconContainer)
+
+        // Waypoint name - bigger text, closer to icon
+        waypointNameView = TextView(context).apply {
+            text = "Loading..."
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)  // Bigger headline
+            setTextColor(theme.textPrimaryColor)
+            setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL))
+            letterSpacing = -0.01f
+            setPadding(dpToPx(context, 6), 0, dpToPx(context, 6), 0)  // Reduced padding to bring closer to icon
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            maxLines = 1
+            gravity = Gravity.CENTER
+        }
+        headerRow.addView(waypointNameView)
+
+        // Next button
+        if (config.showSkipButtons) {
+            nextButton = ImageView(context).apply {
+                val size = dpToPx(context, 36)
+                layoutParams = LinearLayout.LayoutParams(size, size).apply {
+                    marginStart = dpToPx(context, 6)
+                }
+                setImageResource(R.drawable.ic_chevron_right)
+                setColorFilter(theme.primaryColor)
+                background = createRoundedRectDrawable(darkerButtonBg, dpToPx(context, 8).toFloat())
+                setPadding(dpToPx(context, 8), dpToPx(context, 8), dpToPx(context, 8), dpToPx(context, 8))
+                setOnClickListener {
+                    if (isEnabled) {
+                        playButtonSound()
+                        onSkipNext?.invoke()
+                    }
+                }
+            }
+            headerRow.addView(nextButton)
+        }
+
+        innerContainer.addView(headerRow)
+
+        // === ROW 2: Distance & Duration ===
+        if (config.showDistanceToNext || config.showDurationToNext) {
+            distanceTimeView = TextView(context).apply {
+                text = "-- • --"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                setTextColor(theme.textSecondaryColor)
+                setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL))
+                gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = dpToPx(context, 2)
+                }
+            }
+            innerContainer.addView(distanceTimeView)
+        }
+
+        // === ROW 3: Progress Bar ===
+        if (config.showProgressBar) {
+            progressBar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    dpToPx(context, 5)
+                ).apply {
+                    topMargin = dpToPx(context, 8)
+                }
+                max = 100
+                progress = 0
+                progressDrawable = createProgressDrawable(context)
+            }
+            innerContainer.addView(progressBar)
+        }
+
+        // === ROW 4: Progress Stats ===
+        if (config.showWaypointCount || config.showTotalDistance) {
+            val statsRow = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            }
-
-            // Prev button (larger, more prominent)
-            if (config.showSkipButtons) {
-                prevButton = ImageView(context).apply {
-                    val size = dpToPx(context, 44)  // Larger touch target
-                    layoutParams = LinearLayout.LayoutParams(size, size).apply {
-                        marginEnd = dpToPx(context, 8)
-                    }
-                    setImageResource(R.drawable.ic_chevron_left)
-                    setColorFilter(theme.primaryColor)
-                    background = createRoundedRectDrawable(theme.buttonBackgroundColor, dpToPx(context, 10).toFloat())
-                    setPadding(dpToPx(context, 10), dpToPx(context, 10), dpToPx(context, 10), dpToPx(context, 10))
-                    setOnClickListener {
-                        if (isEnabled) {
-                            playButtonSound()
-                            onSkipPrevious?.invoke()
-                        }
-                    }
+                ).apply {
+                    topMargin = dpToPx(context, 6)
                 }
-                headerRow.addView(prevButton)
             }
 
-            // Icon container - larger and more prominent
-            val iconSize = dpToPx(context, 40)  // Larger icon
-            val iconContainer = FrameLayout(context).apply {
-                layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
-                background = createCircleDrawable(theme.primaryColor)
-            }
-
-            iconView = ImageView(context).apply {
-                val innerIconSize = dpToPx(context, 22)  // Larger inner icon
-                layoutParams = FrameLayout.LayoutParams(innerIconSize, innerIconSize).apply {
-                    gravity = Gravity.CENTER
-                }
-                setImageResource(R.drawable.ic_flag)
-                setColorFilter(android.graphics.Color.WHITE)
-            }
-            iconContainer.addView(iconView)
-            headerRow.addView(iconContainer)
-
-            // Waypoint name - headline style
-            waypointNameView = TextView(context).apply {
-                text = "Loading..."
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)  // Headline size
-                setTextColor(theme.textPrimaryColor)
-                setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL))
-                letterSpacing = -0.01f  // Tighter tracking for headlines
-                setPadding(dpToPx(context, 14), 0, dpToPx(context, 14), 0)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                maxLines = 1
-                gravity = Gravity.CENTER
-            }
-            headerRow.addView(waypointNameView)
-
-            // Next button
-            if (config.showSkipButtons) {
-                nextButton = ImageView(context).apply {
-                    val size = dpToPx(context, 44)
-                    layoutParams = LinearLayout.LayoutParams(size, size).apply {
-                        marginStart = dpToPx(context, 8)
-                    }
-                    setImageResource(R.drawable.ic_chevron_right)
-                    setColorFilter(theme.primaryColor)
-                    background = createRoundedRectDrawable(theme.buttonBackgroundColor, dpToPx(context, 10).toFloat())
-                    setPadding(dpToPx(context, 10), dpToPx(context, 10), dpToPx(context, 10), dpToPx(context, 10))
-                    setOnClickListener {
-                        if (isEnabled) {
-                            playButtonSound()
-                            onSkipNext?.invoke()
-                        }
-                    }
-                }
-                headerRow.addView(nextButton)
-            }
-
-            addView(headerRow)
-
-            // === ROW 2: Distance & Duration (secondary info) ===
-            if (config.showDistanceToNext || config.showDurationToNext) {
-                distanceTimeView = TextView(context).apply {
-                    text = "-- • --"
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)  // Body large
-                    setTextColor(theme.textSecondaryColor)
-                    setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL))
-                    gravity = Gravity.CENTER
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        topMargin = dpToPx(context, 6)
-                    }
-                }
-                addView(distanceTimeView)
-            }
-
-            // === ROW 3: Progress Bar (visual focal point) ===
-            if (config.showProgressBar) {
-                progressBar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        dpToPx(context, 6)  // Slim, elegant bar
-                    ).apply {
-                        topMargin = dpToPx(context, 16)
-                    }
-                    max = 100
-                    progress = 0
-                    progressDrawable = createProgressDrawable(context)
-                }
-                addView(progressBar)
-            }
-
-            // === ROW 4: Progress Stats (waypoint count + remaining distance) ===
-            if (config.showWaypointCount || config.showTotalDistance) {
-                val statsRow = LinearLayout(context).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        topMargin = dpToPx(context, 10)
-                    }
-                }
-
-                if (config.showWaypointCount) {
-                    progressTextView = TextView(context).apply {
-                        text = "Waypoint 1/1"
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)  // Label size
-                        setTextColor(theme.primaryColor)  // Use primary for emphasis
-                        setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL))
-                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    }
-                    statsRow.addView(progressTextView)
-                }
-
-                if (config.showTotalDistance) {
-                    totalDistanceView = TextView(context).apply {
-                        text = "-- remaining"
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                        setTextColor(theme.textSecondaryColor)
-                        gravity = Gravity.END
-                        if (!config.showWaypointCount) {
-                            layoutParams = LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.MATCH_PARENT,
-                                LinearLayout.LayoutParams.WRAP_CONTENT
-                            )
-                        }
-                    }
-                    statsRow.addView(totalDistanceView)
-                }
-
-                addView(statsRow)
-            }
-
-            // === ROW 5: ETA (prominent, actionable info) ===
-            if (config.showEta) {
-                etaView = TextView(context).apply {
-                    text = "ETA --:--"
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)  // Title size
-                    setTextColor(theme.primaryColor)
-                    setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD))
-                    gravity = Gravity.CENTER
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        topMargin = dpToPx(context, 12)
-                    }
-                }
-                addView(etaView)
-            }
-
-            // === End Navigation Button ===
-            if (config.showEndNavigationButton) {
-                endNavButton = TextView(context).apply {
-                    text = "End Navigation"
+            if (config.showWaypointCount) {
+                progressTextView = TextView(context).apply {
+                    text = "Waypoint 1/1"
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                    setTextColor(android.graphics.Color.WHITE)
+                    setTextColor(theme.primaryColor)
                     setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL))
-                    gravity = Gravity.CENTER
-                    background = createRoundedRectDrawable(theme.endButtonColor, dpToPx(context, 10).toFloat())
-                    setPadding(dpToPx(context, 20), dpToPx(context, 14), dpToPx(context, 20), dpToPx(context, 14))
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        topMargin = dpToPx(context, 18)
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                }
+                statsRow.addView(progressTextView)
+            }
+
+            if (config.showTotalDistance) {
+                totalDistanceView = TextView(context).apply {
+                    text = "-- remaining"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                    setTextColor(theme.textSecondaryColor)
+                    gravity = Gravity.END
+                    if (!config.showWaypointCount) {
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
                     }
                 }
-                addView(endNavButton)
+                statsRow.addView(totalDistanceView)
             }
+
+            innerContainer.addView(statsRow)
         }
+
+        // === ROW 5: ETA ===
+        if (config.showEta) {
+            etaView = TextView(context).apply {
+                text = "ETA --:--"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                setTextColor(theme.primaryColor)
+                setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD))
+                gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = dpToPx(context, 6)
+                }
+            }
+            innerContainer.addView(etaView)
+        }
+
+        // === End Navigation Button ===
+        if (config.showEndNavigationButton) {
+            endNavButton = TextView(context).apply {
+                text = "End Navigation"
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                setTextColor(android.graphics.Color.WHITE)
+                setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL))
+                gravity = Gravity.CENTER
+                background = createRoundedRectDrawable(theme.endButtonColor, dpToPx(context, 8).toFloat())
+                setPadding(dpToPx(context, 16), dpToPx(context, 10), dpToPx(context, 16), dpToPx(context, 10))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = dpToPx(context, 10)
+                }
+            }
+            innerContainer.addView(endNavButton)
+        }
+
+        // Add inner container to outer container
+        outerContainer.addView(innerContainer)
+
+        return outerContainer
     }
 
     private fun createProgressDrawable(context: Context): LayerDrawable {

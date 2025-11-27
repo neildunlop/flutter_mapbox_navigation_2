@@ -148,9 +148,9 @@ public struct TripProgressTheme {
     public let categoryColors: [String: UIColor]
 
     /// Default category colors aligned with app's design system.
-    /// Primary: #2E6578 (teal), Tertiary: #5D5D70 (muted purple-gray)
+    /// Primary: #2E6578 (teal), Checkpoint: #1565C0 (dark blue)
     public static let defaultCategoryColors: [String: UIColor] = [
-        "checkpoint": UIColor(red: 0.36, green: 0.36, blue: 0.44, alpha: 1),    // #5D5D70 Tertiary - muted purple-gray
+        "checkpoint": UIColor(red: 0.08, green: 0.40, blue: 0.75, alpha: 1),    // #1565C0 Dark blue (Material Blue 800)
         "waypoint": UIColor(red: 0.18, green: 0.40, blue: 0.47, alpha: 1),      // #2E6578 Primary teal
         "poi": UIColor(red: 0.30, green: 0.69, blue: 0.31, alpha: 1),           // Green
         "scenic": UIColor(red: 0.55, green: 0.76, blue: 0.29, alpha: 1),        // Light Green
@@ -179,7 +179,7 @@ public struct TripProgressTheme {
         progressBarBackgroundColor: UIColor = UIColor(red: 0.89, green: 0.95, blue: 0.99, alpha: 1),
         cornerRadius: CGFloat = 16,
         buttonSize: CGFloat = 36,
-        iconSize: CGFloat = 32,
+        iconSize: CGFloat = 40,
         categoryColors: [String: UIColor] = defaultCategoryColors
     ) {
         self.primaryColor = primaryColor
@@ -241,7 +241,7 @@ public struct TripProgressTheme {
             progressBarBackgroundColor: UIColor(argb: dict["progressBarBackgroundColor"] as? Int ?? 0xFFE3F2FD),
             cornerRadius: dict["cornerRadius"] as? CGFloat ?? 16,
             buttonSize: dict["buttonSize"] as? CGFloat ?? 36,
-            iconSize: dict["iconSize"] as? CGFloat ?? 32,
+            iconSize: dict["iconSize"] as? CGFloat ?? 40,
             categoryColors: categoryColors
         )
     }

@@ -570,9 +570,9 @@ class TripProgressTheme {
   final Map<String, Color>? categoryColors;
 
   /// Default category colors aligned with app's design system.
-  /// Primary: #2E6578 (teal), Tertiary: #5D5D70 (muted purple-gray)
+  /// Primary: #2E6578 (teal), Checkpoint: #1565C0 (dark blue)
   static const Map<String, Color> defaultCategoryColors = {
-    'checkpoint': Color(0xFF5D5D70), // Tertiary - muted purple-gray (app tertiary)
+    'checkpoint': Color(0xFF1565C0), // Dark blue (Material Blue 800)
     'waypoint': Color(0xFF2E6578), // Primary teal (app primary)
     'poi': Color(0xFF4CAF50), // Green
     'scenic': Color(0xFF8BC34A), // Light Green

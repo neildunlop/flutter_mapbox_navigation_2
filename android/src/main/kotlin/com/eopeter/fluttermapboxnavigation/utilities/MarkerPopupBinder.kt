@@ -279,9 +279,9 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
         marker.customColor?.let { return it }
 
         // Colors aligned with app's design system:
-        // Primary: #2E6578 (teal), Tertiary: #5D5D70 (muted purple-gray)
+        // Primary: #2E6578 (teal), Checkpoint: #1565C0 (dark blue)
         return when (marker.category.lowercase()) {
-            "checkpoint" -> Color.parseColor("#5D5D70") // Tertiary - muted purple-gray (matches app tertiary)
+            "checkpoint" -> Color.parseColor("#1565C0") // Dark blue (Material Blue 800)
             "waypoint" -> Color.parseColor("#2E6578")   // Primary teal (matches app primary)
             "poi" -> Color.parseColor("#4CAF50")        // Green
             "scenic" -> Color.parseColor("#8BC34A")     // Light Green
