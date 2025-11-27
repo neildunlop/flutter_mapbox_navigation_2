@@ -21,9 +21,13 @@ import com.eopeter.fluttermapboxnavigation.models.MapBoxEvents
 import com.eopeter.fluttermapboxnavigation.models.MapBoxRouteProgressEvent
 import com.eopeter.fluttermapboxnavigation.models.Waypoint
 import com.eopeter.fluttermapboxnavigation.models.WaypointSet
+import com.eopeter.fluttermapboxnavigation.utilities.CustomInfoPanelBinder
 import com.eopeter.fluttermapboxnavigation.utilities.CustomInfoPanelEndNavButtonBinder
-import com.eopeter.fluttermapboxnavigation.utilities.MarkerPopupBinder
+import com.eopeter.fluttermapboxnavigation.utilities.CustomTripProgressBinder
+import com.eopeter.fluttermapboxnavigation.utilities.MarkerPopupOverlay
 import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities
+import com.eopeter.fluttermapboxnavigation.utilities.TripProgressManager
+import com.eopeter.fluttermapboxnavigation.utilities.TripProgressOverlay
 import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities.Companion.sendEvent
 import com.eopeter.fluttermapboxnavigation.StaticMarkerManager
 import com.google.gson.Gson
@@ -68,13 +72,19 @@ class NavigationActivity : AppCompatActivity() {
     private var finishBroadcastReceiver: BroadcastReceiver? = null
     private var addWayPointsBroadcastReceiver: BroadcastReceiver? = null
     private var points: MutableList<Waypoint> = mutableListOf()
+    private var originalPoints: MutableList<Waypoint> = mutableListOf() // Keep original for prev functionality
     private var waypointSet: WaypointSet = WaypointSet()
     private var canResetRoute: Boolean = false
     private var accessToken: String? = null
     private var lastLocation: Location? = null
     private var isNavigationInProgress = false
+    private var currentTargetWaypointIndex = 0 // Track which waypoint we're heading to
     private lateinit var binding: NavigationActivityBinding
     private lateinit var turnByTurn: TurnByTurn
+    private lateinit var markerPopupOverlay: MarkerPopupOverlay
+    private lateinit var tripProgressOverlay: TripProgressOverlay
+    private lateinit var customInfoPanelBinder: CustomInfoPanelBinder
+    private val tripProgressManager = TripProgressManager.getInstance()
     
 
     private val navigationStateListener = object : NavigationViewListener() {
@@ -190,7 +200,12 @@ class NavigationActivity : AppCompatActivity() {
         val styleUrlDay = FlutterMapboxNavigationPlugin.mapStyleUrlDay ?: Style.MAPBOX_STREETS
         val styleUrlNight = FlutterMapboxNavigationPlugin.mapStyleUrlNight ?: Style.DARK
         
-        binding.navigationView.customizeViewStyles {}
+        binding.navigationView.customizeViewStyles {
+            // Set info panel peek height to accommodate our custom content
+            // Our layout needs ~280dp for: header row, distance/time, progress bar,
+            // waypoint count, ETA, and end navigation button
+            infoPanelPeekHeight = resources.getDimensionPixelSize(R.dimen.custom_info_panel_peek_height)
+        }
         binding.navigationView.customizeViewOptions {
             mapStyleUriDay = styleUrlDay
             mapStyleUriNight = styleUrlNight
@@ -209,11 +224,13 @@ class NavigationActivity : AppCompatActivity() {
             return
         }
 
-        // Handle waypoints
+        // Handle waypoints - populate waypointSet but don't request routes yet
+        // Routes will be requested in beginNavigation() after TurnByTurn is initialized
         val p = intent.getSerializableExtra("waypoints") as? MutableList<Waypoint>
         if (p != null) points = p
+        // Store original points for prev functionality (deep copy)
+        originalPoints = points.map { Waypoint(it.name ?: "", it.point, it.isSilent) }.toMutableList()
         points.forEach { waypointSet.add(it) }
-        requestRoutes(waypointSet)
 
         turnByTurn = TurnByTurn(
             this,
@@ -253,9 +270,20 @@ class NavigationActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        
+
         Log.d("NavigationActivity", "🧹 NavigationActivity onDestroy - cleaning up overlays")
-        
+
+        // Clean up the marker popup overlay
+        if (::markerPopupOverlay.isInitialized) {
+            markerPopupOverlay.cleanup()
+        }
+
+        // Clean up the trip progress overlay
+        if (::tripProgressOverlay.isInitialized) {
+            tripProgressOverlay.hide()
+        }
+        tripProgressManager.clear()
+
         Log.d("NavigationActivity", "🧹 NavigationActivity cleanup completed")
         
         if (FlutterMapboxNavigationPlugin.longPressDestinationEnabled) {
@@ -363,7 +391,7 @@ class NavigationActivity : AppCompatActivity() {
                 .coordinatesList(addedWaypoints.coordinatesList())
                 .waypointIndicesList(addedWaypoints.waypointsIndices())
                 .waypointNamesList(addedWaypoints.waypointsNames())
-                .alternatives(true)
+                .alternatives(FlutterMapboxNavigationPlugin.showAlternateRoutes)
                 .build(),
             callback = object : NavigationRouterCallback {
                 override fun onRoutesReady(
@@ -405,6 +433,254 @@ class NavigationActivity : AppCompatActivity() {
         // Implementation will be added when needed
     }
 
+    // ==================== WAYPOINT SKIP/PREV FUNCTIONALITY ====================
+
+    /**
+     * Skip to the next waypoint (skip the current target waypoint).
+     * This removes the current target waypoint and recalculates the route.
+     */
+    fun skipToNextWaypoint() {
+        Log.d("NavigationActivity", "🔀 skipToNextWaypoint called, currentIndex=$currentTargetWaypointIndex, points=${points.size}")
+
+        if (points.size <= 1) {
+            Log.w("NavigationActivity", "Cannot skip - only ${points.size} waypoint(s) remaining")
+            return
+        }
+
+        if (currentTargetWaypointIndex >= points.size) {
+            Log.w("NavigationActivity", "Cannot skip - already at last waypoint")
+            return
+        }
+
+        // Remove the current target waypoint from our points list
+        val skippedWaypoint = points.removeAt(currentTargetWaypointIndex)
+        Log.d("NavigationActivity", "🔀 Skipped waypoint: ${skippedWaypoint.name}, ${points.size} remaining")
+
+        // Track the skip for correct waypoint numbering
+        tripProgressManager.incrementSkippedCount()
+
+        // Recalculate route from current location to remaining waypoints
+        recalculateRouteFromCurrentLocation()
+
+        // Send event to Flutter
+        sendEvent(MapBoxEvents.WAYPOINT_SKIPPED, skippedWaypoint.name)
+    }
+
+    /**
+     * Go back to the previous waypoint.
+     * This inserts the previous waypoint from the original list back into the route.
+     */
+    fun goToPreviousWaypoint() {
+        Log.d("NavigationActivity", "🔀 goToPreviousWaypoint called, currentIndex=$currentTargetWaypointIndex, points=${points.size}, originalPoints=${originalPoints.size}")
+
+        if (points.isEmpty()) {
+            Log.w("NavigationActivity", "Cannot go to previous - no waypoints")
+            return
+        }
+
+        // Get the first waypoint in our current list (what we're heading to)
+        val currentTarget = points.firstOrNull()
+        if (currentTarget == null) {
+            Log.w("NavigationActivity", "Cannot go to previous - no current target")
+            return
+        }
+
+        Log.d("NavigationActivity", "🔀 Current target: ${currentTarget.name} at ${currentTarget.point.latitude()}, ${currentTarget.point.longitude()}")
+
+        // Find the current target in the original list (using approximate matching for floating point)
+        val originalIndex = originalPoints.indexOfFirst { original ->
+            val latMatch = kotlin.math.abs(original.point.latitude() - currentTarget.point.latitude()) < 0.00001
+            val lngMatch = kotlin.math.abs(original.point.longitude() - currentTarget.point.longitude()) < 0.00001
+            latMatch && lngMatch
+        }
+
+        Log.d("NavigationActivity", "🔀 Found current target at original index: $originalIndex")
+
+        if (originalIndex < 0) {
+            Log.w("NavigationActivity", "Cannot go to previous - current target not found in original list")
+            // List all original points for debugging
+            originalPoints.forEachIndexed { i, wp ->
+                Log.d("NavigationActivity", "  Original[$i]: ${wp.name} at ${wp.point.latitude()}, ${wp.point.longitude()}")
+            }
+            return
+        }
+
+        if (originalIndex == 0) {
+            Log.w("NavigationActivity", "Cannot go to previous - already at first waypoint")
+            return
+        }
+
+        // Get the previous waypoint from the original list
+        val previousWaypoint = originalPoints[originalIndex - 1]
+        Log.d("NavigationActivity", "🔀 Previous waypoint: ${previousWaypoint.name}")
+
+        // Check if this waypoint is already in our current list
+        val alreadyInList = points.any { wp ->
+            val latMatch = kotlin.math.abs(wp.point.latitude() - previousWaypoint.point.latitude()) < 0.00001
+            val lngMatch = kotlin.math.abs(wp.point.longitude() - previousWaypoint.point.longitude()) < 0.00001
+            latMatch && lngMatch
+        }
+
+        if (!alreadyInList) {
+            // Insert the previous waypoint at the beginning of our current list
+            points.add(0, previousWaypoint)
+            Log.d("NavigationActivity", "🔀 Re-added previous waypoint: ${previousWaypoint.name}, now ${points.size} points")
+
+            // Track the restore for correct waypoint numbering
+            tripProgressManager.decrementSkippedCount()
+        } else {
+            Log.d("NavigationActivity", "🔀 Previous waypoint already in route: ${previousWaypoint.name}")
+            return  // Nothing to do if already in list
+        }
+
+        // Recalculate route
+        recalculateRouteFromCurrentLocation()
+
+        // Send event to Flutter
+        sendEvent(MapBoxEvents.WAYPOINT_RESTORED, previousWaypoint.name ?: "")
+    }
+
+    /**
+     * Recalculate route from current location to all remaining waypoints.
+     */
+    private fun recalculateRouteFromCurrentLocation() {
+        // Try to get location from multiple sources
+        var originPoint: Point? = null
+
+        // Source 1: Last known location from location observer
+        lastLocation?.let { loc ->
+            originPoint = Point.fromLngLat(loc.longitude, loc.latitude)
+            Log.d("NavigationActivity", "🔀 Using lastLocation: ${loc.latitude}, ${loc.longitude}")
+        }
+
+        // Source 2: Get from current navigation routes if available
+        if (originPoint == null) {
+            MapboxNavigationApp.current()?.getNavigationRoutes()?.firstOrNull()?.let { route ->
+                route.directionsRoute.legs()?.firstOrNull()?.steps()?.firstOrNull()?.let { step ->
+                    step.maneuver().location()?.let { loc ->
+                        originPoint = Point.fromLngLat(loc.longitude(), loc.latitude())
+                        Log.d("NavigationActivity", "🔀 Using route maneuver location: ${loc.latitude()}, ${loc.longitude()}")
+                    }
+                }
+            }
+        }
+
+        // Source 3: Use first remaining waypoint as origin (less accurate but functional)
+        if (originPoint == null && points.isNotEmpty()) {
+            val firstPoint = points.first().point
+            originPoint = firstPoint
+            Log.w("NavigationActivity", "🔀 Using first waypoint as fallback origin: ${firstPoint.latitude()}, ${firstPoint.longitude()}")
+        }
+
+        val origin = originPoint
+        if (origin == null) {
+            Log.e("NavigationActivity", "Cannot recalculate route - no location available from any source")
+            return
+        }
+
+        // Rebuild the waypoint set from current location + remaining waypoints
+        waypointSet.clear()
+        waypointSet.add(Waypoint(origin)) // Start from current location
+
+        points.forEach { waypoint ->
+            if (!waypoint.name.isNullOrBlank()) {
+                waypointSet.add(Waypoint(waypoint.name ?: "", waypoint.point))
+            } else if (waypoint.isSilent) {
+                waypointSet.add(Waypoint(waypoint.point, true))
+            } else {
+                waypointSet.add(Waypoint(waypoint.point, false))
+            }
+        }
+
+        Log.d("NavigationActivity", "🔀 Recalculating route with ${points.size} waypoints")
+
+        // Update trip progress manager with new waypoint list
+        val markers = StaticMarkerManager.getInstance().getMarkers()
+        tripProgressManager.setWaypointsFromMarkers(points, markers)
+
+        // Reset target index since we've modified the list
+        currentTargetWaypointIndex = 0
+
+        // Immediately update the UI with the new waypoint info
+        // Use current progress values or defaults
+        val currentDistanceRemaining = (FlutterMapboxNavigationPlugin.distanceRemaining ?: 0.0).toDouble()
+        val currentDurationRemaining = (FlutterMapboxNavigationPlugin.durationRemaining ?: 0.0).toDouble()
+        tripProgressManager.updateProgress(
+            legIndex = 0,  // Starting fresh from first waypoint in updated list
+            distanceToNextWaypoint = currentDistanceRemaining,
+            totalDistanceRemaining = currentDistanceRemaining,
+            totalDurationRemaining = currentDurationRemaining,
+            durationToNextWaypoint = currentDurationRemaining
+        )
+        Log.d("NavigationActivity", "🔀 Triggered immediate UI update with ${points.size} waypoints")
+
+        // Request new route - use the update method since navigation is already active
+        requestRoutesForUpdate(waypointSet)
+    }
+
+    /**
+     * Request routes and update the active navigation session (for skip/prev waypoint).
+     * Uses setNavigationRoutes instead of startActiveGuidance since we're already navigating.
+     */
+    private fun requestRoutesForUpdate(waypointSet: WaypointSet) {
+        sendEvent(MapBoxEvents.ROUTE_BUILDING)
+        MapboxNavigationApp.current()!!.requestRoutes(
+            routeOptions = RouteOptions
+                .builder()
+                .applyDefaultNavigationOptions()
+                .applyLanguageAndVoiceUnitOptions(this)
+                .coordinatesList(waypointSet.coordinatesList())
+                .waypointIndicesList(waypointSet.waypointsIndices())
+                .waypointNamesList(waypointSet.waypointsNames())
+                .language(FlutterMapboxNavigationPlugin.navigationLanguage)
+                .alternatives(FlutterMapboxNavigationPlugin.showAlternateRoutes)
+                .voiceUnits(FlutterMapboxNavigationPlugin.navigationVoiceUnits)
+                .bannerInstructions(FlutterMapboxNavigationPlugin.bannerInstructionsEnabled)
+                .voiceInstructions(FlutterMapboxNavigationPlugin.voiceInstructionsEnabled)
+                .steps(true)
+                .build(),
+            callback = object : NavigationRouterCallback {
+                override fun onCanceled(routeOptions: RouteOptions, routerOrigin: RouterOrigin) {
+                    sendEvent(MapBoxEvents.ROUTE_BUILD_CANCELLED)
+                }
+
+                override fun onFailure(reasons: List<RouterFailure>, routeOptions: RouteOptions) {
+                    sendEvent(MapBoxEvents.ROUTE_BUILD_FAILED)
+                    Log.e("NavigationActivity", "🔀 Route update failed: ${reasons.map { it.message }}")
+                }
+
+                override fun onRoutesReady(
+                    routes: List<NavigationRoute>,
+                    routerOrigin: RouterOrigin
+                ) {
+                    sendEvent(
+                        MapBoxEvents.ROUTE_BUILT,
+                        Gson().toJson(routes.map { it.directionsRoute.toJson() })
+                    )
+                    if (routes.isEmpty()) {
+                        sendEvent(MapBoxEvents.ROUTE_BUILD_NO_ROUTES_FOUND)
+                        return
+                    }
+
+                    Log.d("NavigationActivity", "🔀 Route update ready, setting ${routes.size} routes")
+
+                    // Clear existing routes first to avoid state mismatch
+                    MapboxNavigationApp.current()?.setNavigationRoutes(emptyList())
+
+                    // Small delay to allow state to clear, then set new routes
+                    binding.root.postDelayed({
+                        Log.d("NavigationActivity", "🔀 Setting new routes after clear")
+                        binding.navigationView.api.routeReplayEnabled(FlutterMapboxNavigationPlugin.simulateRoute)
+                        binding.navigationView.api.startActiveGuidance(routes)
+                    }, 100)
+
+                    sendEvent(MapBoxEvents.REROUTE_ALONG)
+                }
+            }
+        )
+    }
+
+    // ==================== END WAYPOINT SKIP/PREV ====================
 
     /**
      * Helper class that keeps added waypoints and transforms them to the [RouteOptions] params.
@@ -421,6 +697,22 @@ class NavigationActivity : AppCompatActivity() {
         FlutterMapboxNavigationPlugin.distanceRemaining = routeProgress.distanceRemaining
         FlutterMapboxNavigationPlugin.durationRemaining = routeProgress.durationRemaining
         sendEvent(progressEvent)
+
+        // Update trip progress overlay
+        val legIndex = routeProgress.currentLegProgress?.legIndex ?: 0
+        val distanceToNext = routeProgress.currentLegProgress?.distanceRemaining?.toDouble() ?: 0.0
+        val durationToNext = routeProgress.currentLegProgress?.durationRemaining ?: 0.0
+
+        // Track current target waypoint index for skip/prev functionality
+        currentTargetWaypointIndex = legIndex.coerceIn(0, (points.size - 1).coerceAtLeast(0))
+
+        tripProgressManager.updateProgress(
+            legIndex = legIndex,
+            distanceToNextWaypoint = distanceToNext,
+            totalDistanceRemaining = routeProgress.distanceRemaining.toDouble(),
+            totalDurationRemaining = routeProgress.durationRemaining,
+            durationToNextWaypoint = durationToNext
+        )
     }
 
     private val arrivalObserver: ArrivalObserver = object : ArrivalObserver {
@@ -447,10 +739,15 @@ class NavigationActivity : AppCompatActivity() {
     private val locationObserver = object : LocationObserver {
         override fun onNewLocationMatcherResult(locationMatcherResult: LocationMatcherResult) {
             lastLocation = locationMatcherResult.enhancedLocation
+            Log.d("NavigationActivity", "📍 Location updated: ${lastLocation?.latitude}, ${lastLocation?.longitude}")
         }
 
         override fun onNewRawLocation(rawLocation: Location) {
-            // no impl
+            // Also capture raw location as fallback
+            if (lastLocation == null) {
+                lastLocation = rawLocation
+                Log.d("NavigationActivity", "📍 Raw location captured: ${rawLocation.latitude}, ${rawLocation.longitude}")
+            }
         }
     }
 
@@ -506,33 +803,20 @@ class NavigationActivity : AppCompatActivity() {
      */
     private val staticMarkerMapObserver = object : MapViewObserver() {
         override fun onAttached(mapView: MapView) {
-            println("🗺️ MapView attached in NavigationActivity")
-            println("🔧 About to call StaticMarkerManager.getInstance().setMapView()")
             try {
-                // Set the MapView and Activity context in the StaticMarkerManager
                 val manager = StaticMarkerManager.getInstance()
-                println("🔧 StaticMarkerManager instance obtained: ${manager != null}")
-                
-                // Set the Activity context for native dialogs
                 manager.setContext(this@NavigationActivity)
-                
-                // Call the setMapView method
                 manager.setMapView(mapView)
-                println("🔧 setMapView() call completed")
-                
             } catch (e: Exception) {
-                println("❌ Error calling setMapView(): ${e.message}")
-                e.printStackTrace()
+                Log.e("NavigationActivity", "Error setting up StaticMarkerManager: ${e.message}")
             }
         }
 
         override fun onDetached(mapView: MapView) {
-            println("🗺️ MapView detached in NavigationActivity")
             try {
-                // Clear the MapView in the StaticMarkerManager
                 StaticMarkerManager.getInstance().setMapView(null)
             } catch (e: Exception) {
-                println("❌ Error calling setMapView(null): ${e.message}")
+                Log.e("NavigationActivity", "Error clearing StaticMarkerManager: ${e.message}")
             }
         }
     }
@@ -596,26 +880,73 @@ class NavigationActivity : AppCompatActivity() {
     }
 
     private fun beginNavigation() {
-        val wayPoints = intent.getSerializableExtra("waypoints") as? MutableList<Waypoint>
-        if (wayPoints != null) {
-            points = wayPoints
-            points.forEach { waypointSet.add(it) }
+        // Request routes using the waypointSet that was populated in onCreate()
+        // This is called after TurnByTurn.initNavigation() and after location permission is granted
+        if (!waypointSet.isEmpty) {
             requestRoutes(waypointSet)
         }
     }
     
     private fun setupDropInUICustomization() {
-        Log.d("NavigationActivity", "🎯 Setting up Drop-in UI customization for marker interactions")
-        
-        // Use ViewBinder customization to inject Flutter-rendered marker popups
+        Log.d("NavigationActivity", "🎯 Setting up Drop-in UI customization - Full panel replacement")
+
+        // Initialize the custom info panel binder that replaces the entire info panel
+        customInfoPanelBinder = CustomInfoPanelBinder(
+            activity = this,
+            onSkipPrevious = {
+                Log.d("NavigationActivity", "🔀 Previous button pressed")
+                goToPreviousWaypoint()
+            },
+            onSkipNext = {
+                Log.d("NavigationActivity", "🔀 Next/Skip button pressed")
+                skipToNextWaypoint()
+            },
+            onEndNavigation = {
+                Log.d("NavigationActivity", "🔴 End navigation callback")
+                // Activity finish is handled in the binder
+            }
+        )
+
+        // Register the full panel binder - this replaces the entire info panel
         binding.navigationView.customizeViewBinders {
-            // Use infoPanelContentBinder to show marker details above the info panel
-            infoPanelContentBinder = MarkerPopupBinder(this@NavigationActivity)
-            // Keep the existing end navigation button binder
-            infoPanelEndNavigationButtonBinder = CustomInfoPanelEndNavButtonBinder(this@NavigationActivity)
+            infoPanelBinder = customInfoPanelBinder
         }
-        
-        Log.d("NavigationActivity", "✅ Drop-in UI ViewBinder customization complete")
+
+        // Initialize the floating marker popup overlay
+        markerPopupOverlay = MarkerPopupOverlay(this)
+        markerPopupOverlay.initialize()
+
+        // Initialize the legacy trip progress overlay (keep for backward compatibility, but don't show)
+        tripProgressOverlay = TripProgressOverlay(this)
+
+        // Set up waypoints for progress tracking
+        val markers = StaticMarkerManager.getInstance().getMarkers()
+        Log.d("NavigationActivity", "Setting up trip progress: points=${points.size}, markers=${markers.size}")
+
+        // The CustomTripProgressBinder now handles progress updates via TripProgressManager's listener
+        // which is set up in the binder's bind() method
+
+        if (points.isNotEmpty()) {
+            tripProgressManager.setWaypointsFromMarkers(points, markers, isInitialSetup = true)
+            Log.d("NavigationActivity", "Waypoints set in TripProgressManager (initial setup)")
+        } else {
+            Log.w("NavigationActivity", "No points available for trip progress!")
+        }
+
+        // Note: We no longer show the floating tripProgressOverlay as we're using the native panel binder
+        // tripProgressOverlay.show() - REMOVED
+
+        // Trigger an initial update (after UI is created)
+        if (points.isNotEmpty()) {
+            tripProgressManager.updateProgress(
+                legIndex = 0,
+                distanceToNextWaypoint = 0.0,
+                totalDistanceRemaining = 0.0,
+                totalDurationRemaining = 0.0
+            )
+        }
+
+        Log.d("NavigationActivity", "✅ Drop-in UI customization complete with native trip progress binder")
     }
     
 

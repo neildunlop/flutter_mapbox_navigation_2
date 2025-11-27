@@ -2,6 +2,9 @@ import Foundation
 import MapboxMaps
 import Flutter
 
+/// Callback type for marker tap events
+public typealias MarkerTapListener = (StaticMarker) -> Void
+
 @objc public class StaticMarkerManager: NSObject {
     private var markers: [String: StaticMarker] = [:]
     private var configuration: MarkerConfiguration = MarkerConfiguration()
@@ -9,6 +12,9 @@ import Flutter
     private var mapView: MapView?
     private var pointAnnotationManager: PointAnnotationManager?
     private var markerAnnotations: [String: PointAnnotation] = [:]
+
+    /// Listener for marker tap events (for popup overlay)
+    private var markerTapListener: MarkerTapListener?
     
     // MARK: - Singleton
     
@@ -42,6 +48,11 @@ import Flutter
     
     @objc public func setEventSink(_ eventSink: FlutterEventSink?) {
         self.eventSink = eventSink
+    }
+
+    /// Set a listener for marker tap events (used by MarkerPopupOverlay)
+    public func setMarkerTapListener(_ listener: MarkerTapListener?) {
+        self.markerTapListener = listener
     }
     
     // MARK: - Marker Management
@@ -111,10 +122,13 @@ import Flutter
     }
     
     // MARK: - Event Handling
-    
+
     @objc public func onMarkerTap(_ marker: StaticMarker) {
+        // Notify the popup overlay listener
+        markerTapListener?(marker)
+
+        // Send marker data to Flutter
         do {
-            // Send marker data to Flutter
             let markerData = marker.toJson()
             eventSink?(markerData)
         } catch {

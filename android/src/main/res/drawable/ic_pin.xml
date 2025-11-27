@@ -4,7 +4,16 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- White outline/shadow for visibility on dark maps -->
     <path
-        android:fillColor="#FF000000"
-        android:pathData="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7zM12,11.5c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z"/>
-</vector> 
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,1C7.58,1 4,4.58 4,9c0,5.75 8,14 8,14s8,-8.25 8,-14c0,-4.42 -3.58,-8 -8,-8z"/>
+    <!-- Blue pin body -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7z"/>
+    <!-- White center dot -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,11.5c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5 2.5,1.12 2.5,2.5 -1.12,2.5 -2.5,2.5z"/>
+</vector>

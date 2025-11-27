@@ -4,6 +4,7 @@ export 'feedback.dart';
 export 'fullscreen_event.dart';
 export 'marker_configuration.dart';
 export 'marker_icons.dart';
+export 'marker_popup_builder.dart';
 export 'navmode.dart';
 export 'options.dart';
 export 'route_event.dart';

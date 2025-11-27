@@ -1,6 +1,5 @@
 package com.eopeter.fluttermapboxnavigation.utilities
 
-import android.animation.ValueAnimator
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -21,50 +20,47 @@ import com.eopeter.fluttermapboxnavigation.StaticMarkerManager
 import com.eopeter.fluttermapboxnavigation.activity.NavigationActivity
 import com.eopeter.fluttermapboxnavigation.models.StaticMarker
 import com.eopeter.fluttermapboxnavigation.models.MapBoxEvents
-import com.mapbox.navigation.ui.base.lifecycle.UIBinder
-import com.mapbox.navigation.ui.base.lifecycle.UIComponent
-import com.mapbox.navigation.core.lifecycle.MapboxNavigationObserver
-import com.mapbox.navigation.core.MapboxNavigation
 import org.json.JSONObject
 
 /**
- * UIBinder for showing marker info in the Drop-in UI's info panel.
+ * Manages a floating marker info card that appears above the navigation info panel.
  *
- * This binder adds marker details as content within the navigation info panel,
- * providing a native, integrated experience that works alongside ETA and
- * distance information.
+ * This class creates a CardView overlay that floats above the Mapbox Drop-in UI,
+ * showing details when a marker is tapped.
  */
-class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
+class MarkerPopupOverlay(private val activity: NavigationActivity) {
 
     private var currentMarker: StaticMarker? = null
     private var markerInfoCard: CardView? = null
-    private var parentViewGroup: ViewGroup? = null
     private var isVisible = false
 
-    override fun bind(viewGroup: ViewGroup): MapboxNavigationObserver {
-        parentViewGroup = viewGroup
+    // Bottom margin to position card above the info panel (adjust as needed)
+    private val bottomMarginDp = 180
 
-        return object : UIComponent() {
-            override fun onAttached(mapboxNavigation: MapboxNavigation) {
-                super.onAttached(mapboxNavigation)
-
-                // Listen for marker tap events
-                StaticMarkerManager.getInstance().setMarkerTapListener { marker ->
-                    activity.runOnUiThread {
-                        handleMarkerTap(marker)
-                    }
-                }
-            }
-
-            override fun onDetached(mapboxNavigation: MapboxNavigation) {
-                super.onDetached(mapboxNavigation)
-                StaticMarkerManager.getInstance().setMarkerTapListener(null)
-                hideMarkerInfo()
+    /**
+     * Initialize the overlay and set up marker tap listener.
+     */
+    fun initialize() {
+        StaticMarkerManager.getInstance().setMarkerTapListener { marker ->
+            activity.runOnUiThread {
+                handleMarkerTap(marker)
             }
         }
+        Log.d("MarkerPopupOverlay", "Initialized marker tap listener")
+    }
+
+    /**
+     * Clean up resources when navigation ends.
+     */
+    fun cleanup() {
+        StaticMarkerManager.getInstance().setMarkerTapListener(null)
+        hideMarkerInfo()
+        Log.d("MarkerPopupOverlay", "Cleaned up")
     }
 
     private fun handleMarkerTap(marker: StaticMarker) {
+        Log.d("MarkerPopupOverlay", "Marker tapped: ${marker.title}")
+
         // If same marker tapped, toggle visibility
         if (currentMarker?.id == marker.id && isVisible) {
             hideMarkerInfo()
@@ -80,60 +76,69 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
     }
 
     private fun showMarkerInfo(marker: StaticMarker) {
-        val parent = parentViewGroup ?: return
+        // Get the root FrameLayout
+        val rootView = activity.findViewById<FrameLayout>(android.R.id.content)
+            ?: activity.window.decorView.findViewById<ViewGroup>(android.R.id.content)
+
+        if (rootView == null) {
+            Log.e("MarkerPopupOverlay", "Could not find root view")
+            return
+        }
 
         // Remove existing card if any
         markerInfoCard?.let { card ->
-            parent.removeView(card)
+            (card.parent as? ViewGroup)?.removeView(card)
         }
 
         // Create the marker info card
         markerInfoCard = createMarkerInfoCard(marker)
 
-        // Add to the info panel content area
-        val layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
+        // Position at bottom, above the info panel
+        val layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT
         ).apply {
-            setMargins(0, dpToPx(8), 0, dpToPx(8))
+            gravity = Gravity.BOTTOM
+            setMargins(dpToPx(16), 0, dpToPx(16), dpToPx(bottomMarginDp))
         }
 
-        // Try to add at the top of the content area
-        if (parent is LinearLayout) {
-            parent.addView(markerInfoCard, 0, layoutParams)
-        } else {
-            parent.addView(markerInfoCard, layoutParams)
-        }
+        // Add to root view
+        rootView.addView(markerInfoCard, layoutParams)
 
         // Animate in
         markerInfoCard?.let { card ->
             card.alpha = 0f
-            card.translationY = -dpToPx(20).toFloat()
+            card.translationY = dpToPx(50).toFloat()
             card.animate()
                 .alpha(1f)
                 .translationY(0f)
-                .setDuration(200)
+                .setDuration(250)
                 .setInterpolator(AccelerateDecelerateInterpolator())
                 .start()
         }
 
         isVisible = true
+        Log.d("MarkerPopupOverlay", "Showing marker info for: ${marker.title}")
     }
 
     private fun hideMarkerInfo() {
         markerInfoCard?.let { card ->
             card.animate()
                 .alpha(0f)
-                .translationY(-dpToPx(20).toFloat())
-                .setDuration(150)
+                .translationY(dpToPx(50).toFloat())
+                .setDuration(200)
                 .setInterpolator(AccelerateDecelerateInterpolator())
                 .withEndAction {
-                    parentViewGroup?.removeView(card)
+                    (card.parent as? ViewGroup)?.removeView(card)
                     markerInfoCard = null
                     currentMarker = null
                     isVisible = false
                 }
                 .start()
+        } ?: run {
+            markerInfoCard = null
+            currentMarker = null
+            isVisible = false
         }
     }
 
@@ -141,15 +146,15 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
         val context = activity
 
         return CardView(context).apply {
-            radius = dpToPx(12).toFloat()
-            cardElevation = dpToPx(4).toFloat()
+            radius = dpToPx(16).toFloat()
+            cardElevation = dpToPx(8).toFloat()
             setCardBackgroundColor(Color.WHITE)
-            useCompatPadding = true
+            useCompatPadding = false
 
             // Main content container
             val contentLayout = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
+                setPadding(dpToPx(16), dpToPx(14), dpToPx(16), dpToPx(14))
             }
 
             // Header row with icon, title, and close button
@@ -160,13 +165,13 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
 
             // Icon circle
             val iconContainer = FrameLayout(context).apply {
-                val size = dpToPx(40)
+                val size = dpToPx(44)
                 layoutParams = LinearLayout.LayoutParams(size, size)
                 background = createCircleDrawable(getMarkerColor(marker))
             }
 
             val iconView = ImageView(context).apply {
-                val iconSize = dpToPx(20)
+                val iconSize = dpToPx(22)
                 layoutParams = FrameLayout.LayoutParams(iconSize, iconSize).apply {
                     gravity = Gravity.CENTER
                 }
@@ -184,17 +189,17 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     1f
                 ).apply {
-                    marginStart = dpToPx(12)
+                    marginStart = dpToPx(14)
                 }
             }
 
             // Title
             val titleView = TextView(context).apply {
                 text = marker.title
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
                 setTextColor(Color.parseColor("#1a1a1a"))
                 typeface = Typeface.DEFAULT_BOLD
-                maxLines = 1
+                maxLines = 2
             }
             titleContainer.addView(titleView)
 
@@ -202,8 +207,9 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
             if (marker.category.isNotEmpty()) {
                 val categoryView = TextView(context).apply {
                     text = formatCategory(marker.category)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     setTextColor(getMarkerColor(marker))
+                    setPadding(0, dpToPx(2), 0, 0)
                 }
                 titleContainer.addView(categoryView)
             }
@@ -212,11 +218,11 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
 
             // Close button
             val closeButton = ImageButton(context).apply {
-                val size = dpToPx(32)
+                val size = dpToPx(36)
                 layoutParams = LinearLayout.LayoutParams(size, size)
                 setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-                setColorFilter(Color.parseColor("#888888"))
-                background = createCircleDrawable(Color.parseColor("#f0f0f0"))
+                setColorFilter(Color.parseColor("#666666"))
+                background = createCircleDrawable(Color.parseColor("#f5f5f5"))
                 setOnClickListener { hideMarkerInfo() }
             }
             headerLayout.addView(closeButton)
@@ -228,10 +234,11 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
             if (!description.isNullOrEmpty()) {
                 val descriptionView = TextView(context).apply {
                     text = description
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                     setTextColor(Color.parseColor("#555555"))
-                    setPadding(0, dpToPx(8), 0, 0)
-                    maxLines = 2
+                    setPadding(0, dpToPx(10), 0, 0)
+                    maxLines = 3
+                    lineHeight = dpToPx(20)
                 }
                 contentLayout.addView(descriptionView)
             }
@@ -242,11 +249,11 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
                 val etaLayout = LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
-                    setPadding(0, dpToPx(8), 0, 0)
+                    setPadding(0, dpToPx(10), 0, 0)
                 }
 
                 val clockIcon = ImageView(context).apply {
-                    val iconSize = dpToPx(14)
+                    val iconSize = dpToPx(16)
                     layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
                     setImageResource(android.R.drawable.ic_menu_recent_history)
                     setColorFilter(Color.parseColor("#888888"))
@@ -255,9 +262,9 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
 
                 val etaView = TextView(context).apply {
                     text = "ETA: $eta"
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     setTextColor(Color.parseColor("#666666"))
-                    setPadding(dpToPx(4), 0, 0, 0)
+                    setPadding(dpToPx(6), 0, 0, 0)
                 }
                 etaLayout.addView(etaView)
 
@@ -338,7 +345,7 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
             PluginUtilities.sendEvent(MapBoxEvents.MARKER_TAP_FULLSCREEN, jsonObject.toString())
 
         } catch (e: Exception) {
-            Log.e("MarkerPopupBinder", "Error sending event to Flutter: ${e.message}")
+            Log.e("MarkerPopupOverlay", "Error sending event to Flutter: ${e.message}")
         }
     }
 

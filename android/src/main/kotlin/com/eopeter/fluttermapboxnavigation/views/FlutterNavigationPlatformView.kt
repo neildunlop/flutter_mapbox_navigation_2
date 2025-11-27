@@ -9,6 +9,7 @@ import android.widget.FrameLayout
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import com.eopeter.fluttermapboxnavigation.FlutterMapboxNavigationPlugin
 import com.eopeter.fluttermapboxnavigation.StaticMarkerManager
 import com.eopeter.fluttermapboxnavigation.models.MapBoxEvents
 import com.eopeter.fluttermapboxnavigation.models.MapBoxRouteProgressEvent
@@ -288,7 +289,7 @@ class FlutterNavigationPlatformView(
             val routeOptions = RouteOptions.builder()
                 .coordinatesList(coordinates)
                 .profile(DirectionsCriteria.PROFILE_DRIVING_TRAFFIC)
-                .alternatives(true)
+                .alternatives(FlutterMapboxNavigationPlugin.showAlternateRoutes)
                 .steps(true)
                 .geometries(DirectionsCriteria.GEOMETRY_POLYLINE6)
                 .overview(DirectionsCriteria.OVERVIEW_FULL)

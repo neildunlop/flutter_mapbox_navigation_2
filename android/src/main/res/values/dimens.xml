@@ -2,4 +2,8 @@
     <!-- Default screen margins, per the Android Design guidelines. -->
     <dimen name="activity_horizontal_margin">16dp</dimen>
     <dimen name="activity_vertical_margin">16dp</dimen>
+
+    <!-- Custom info panel peek height for navigation view -->
+    <!-- Accommodates: header row, distance/time, progress bar, waypoint count, ETA, end button -->
+    <dimen name="custom_info_panel_peek_height">280dp</dimen>
 </resources>

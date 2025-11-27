@@ -511,13 +511,13 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
     private fun startFlutterStyledNavigation(call: MethodCall, result: Result) {
         try {
             val arguments = call.arguments as? Map<String, Any>
-            
+
             // Parse waypoints
             val points = arguments?.get("wayPoints") as? HashMap<Int, Any> ?: run {
                 result.error("INVALID_ARGUMENTS", "wayPoints is required", null)
                 return
             }
-            
+
             val waypoints = mutableListOf<Waypoint>()
             for (item in points) {
                 val point = item.value as HashMap<*, *>
@@ -527,30 +527,79 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
                 val isSilent = point["IsSilent"] as Boolean
                 waypoints.add(Waypoint(name, longitude, latitude, isSilent))
             }
-            
-            // Parse options
-            val options = mutableMapOf<String, Any>()
-            arguments?.get("simulateRoute")?.let { options["simulateRoute"] = it }
-            arguments?.get("voiceInstructionsEnabled")?.let { options["voiceInstructionsEnabled"] = it }
-            arguments?.get("bannerInstructionsEnabled")?.let { options["bannerInstructionsEnabled"] = it }
-            arguments?.get("units")?.let { options["units"] = it }
-            arguments?.get("language")?.let { options["language"] = it }
-            arguments?.get("mode")?.let { options["mode"] = it }
-            
+
+            // Apply options to plugin static variables (same as checkPermissionAndBeginNavigation)
+            val navMode = arguments?.get("mode") as? String
+            if (navMode != null) {
+                when (navMode) {
+                    "walking" -> navigationMode = DirectionsCriteria.PROFILE_WALKING
+                    "cycling" -> navigationMode = DirectionsCriteria.PROFILE_CYCLING
+                    "driving" -> navigationMode = DirectionsCriteria.PROFILE_DRIVING
+                }
+            }
+
+            val alternateRoutes = arguments?.get("alternatives") as? Boolean
+            if (alternateRoutes != null) {
+                showAlternateRoutes = alternateRoutes
+            }
+
+            val simulated = arguments?.get("simulateRoute") as? Boolean
+            if (simulated != null) {
+                simulateRoute = simulated
+            }
+
+            val allowsUTurns = arguments?.get("allowsUTurnAtWayPoints") as? Boolean
+            if (allowsUTurns != null) {
+                allowsUTurnsAtWayPoints = allowsUTurns
+            }
+
+            val onMapTap = arguments?.get("enableOnMapTapCallback") as? Boolean
+            if (onMapTap != null) {
+                enableOnMapTapCallback = onMapTap
+            }
+
+            val language = arguments?.get("language") as? String
+            if (language != null) {
+                navigationLanguage = language
+            }
+
+            val voiceEnabled = arguments?.get("voiceInstructionsEnabled") as? Boolean
+            if (voiceEnabled != null) {
+                voiceInstructionsEnabled = voiceEnabled
+            }
+
+            val bannerEnabled = arguments?.get("bannerInstructionsEnabled") as? Boolean
+            if (bannerEnabled != null) {
+                bannerInstructionsEnabled = bannerEnabled
+            }
+
+            val units = arguments?.get("units") as? String
+            if (units != null) {
+                navigationVoiceUnits = getUnitType(units)
+            }
+
+            mapStyleUrlDay = arguments?.get("mapStyleUrlDay") as? String
+            mapStyleUrlNight = arguments?.get("mapStyleUrlNight") as? String
+
+            val longPress = arguments?.get("longPressDestinationEnabled") as? Boolean
+            if (longPress != null) {
+                longPressDestinationEnabled = longPress
+            }
+
             // Parse debug flag
             val showDebug = arguments?.get("showDebugOverlay") as? Boolean ?: false
-            
+
             // Set a flag to enable Flutter-style overlays in NavigationActivity
             println("FlutterMapboxNavigationPlugin: Setting enableFlutterStyleOverlays = true")
             enableFlutterStyleOverlays = true
             println("FlutterMapboxNavigationPlugin: Flag set, enableFlutterStyleOverlays = $enableFlutterStyleOverlays")
-            
+
             // Launch NavigationActivity with Flutter overlay customizations
             println("FlutterMapboxNavigationPlugin: Launching NavigationActivity with waypoints: ${waypoints.size}")
             NavigationLauncher.startNavigation(currentActivity, waypoints)
-            
+
             result.success(true)
-            
+
         } catch (e: Exception) {
             result.error("FLUTTER_NAVIGATION_ERROR", "Failed to start Flutter navigation: ${e.message}", null)
         }

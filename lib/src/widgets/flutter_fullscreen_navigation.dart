@@ -5,23 +5,59 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mapbox_navigation/src/models/models.dart';
 import 'package:flutter_mapbox_navigation/src/flutter_mapbox_navigation.dart';
+import 'package:flutter_mapbox_navigation/src/widgets/marker_popup_overlay.dart';
 
-/// Flutter-controlled full-screen navigation widget using platform views
-/// This replaces the native NavigationActivity with a Flutter implementation
-/// that embeds the map as a platform view, allowing perfect overlay control
+/// Flutter-controlled full-screen navigation widget using platform views.
+///
+/// This widget embeds the native Mapbox navigation map inside Flutter,
+/// allowing Flutter to render overlays (like marker popups) on top of the map.
+///
+/// Features:
+/// - Native map performance via platform views
+/// - Flutter-rendered marker popups (cross-platform)
+/// - Customizable popup UI via [markerPopupBuilder]
+/// - Default Material Design popup when no custom builder provided
+///
+/// Example usage:
+/// ```dart
+/// Navigator.push(context, MaterialPageRoute(
+///   builder: (_) => FlutterFullScreenNavigation(
+///     wayPoints: [origin, destination],
+///     options: MapBoxOptions(simulateRoute: true),
+///     markerPopupBuilder: (context, marker, onClose) {
+///       return MyCustomPopup(marker: marker, onClose: onClose);
+///     },
+///   ),
+/// ));
+/// ```
 class FlutterFullScreenNavigation extends StatefulWidget {
   final List<WayPoint> wayPoints;
   final MapBoxOptions options;
+
+  /// Optional custom builder for marker popups.
+  /// If not provided, [DefaultMarkerPopup] will be used.
+  final MarkerPopupBuilder? markerPopupBuilder;
+
+  /// Callback when a marker is tapped (called in addition to showing popup)
   final Function(StaticMarker)? onMarkerTap;
+
+  /// Callback when the map is tapped (not on a marker)
   final Function(double lat, double lng)? onMapTap;
+
+  /// Callback for route progress events
   final Function(RouteEvent)? onRouteEvent;
+
+  /// Callback when navigation finishes or is cancelled
   final Function()? onNavigationFinished;
+
+  /// Whether to show debug information overlay
   final bool showDebugOverlay;
-  
+
   const FlutterFullScreenNavigation({
     Key? key,
     required this.wayPoints,
     required this.options,
+    this.markerPopupBuilder,
     this.onMarkerTap,
     this.onMapTap,
     this.onRouteEvent,
@@ -30,88 +66,91 @@ class FlutterFullScreenNavigation extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<FlutterFullScreenNavigation> createState() => _FlutterFullScreenNavigationState();
+  State<FlutterFullScreenNavigation> createState() =>
+      _FlutterFullScreenNavigationState();
 }
 
-class _FlutterFullScreenNavigationState extends State<FlutterFullScreenNavigation>
-    with TickerProviderStateMixin {
-  
+class _FlutterFullScreenNavigationState
+    extends State<FlutterFullScreenNavigation> with TickerProviderStateMixin {
   static const String _viewType = 'flutter_mapbox_navigation_platform_view';
-  
+
   // Navigation state
   bool _isNavigating = false;
   bool _isInitialized = false;
   String? _currentInstruction;
   double? _distanceRemaining;
   double? _durationRemaining;
-  
-  // Overlay state
+
+  // Popup state
   StaticMarker? _selectedMarker;
-  late AnimationController _overlayAnimationController;
-  late Animation<double> _overlayFadeAnimation;
-  late Animation<Offset> _overlaySlideAnimation;
-  
-  // Platform view controller
+  late AnimationController _popupAnimationController;
+  late Animation<double> _popupFadeAnimation;
+  late Animation<Offset> _popupSlideAnimation;
+
+  // Platform view
   int? _platformViewId;
-  
+
   @override
   void initState() {
     super.initState();
     _setupAnimations();
     _initializeNavigation();
   }
-  
+
   void _setupAnimations() {
-    _overlayAnimationController = AnimationController(
+    _popupAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    
-    _overlayFadeAnimation = Tween<double>(
+
+    _popupFadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(
-      parent: _overlayAnimationController,
+      parent: _popupAnimationController,
       curve: Curves.easeInOut,
     ));
-    
-    _overlaySlideAnimation = Tween<Offset>(
+
+    _popupSlideAnimation = Tween<Offset>(
       begin: const Offset(0, 1),
       end: Offset.zero,
     ).animate(CurvedAnimation(
-      parent: _overlayAnimationController,
+      parent: _popupAnimationController,
       curve: Curves.easeOutBack,
     ));
   }
-  
+
   Future<void> _initializeNavigation() async {
     try {
       // Register event listeners
       MapBoxNavigation.instance.registerRouteEventListener(_onRouteEvent);
       MapBoxNavigation.instance.registerStaticMarkerTapListener(_onMarkerTap);
-      MapBoxNavigation.instance.registerFullScreenEventListener(_onFullScreenEvent);
-      
+      MapBoxNavigation.instance
+          .registerFullScreenEventListener(_onFullScreenEvent);
+
       setState(() {
         _isInitialized = true;
       });
-      
+
       if (widget.showDebugOverlay) {
-        debugPrint('🚀 Flutter full-screen navigation initialized');
+        debugPrint('FlutterFullScreenNavigation: Initialized');
       }
     } catch (e) {
-      debugPrint('❌ Failed to initialize Flutter full-screen navigation: $e');
+      debugPrint('FlutterFullScreenNavigation: Failed to initialize: $e');
     }
   }
-  
+
   void _onRouteEvent(RouteEvent event) {
     widget.onRouteEvent?.call(event);
-    
+
     switch (event.eventType) {
       case MapBoxEvent.progress_change:
         if (event.data is RouteProgressEvent) {
           final progress = event.data as RouteProgressEvent;
           setState(() {
             _currentInstruction = progress.currentStepInstruction;
+            _distanceRemaining = progress.distance;
+            _durationRemaining = progress.duration;
           });
         }
         break;
@@ -130,16 +169,13 @@ class _FlutterFullScreenNavigationState extends State<FlutterFullScreenNavigatio
       default:
         break;
     }
-    
-    // Update distance and duration
-    _updateNavigationProgress();
   }
-  
+
   void _onMarkerTap(StaticMarker marker) {
     widget.onMarkerTap?.call(marker);
-    _showMarkerOverlay(marker);
+    _showMarkerPopup(marker);
   }
-  
+
   void _onFullScreenEvent(FullScreenEvent event) {
     if (event.marker != null) {
       _onMarkerTap(event.marker!);
@@ -147,36 +183,26 @@ class _FlutterFullScreenNavigationState extends State<FlutterFullScreenNavigatio
       widget.onMapTap?.call(event.latitude!, event.longitude!);
     }
   }
-  
-  Future<void> _updateNavigationProgress() async {
-    try {
-      final distance = await MapBoxNavigation.instance.getDistanceRemaining();
-      final duration = await MapBoxNavigation.instance.getDurationRemaining();
-      
-      if (mounted) {
-        setState(() {
-          _distanceRemaining = distance;
-          _durationRemaining = duration;
-        });
-      }
-    } catch (e) {
-      debugPrint('Failed to update navigation progress: $e');
+
+  void _showMarkerPopup(StaticMarker marker) {
+    // If same marker tapped, toggle off
+    if (_selectedMarker?.id == marker.id) {
+      _hideMarkerPopup();
+      return;
     }
-  }
-  
-  void _showMarkerOverlay(StaticMarker marker) {
+
     setState(() {
       _selectedMarker = marker;
     });
-    _overlayAnimationController.forward();
-    
+    _popupAnimationController.forward();
+
     if (widget.showDebugOverlay) {
-      debugPrint('🎯 Showing marker overlay: ${marker.title}');
+      debugPrint('FlutterFullScreenNavigation: Showing popup for ${marker.title}');
     }
   }
-  
-  void _hideMarkerOverlay() {
-    _overlayAnimationController.reverse().then((_) {
+
+  void _hideMarkerPopup() {
+    _popupAnimationController.reverse().then((_) {
       if (mounted) {
         setState(() {
           _selectedMarker = null;
@@ -184,7 +210,7 @@ class _FlutterFullScreenNavigationState extends State<FlutterFullScreenNavigatio
       }
     });
   }
-  
+
   Future<void> _finishNavigation() async {
     try {
       await MapBoxNavigation.instance.finishNavigation();
@@ -192,16 +218,16 @@ class _FlutterFullScreenNavigationState extends State<FlutterFullScreenNavigatio
         Navigator.of(context).pop();
       }
     } catch (e) {
-      debugPrint('Failed to finish navigation: $e');
+      debugPrint('FlutterFullScreenNavigation: Failed to finish: $e');
     }
   }
-  
+
   @override
   void dispose() {
-    _overlayAnimationController.dispose();
+    _popupAnimationController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -211,23 +237,24 @@ class _FlutterFullScreenNavigationState extends State<FlutterFullScreenNavigatio
           if (_isInitialized)
             _buildPlatformView()
           else
-            const Center(
-              child: CircularProgressIndicator(),
-            ),
-          
-          // Flutter-controlled overlays
+            const Center(child: CircularProgressIndicator()),
+
+          // Flutter overlays
           if (_isInitialized) ...[
-            _buildNavigationUI(),
-            if (_selectedMarker != null)
-              _buildMarkerOverlay(),
-            if (widget.showDebugOverlay)
-              _buildDebugOverlay(),
+            // Top navigation bar with close button
+            _buildTopBar(),
+
+            // Marker popup overlay
+            if (_selectedMarker != null) _buildMarkerPopupOverlay(),
+
+            // Debug overlay
+            if (widget.showDebugOverlay) _buildDebugOverlay(),
           ],
         ],
       ),
     );
   }
-  
+
   Widget _buildPlatformView() {
     return PlatformViewLink(
       viewType: _viewType,
@@ -245,10 +272,9 @@ class _FlutterFullScreenNavigationState extends State<FlutterFullScreenNavigatio
       onCreatePlatformView: (params) {
         final viewId = params.id;
         _platformViewId = viewId;
-        
-        // Pass navigation parameters to the platform view
+
         final args = _buildNavigationArgs();
-        
+
         return PlatformViewsService.initAndroidView(
           id: viewId,
           viewType: _viewType,
@@ -260,10 +286,10 @@ class _FlutterFullScreenNavigationState extends State<FlutterFullScreenNavigatio
       },
     );
   }
-  
+
   Map<String, dynamic> _buildNavigationArgs() {
     final pointList = <Map<String, Object?>>[];
-    
+
     for (var i = 0; i < widget.wayPoints.length; i++) {
       final wayPoint = widget.wayPoints[i];
       pointList.add({
@@ -274,152 +300,92 @@ class _FlutterFullScreenNavigationState extends State<FlutterFullScreenNavigatio
         'IsSilent': wayPoint.isSilent,
       });
     }
-    
+
     final args = widget.options.toMap();
-    args['wayPoints'] = {for (var i = 0; i < pointList.length; i++) i: pointList[i]};
-    args['platformViewMode'] = true; // Flag to indicate platform view mode
-    
+    args['wayPoints'] = {
+      for (var i = 0; i < pointList.length; i++) i: pointList[i]
+    };
+    args['platformViewMode'] = true;
+
     return args;
   }
-  
-  Widget _buildNavigationUI() {
+
+  Widget _buildTopBar() {
     return SafeArea(
-      child: Column(
-        children: [
-          // Top navigation bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.7),
-                  Colors.transparent,
-                ],
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withOpacity(0.7),
+              Colors.transparent,
+            ],
+          ),
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: _finishNavigation,
+              icon: const Icon(Icons.close, color: Colors.white),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black.withOpacity(0.3),
               ),
             ),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: _finishNavigation,
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.black.withOpacity(0.3),
+            const Spacer(),
+            if (widget.showDebugOverlay)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'FLUTTER MODE',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const Spacer(),
-                if (widget.showDebugOverlay)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'FLUTTER MODE',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          
-          const Spacer(),
-          
-          // Bottom instruction panel
-          if (_currentInstruction != null || _distanceRemaining != null)
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_currentInstruction != null) ...[
-                    Text(
-                      _currentInstruction!,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  if (_distanceRemaining != null || _durationRemaining != null)
-                    Row(
-                      children: [
-                        if (_distanceRemaining != null) ...[
-                          const Icon(Icons.straight, size: 16, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${(_distanceRemaining! * 0.000621371).toStringAsFixed(1)} mi',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                        if (_durationRemaining != null) ...[
-                          if (_distanceRemaining != null)
-                            const SizedBox(width: 16),
-                          const Icon(Icons.access_time, size: 16, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${(_durationRemaining! / 60).toStringAsFixed(0)} min',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ],
-                    ),
-                ],
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
-  
-  Widget _buildMarkerOverlay() {
+
+  Widget _buildMarkerPopupOverlay() {
     return AnimatedBuilder(
-      animation: _overlayAnimationController,
+      animation: _popupAnimationController,
       builder: (context, child) {
         return Stack(
           children: [
-            // Background overlay
+            // Semi-transparent background - tap to dismiss
             FadeTransition(
-              opacity: _overlayFadeAnimation,
+              opacity: _popupFadeAnimation,
               child: GestureDetector(
-                onTap: _hideMarkerOverlay,
+                onTap: _hideMarkerPopup,
                 child: Container(
                   width: double.infinity,
                   height: double.infinity,
-                  color: Colors.black54,
+                  color: Colors.black.withOpacity(0.3),
                 ),
               ),
             ),
-            
-            // Marker info card
+
+            // Popup card at bottom
             Positioned(
               bottom: MediaQuery.of(context).padding.bottom + 20,
               left: 16,
               right: 16,
               child: SlideTransition(
-                position: _overlaySlideAnimation,
+                position: _popupSlideAnimation,
                 child: FadeTransition(
-                  opacity: _overlayFadeAnimation,
-                  child: _buildMarkerCard(_selectedMarker!),
+                  opacity: _popupFadeAnimation,
+                  child: _buildPopupContent(),
                 ),
               ),
             ),
@@ -428,59 +394,34 @@ class _FlutterFullScreenNavigationState extends State<FlutterFullScreenNavigatio
       },
     );
   }
-  
-  Widget _buildMarkerCard(StaticMarker marker) {
+
+  Widget _buildPopupContent() {
+    final marker = _selectedMarker!;
+
+    // Use custom builder if provided, otherwise use default
+    if (widget.markerPopupBuilder != null) {
+      return widget.markerPopupBuilder!(context, marker, _hideMarkerPopup);
+    }
+
+    // Default popup wrapped in a Card with close button
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(20),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: marker.customColor ?? Theme.of(context).primaryColor,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Icon(
-                    _getMarkerIcon(marker.iconId),
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        marker.title,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (marker.category.isNotEmpty)
-                        Text(
-                          marker.category.toUpperCase(),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[600],
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                    ],
-                  ),
+                  child: DefaultMarkerPopup(marker: marker),
                 ),
                 IconButton(
-                  onPressed: _hideMarkerOverlay,
+                  onPressed: _hideMarkerPopup,
                   icon: const Icon(Icons.close),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.grey[100],
@@ -488,41 +429,20 @@ class _FlutterFullScreenNavigationState extends State<FlutterFullScreenNavigatio
                 ),
               ],
             ),
-            
-            // Description
-            if (marker.description != null && marker.description!.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text(
-                marker.description!,
-                style: Theme.of(context).textTheme.bodyMedium,
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: _hideMarkerPopup,
+                child: const Text('Close'),
               ),
-            ],
-            
-            // Action buttons
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    _hideMarkerOverlay();
-                    // Add as waypoint functionality could be added here
-                  },
-                  child: const Text('Add to Route'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _hideMarkerOverlay,
-                  child: const Text('Close'),
-                ),
-              ],
             ),
           ],
         ),
       ),
     );
   }
-  
+
   Widget _buildDebugOverlay() {
     return Positioned(
       top: MediaQuery.of(context).padding.top + 60,
@@ -555,41 +475,17 @@ class _FlutterFullScreenNavigationState extends State<FlutterFullScreenNavigatio
               style: const TextStyle(color: Colors.white, fontSize: 10),
             ),
             Text(
-              'Overlay: ${_selectedMarker != null ? _selectedMarker!.title : 'None'}',
+              'Popup: ${_selectedMarker?.title ?? 'None'}',
               style: const TextStyle(color: Colors.white, fontSize: 10),
             ),
+            if (_distanceRemaining != null)
+              Text(
+                'Distance: ${(_distanceRemaining! / 1000).toStringAsFixed(1)} km',
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+              ),
           ],
         ),
       ),
     );
-  }
-  
-  IconData _getMarkerIcon(String? iconId) {
-    switch (iconId) {
-      case 'petrolStation':
-        return Icons.local_gas_station;
-      case 'restaurant':
-        return Icons.restaurant;
-      case 'hotel':
-        return Icons.hotel;
-      case 'hospital':
-        return Icons.local_hospital;
-      case 'police':
-        return Icons.local_police;
-      case 'parking':
-        return Icons.local_parking;
-      case 'scenic':
-        return Icons.landscape;
-      case 'chargingStation':
-        return Icons.ev_station;
-      case 'speedCamera':
-        return Icons.speed;
-      case 'accident':
-        return Icons.warning;
-      case 'construction':
-        return Icons.construction;
-      default:
-        return Icons.place;
-    }
   }
 }

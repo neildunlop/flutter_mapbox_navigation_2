@@ -79,11 +79,14 @@ class StaticMarkerManager {
      * Manually trigger marker tap listener for external callers
      */
     fun triggerMarkerTapListener(marker: StaticMarker) {
-        Log.d("StaticMarkerManager", "🎯 triggerMarkerTapListener called for: ${marker.title}")
-        Log.d("StaticMarkerManager", "🎯 markerTapListener exists: ${markerTapListener != null}")
-        markerTapListener?.invoke(marker) ?: run {
-            Log.w("StaticMarkerManager", "⚠️ No marker tap listener set - cannot trigger")
-        }
+        markerTapListener?.invoke(marker)
+    }
+
+    /**
+     * Returns a copy of all currently registered markers
+     */
+    fun getMarkers(): List<StaticMarker> {
+        return markers.values.toList()
     }
 
     /**
@@ -106,28 +109,16 @@ class StaticMarkerManager {
      */
     private fun initializeMarkerSystem() {
         mapView?.let { view ->
-            println("🗺️ Initializing marker system using Maps SDK v10 Annotations API...")
-            
             // Delay initialization to ensure it happens after navigation UI is fully loaded
             view.post {
                 try {
-                    println("🔄 Creating annotation manager after UI load...")
                     pointAnnotationManager = view.annotations.createPointAnnotationManager()
                     setupMarkerClickListener()
-                    
-                    println("✅ Marker system initialized successfully with Annotations API")
-                    println("🔧 Annotation manager created successfully")
-                    
-                    // Re-apply any existing markers
                     applyMarkersToMap()
-                    
                 } catch (e: Exception) {
-                    println("❌ Failed to initialize marker system: ${e.message}")
-                    e.printStackTrace()
+                    Log.e("StaticMarkerManager", "Failed to initialize marker system: ${e.message}")
                 }
             }
-        } ?: run {
-            println("❌ MapView is null - cannot initialize marker system")
         }
     }
     
@@ -136,35 +127,24 @@ class StaticMarkerManager {
      */
     private fun setupMarkerClickListener() {
         pointAnnotationManager?.addClickListener { annotation ->
-            println("🎯 Annotation click detected: ${annotation.geometry}")
-            // Find the marker associated with this annotation
             val markerId = pointAnnotations.entries.find { it.value == annotation }?.key
             markerId?.let { id ->
                 markers[id]?.let { marker ->
-                    println("🎯 Annotation click for marker: ${marker.title} at (${marker.latitude}, ${marker.longitude})")
-                    
-                    // Check if Flutter overlays are enabled
                     val flutterOverlaysEnabled = try {
                         FlutterMapboxNavigationPlugin.enableFlutterStyleOverlays
                     } catch (e: Exception) {
-                        println("🎯 Could not check Flutter overlay flag: ${e.message}")
                         false
                     }
-                    
-                    // Use custom marker tap listener if set, otherwise use default behavior
+
                     if (markerTapListener != null) {
-                        println("🎯 Using custom marker tap listener for: ${marker.title}")
                         markerTapListener?.invoke(marker)
                     } else if (!flutterOverlaysEnabled) {
-                        // Only send to Flutter if Flutter overlays are NOT enabled
-                        println("🎯 Sending marker tap to Flutter (Flutter overlays disabled)")
                         onMarkerTap(marker)
-                    } else {
-                        println("🎯 Skipping Flutter event (Flutter overlays enabled - NavigationActivity will handle)")
                     }
+                    Unit
                 }
             }
-            false // Allow map click to also fire for NavigationActivity handling
+            false
         }
     }
     
@@ -195,8 +175,6 @@ class StaticMarkerManager {
      */
     fun addStaticMarkers(markers: List<StaticMarker>, config: MarkerConfiguration): Boolean {
         try {
-            println("🎯 Adding ${markers.size} static markers...")
-            
             // Store configuration
             this.configuration = config
 
@@ -208,14 +186,10 @@ class StaticMarkerManager {
                 this.markers[marker.id] = marker
             }
 
-            // Apply markers to map
             applyMarkersToMap()
-
-            println("✅ Successfully added ${markers.size} static markers")
             return true
         } catch (e: Exception) {
-            println("❌ Failed to add static markers: ${e.message}")
-            e.printStackTrace()
+            Log.e("StaticMarkerManager", "Failed to add static markers: ${e.message}")
             return false
         }
     }
@@ -225,18 +199,13 @@ class StaticMarkerManager {
      */
     fun updateStaticMarkers(markers: List<StaticMarker>): Boolean {
         try {
-            println("🔄 Updating ${markers.size} static markers...")
-            
             markers.forEach { marker ->
                 this.markers[marker.id] = marker
             }
             applyMarkersToMap()
-            
-            println("✅ Successfully updated ${markers.size} static markers")
             return true
         } catch (e: Exception) {
-            println("❌ Failed to update static markers: ${e.message}")
-            e.printStackTrace()
+            Log.e("StaticMarkerManager", "Failed to update static markers: ${e.message}")
             return false
         }
     }
@@ -246,18 +215,13 @@ class StaticMarkerManager {
      */
     fun removeStaticMarkers(markerIds: List<String>): Boolean {
         try {
-            println("🗑️ Removing ${markerIds.size} static markers...")
-            
             markerIds.forEach { id ->
                 markers.remove(id)
             }
             applyMarkersToMap()
-            
-            println("✅ Successfully removed ${markerIds.size} static markers")
             return true
         } catch (e: Exception) {
-            println("❌ Failed to remove static markers: ${e.message}")
-            e.printStackTrace()
+            Log.e("StaticMarkerManager", "Failed to remove static markers: ${e.message}")
             return false
         }
     }
@@ -267,20 +231,10 @@ class StaticMarkerManager {
      */
     fun clearAllStaticMarkers(): Boolean {
         try {
-            val markerCount = markers.size
-            // Clear from memory
             markers.clear()
-            
-            // Clear from map
-            // No direct API to remove all symbols from a source,
-            // so we'd need to manage a list of symbol IDs or re-add them.
-            // For now, we'll just clear the map.
-            println("🧹 Cleared all ${markerCount} static markers")
-            
             return true
         } catch (e: Exception) {
-            println("❌ Failed to clear static markers: ${e.message}")
-            e.printStackTrace()
+            Log.e("StaticMarkerManager", "Failed to clear static markers: ${e.message}")
             return false
         }
     }
@@ -297,16 +251,11 @@ class StaticMarkerManager {
      */
     fun updateMarkerConfiguration(config: MarkerConfiguration): Boolean {
         try {
-            println("⚙️ Updating marker configuration...")
-            
             this.configuration = config
             applyMarkersToMap()
-            
-            println("✅ Marker configuration updated successfully")
             return true
         } catch (e: Exception) {
-            println("❌ Failed to update marker configuration: ${e.message}")
-            e.printStackTrace()
+            Log.e("StaticMarkerManager", "Failed to update marker configuration: ${e.message}")
             return false
         }
     }
@@ -316,14 +265,10 @@ class StaticMarkerManager {
      */
     fun onMarkerTap(marker: StaticMarker) {
         try {
-            // Send marker data to Flutter (for embedded views)
             val markerData = marker.toJson()
             eventSink?.success(markerData)
-            
-            println("🎯 Marker tapped: ${marker.title}")
         } catch (e: Exception) {
-            println("❌ Failed to handle marker tap: ${e.message}")
-            e.printStackTrace()
+            Log.e("StaticMarkerManager", "Failed to handle marker tap: ${e.message}")
         }
     }
     
@@ -333,32 +278,22 @@ class StaticMarkerManager {
      */
     fun onMarkerTapFullScreen(marker: StaticMarker) {
         try {
-            // Create event data for full-screen navigation
-            // Create a flat structure to avoid JSON nesting issues
             val eventData = mutableMapOf<String, Any>(
                 "type" to "marker_tap",
                 "mode" to "fullscreen"
             )
-            
-            // Add all marker fields directly to avoid nested JSON
             val markerData = marker.toJson()
             markerData.forEach { (key, value) ->
-                // Only add non-null values to avoid type casting issues
                 if (value != null) {
                     eventData["marker_$key"] = value
                 }
             }
-            
-            // Send to main navigation event channel
             sendFullScreenEvent(MapBoxEvents.MARKER_TAP_FULLSCREEN, eventData)
-            
-            println("🎯 Full-screen marker tapped: ${marker.title}")
         } catch (e: Exception) {
-            println("❌ Failed to handle full-screen marker tap: ${e.message}")
-            e.printStackTrace()
+            Log.e("StaticMarkerManager", "Failed to handle full-screen marker tap: ${e.message}")
         }
     }
-    
+
     /**
      * Sends full-screen navigation events to Flutter
      */
@@ -367,8 +302,7 @@ class StaticMarkerManager {
             val jsonData = JSONObject(data).toString()
             PluginUtilities.sendEvent(eventType, jsonData)
         } catch (e: Exception) {
-            println("❌ Failed to send full-screen event: ${e.message}")
-            e.printStackTrace()
+            Log.e("StaticMarkerManager", "Failed to send full-screen event: ${e.message}")
         }
     }
 
@@ -376,36 +310,24 @@ class StaticMarkerManager {
      * Checks if a point is near any existing marker
      */
     fun isPointNearAnyMarker(latitude: Double, longitude: Double): Boolean {
-        val tapThreshold = 0.001 // ~100m threshold for tap detection
-        
+        val tapThreshold = 0.001
         return markers.values.any { marker ->
             val latDiff = abs(marker.latitude - latitude)
             val lonDiff = abs(marker.longitude - longitude)
             latDiff < tapThreshold && lonDiff < tapThreshold
         }
     }
-    
+
     /**
      * Returns the marker near a given point, or null if no marker is found
      */
     fun getMarkerNearPoint(latitude: Double, longitude: Double): StaticMarker? {
-        val tapThreshold = 0.01 // ~1km threshold for tap detection - increased tolerance
-        
-        println("🎯 getMarkerNearPoint called with: lat=$latitude, lon=$longitude")
-        println("🎯 Available markers: ${markers.size}")
-        
-        val foundMarker = markers.values.find { marker ->
+        val tapThreshold = 0.01
+        return markers.values.find { marker ->
             val latDiff = abs(marker.latitude - latitude)
             val lonDiff = abs(marker.longitude - longitude)
-            println("🎯 Checking marker ${marker.title}: lat=${marker.latitude}, lon=${marker.longitude}")
-            println("🎯 Differences: latDiff=$latDiff, lonDiff=$lonDiff, threshold=$tapThreshold")
-            val isNear = latDiff < tapThreshold && lonDiff < tapThreshold
-            println("🎯 Is near: $isNear")
-            isNear
+            latDiff < tapThreshold && lonDiff < tapThreshold
         }
-        
-        println("🎯 Found marker: ${foundMarker?.title ?: "none"}")
-        return foundMarker
     }
 
     /**
@@ -434,8 +356,7 @@ class StaticMarkerManager {
             addMarkersWithAnnotationsAPI(limitedMarkers)
 
         } catch (e: Exception) {
-            println("❌ Failed to apply markers to map: ${e.message}")
-            e.printStackTrace()
+            Log.e("StaticMarkerManager", "Failed to apply markers to map: ${e.message}")
         }
     }
 
@@ -484,107 +405,34 @@ class StaticMarkerManager {
 
     /**
      * Adds markers to the map using Maps SDK v11 Annotations API
-     * Based on official Mapbox documentation and examples
      */
     private fun addMarkersWithAnnotationsAPI(markers: List<StaticMarker>) {
-        if (markers.isEmpty()) {
-            println("📝 No markers to display")
-            return
-        }
-        
-        val annotationManager = pointAnnotationManager ?: run {
-            println("❌ PointAnnotationManager not available")
-            return
-        }
-        
-        println("🎨 Rendering ${markers.size} markers with Maps SDK v10 Annotations API...")
-        
+        if (markers.isEmpty()) return
+
+        val annotationManager = pointAnnotationManager ?: return
+
         try {
-            println("🔧 Context available: ${context != null}")
-            println("🔧 Annotation manager: ${annotationManager}")
-            
-            // Clear existing annotations
             annotationManager.deleteAll()
             pointAnnotations.clear()
-            
-            // Create point annotations for each marker
+
             markers.forEach { marker ->
                 try {
-                    // Get the appropriate icon
                     val iconBitmap = getMarkerIconBitmap(marker)
-                    println("🔧 Icon bitmap created for ${marker.title}: ${iconBitmap.width}x${iconBitmap.height}")
-                    
-                    // Create point annotation options with proper positioning and visibility
                     val pointAnnotationOptions = PointAnnotationOptions()
                         .withPoint(Point.fromLngLat(marker.longitude, marker.latitude))
                         .withIconImage(iconBitmap)
-                        .withIconAnchor(IconAnchor.CENTER) // Center anchor for better visibility
-                        .withIconSize(2.5) // Larger size to ensure visibility above navigation layers
-                        .withIconOpacity(1.0) // Ensure full opacity
-                    
-                    println("🔧 Point annotation options created for ${marker.title}")
-                    println("🔧 Location: lng=${marker.longitude}, lat=${marker.latitude}")
-                    
-                    // Create the annotation
+                        .withIconAnchor(IconAnchor.BOTTOM)
+                        .withIconSize(2.5)
+                        .withIconOpacity(1.0)
+
                     val annotation = annotationManager.create(pointAnnotationOptions)
                     pointAnnotations[marker.id] = annotation
-                    
-                    println("✅ Added marker: ${marker.title} at (${marker.latitude}, ${marker.longitude})")
-                    
-                    // Verify the annotation was actually created
-                    if (annotation != null) {
-                        println("🔍 Annotation details: id=${annotation.id}, geometry=${annotation.geometry}")
-                    } else {
-                        println("⚠️ Annotation is null for marker: ${marker.title}")
-                    }
-                    
                 } catch (e: Exception) {
-                    println("❌ Failed to add marker ${marker.id}: ${e.message}")
-                    e.printStackTrace()
+                    Log.e("StaticMarkerManager", "Failed to add marker ${marker.id}: ${e.message}")
                 }
             }
-            
-            println("✅ Successfully rendered ${pointAnnotations.size} markers on map")
-            println("🚀 Using Maps SDK v10.16.0 Annotations API")
-            println("📱 Platform: Android with visual marker rendering")
-            
-            // Additional verification
-            val totalAnnotations = annotationManager.annotations.size
-            println("🔍 Total annotations in manager: $totalAnnotations")
-            println("🔍 MapView: ${mapView != null}")
-            println("🔍 Annotation IDs: ${pointAnnotations.values.map { it?.id }}")
-            
-            // Debug camera position and force refresh
-            try {
-                mapView?.let { view ->
-                    println("🔄 Attempting to invalidate map view for refresh...")
-                    
-                    // Check if any markers are within the current view bounds
-                    markers.forEach { marker ->
-                        println("📍 Marker ${marker.id}: (${marker.latitude}, ${marker.longitude})")
-                    }
-                    
-                    // Post a delayed task to ensure markers appear above navigation layers
-                    view.post {
-                        println("🔄 Delayed refresh to bring markers to front...")
-                        try {
-                            // Try to bring annotation layer to front
-                            annotationManager.annotations.forEach { annotation ->
-                                println("🔍 Refreshing annotation ${annotation.id}")
-                            }
-                        } catch (e: Exception) {
-                            println("⚠️ Could not refresh annotations: ${e.message}")
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                println("⚠️ Could not refresh map view: ${e.message}")
-            }
-            
         } catch (e: Exception) {
-            println("❌ Failed to render markers: ${e.message}")
-            e.printStackTrace()
-            
+            Log.e("StaticMarkerManager", "Failed to render markers: ${e.message}")
         }
     }
 
@@ -592,12 +440,6 @@ class StaticMarkerManager {
      * Gets the appropriate marker icon bitmap for a marker
      */
     private fun getMarkerIconBitmap(marker: StaticMarker): Bitmap {
-        // FOR TESTING: If this is our test marker, use a bright colored circle
-        if (marker.id == "vegas_center_test") {
-            println("🔴 Creating GIANT RED test marker for ${marker.title}")
-            return createSimpleColoredMarker(android.graphics.Color.RED)
-        }
-        
         val context = this.context ?: return getDefaultMarkerBitmap()
         
         // Get the drawable resource ID based on the marker's iconId or category
@@ -616,8 +458,6 @@ class StaticMarkerManager {
      * Gets the drawable resource ID for a marker based on its iconId or category
      */
     private fun getDrawableIdForMarker(marker: StaticMarker): Int {
-        println("🎨 Getting drawable for marker: ${marker.title}, iconId: ${marker.iconId}, category: ${marker.category}")
-        
         // First try to match by iconId if available
         marker.iconId?.let { iconId ->
             when (iconId.lowercase()) {
@@ -633,11 +473,10 @@ class StaticMarkerManager {
                 "accident" -> return R.drawable.ic_accident
                 "speed_camera" -> return R.drawable.ic_speed_camera
                 "star" -> return R.drawable.ic_pin // Use pin as fallback for star
-                "flag" -> return R.drawable.ic_pin // Use pin as fallback for flag
+                "flag" -> return R.drawable.ic_flag
                 "pin" -> return R.drawable.ic_pin
                 else -> {
                     // Unknown iconId, fall through to category matching
-                    println("⚠️ Unknown iconId: $iconId, falling back to category matching")
                 }
             }
         }

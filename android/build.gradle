@@ -1,6 +1,51 @@
+// Helper function to find Mapbox token from various sources
+def getMapboxToken() {
+    // 1. Try project property
+    if (project.hasProperty('MAPBOX_DOWNLOADS_TOKEN')) {
+        return project.property('MAPBOX_DOWNLOADS_TOKEN')
+    }
+    // 2. Try environment variable
+    def envToken = System.getenv('MAPBOX_DOWNLOADS_TOKEN')
+    if (envToken != null && envToken != "") {
+        return envToken
+    }
+    // 3. Try reading from root project's local.properties (for Flutter app builds)
+    def localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        def localProperties = new Properties()
+        localPropertiesFile.withInputStream { localProperties.load(it) }
+        def localToken = localProperties.getProperty('MAPBOX_DOWNLOADS_TOKEN')
+        if (localToken != null && localToken != "") {
+            return localToken
+        }
+    }
+    return null
+}
+
 buildscript {
     ext.kotlin_version = '1.8.10'
     ext.android_gradle_version = '8.1.0'
+
+    // Read token for buildscript repositories
+    def mapboxToken = null
+    if (project.hasProperty('MAPBOX_DOWNLOADS_TOKEN')) {
+        mapboxToken = project.property('MAPBOX_DOWNLOADS_TOKEN')
+    } else {
+        mapboxToken = System.getenv('MAPBOX_DOWNLOADS_TOKEN')
+    }
+    if (mapboxToken == null || mapboxToken == "") {
+        def localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            def localProperties = new Properties()
+            localPropertiesFile.withInputStream { localProperties.load(it) }
+            mapboxToken = localProperties.getProperty('MAPBOX_DOWNLOADS_TOKEN')
+        }
+    }
+    if (mapboxToken == null || mapboxToken == "") {
+        throw new GradleException("MAPBOX_DOWNLOADS_TOKEN isn't set. Add it to local.properties, project properties, or environment variables.")
+    }
+    ext.mapboxDownloadsToken = mapboxToken
+
     repositories {
         google()
         mavenCentral()
@@ -11,10 +56,7 @@ buildscript {
             }
             credentials {
                 username = "mapbox"
-                password = project.hasProperty('MAPBOX_DOWNLOADS_TOKEN') ? project.property('MAPBOX_DOWNLOADS_TOKEN') : System.getenv('MAPBOX_DOWNLOADS_TOKEN')
-                if (password == null || password == "") {
-                    throw new GradleException("MAPBOX_DOWNLOADS_TOKEN isn't set. Set it to the project properties or to the enviroment variables.")
-                }
+                password = mapboxDownloadsToken
             }
         }
     }
@@ -46,10 +88,7 @@ rootProject.allprojects {
             }
             credentials {
                 username = "mapbox"
-                password = project.hasProperty('MAPBOX_DOWNLOADS_TOKEN') ? project.property('MAPBOX_DOWNLOADS_TOKEN') : System.getenv('MAPBOX_DOWNLOADS_TOKEN')
-                if (password == null || password == "") {
-                    throw new GradleException("MAPBOX_DOWNLOADS_TOKEN isn't set. Set it to the project properties or to the enviroment variables.")
-                }
+                password = getMapboxToken() ?: ""
             }
         }
     }

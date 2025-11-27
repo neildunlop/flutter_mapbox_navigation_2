@@ -41,6 +41,12 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
     var _showEndOfRouteFeedback = true
     var _enableOnMapTapCallback = false
     var navigationDirections: Directions?
+
+    // Marker popup overlay for showing marker info cards
+    var markerPopupOverlay: MarkerPopupOverlay?
+
+    // Trip progress overlay for showing navigation progress
+    var tripProgressOverlay: TripProgressOverlay?
     
     func addWayPoints(arguments: NSDictionary?, result: @escaping FlutterResult)
     {
@@ -207,7 +213,39 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
             self._navigationViewController!.showsEndOfRouteFeedback = _showEndOfRouteFeedback
         }
         let flutterViewController = UIApplication.shared.delegate?.window??.rootViewController as! FlutterViewController
-        flutterViewController.present(self._navigationViewController!, animated: true, completion: nil)
+        flutterViewController.present(self._navigationViewController!, animated: true) { [weak self] in
+            // Initialize the marker popup overlay after navigation view is presented
+            guard let navVC = self?._navigationViewController else { return }
+            self?.markerPopupOverlay = MarkerPopupOverlay(parentViewController: navVC)
+            self?.markerPopupOverlay?.initialize()
+
+            // Initialize the trip progress overlay
+            self?.tripProgressOverlay = TripProgressOverlay(parentViewController: navVC)
+
+            // Connect progress manager to overlay
+            TripProgressManager.shared.setProgressListener { [weak self] progressData in
+                self?.tripProgressOverlay?.updateProgress(progressData)
+            }
+
+            // Set up waypoints for progress tracking
+            let markers = StaticMarkerManager.shared.getStaticMarkers()
+            if let waypoints = self?._wayPoints, !waypoints.isEmpty {
+                TripProgressManager.shared.setWaypointsFromMarkers(waypoints, markers: markers)
+            }
+
+            // Show the trip progress overlay FIRST
+            self?.tripProgressOverlay?.show()
+
+            // Then trigger initial update (after UI is created)
+            if let waypoints = self?._wayPoints, !waypoints.isEmpty {
+                TripProgressManager.shared.updateProgress(
+                    legIndex: 0,
+                    distanceToNextWaypoint: 0,
+                    totalDistanceRemaining: 0,
+                    totalDurationRemaining: 0
+                )
+            }
+        }
     }
     
     func setNavigationOptions(wayPoints: [Waypoint]) {
@@ -287,6 +325,16 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
     func endNavigation(result: FlutterResult?)
     {
         sendEvent(eventType: MapBoxEventType.navigation_finished)
+
+        // Clean up the marker popup overlay
+        markerPopupOverlay?.cleanup()
+        markerPopupOverlay = nil
+
+        // Clean up the trip progress overlay
+        tripProgressOverlay?.hide(animated: false)
+        tripProgressOverlay = nil
+        TripProgressManager.shared.clear()
+
         if(self._navigationViewController != nil)
         {
             self._navigationViewController?.navigationService.endNavigation(feedback: nil)
@@ -307,7 +355,7 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
                 })
             }
         }
-        
+
     }
     
     func getLocationsFromFlutterArgument(arguments: NSDictionary?) -> [Location]? {
@@ -429,18 +477,28 @@ extension NavigationFactory : NavigationViewControllerDelegate {
         if(_eventSink != nil)
         {
             let jsonEncoder = JSONEncoder()
-            
+
             let progressEvent = MapBoxRouteProgressEvent(progress: progress)
             let progressEventJsonData = try! jsonEncoder.encode(progressEvent)
             let progressEventJson = String(data: progressEventJsonData, encoding: String.Encoding.ascii)
-            
+
             _eventSink!(progressEventJson)
-            
+
             if(progress.isFinalLeg && progress.currentLegProgress.userHasArrivedAtWaypoint && !_showEndOfRouteFeedback)
             {
                 _eventSink = nil
             }
         }
+
+        // Update trip progress overlay
+        let legIndex = progress.legIndex
+        let distanceToNext = progress.currentLegProgress.distanceRemaining
+        TripProgressManager.shared.updateProgress(
+            legIndex: legIndex,
+            distanceToNextWaypoint: distanceToNext,
+            totalDistanceRemaining: progress.distanceRemaining,
+            totalDurationRemaining: progress.durationRemaining
+        )
     }
     
     public func navigationViewController(_ navigationViewController: NavigationViewController, didArriveAt waypoint: Waypoint) -> Bool {

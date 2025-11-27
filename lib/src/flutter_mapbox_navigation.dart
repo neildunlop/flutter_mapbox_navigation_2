@@ -107,26 +107,21 @@ class MapBoxNavigation {
         .startNavigation(wayPoints, options);
   }
 
-  /// Show a Flutter-styled Drop-in Navigation view (RECOMMENDED)
-  /// This uses Mapbox's Drop-in UI with Flutter-style customizations for the best experience
-  /// 
+  /// Show a native Drop-in Navigation view
+  ///
+  /// This uses Mapbox's native Drop-in UI for navigation.
+  /// **Note:** Flutter cannot render overlays on top of native navigation.
+  /// For marker popups, use [startFlutterNavigation] instead.
+  ///
   /// [wayPoints] must not be null and have at least 2 items
   /// [options] options used to generate the route and used while navigating
   /// [showDebugOverlay] whether to show debug information overlay
-  ///
-  /// **Features:**
-  /// - Native Mapbox Drop-in UI performance with Flutter styling
-  /// - Perfect marker overlays with Material Design
-  /// - No lifecycle or context issues
-  /// - Production-ready and stable
-  /// - Flutter-consistent theming and animations
   ///
   /// **Usage Example:**
   /// ```dart
   /// await MapBoxNavigation.instance.startFlutterStyledNavigation(
   ///   wayPoints: [origin, destination],
   ///   options: MapBoxOptions(simulateRoute: true),
-  ///   showDebugOverlay: true,
   /// );
   /// ```
   Future<bool?> startFlutterStyledNavigation({
@@ -135,7 +130,7 @@ class MapBoxNavigation {
     bool showDebugOverlay = false,
   }) async {
     options ??= _defaultOptions;
-    
+
     return (FlutterMapboxNavigationPlatform.instance as MethodChannelFlutterMapboxNavigation)
         .startFlutterStyledNavigation(
       wayPoints,
@@ -144,25 +139,48 @@ class MapBoxNavigation {
     );
   }
 
-  /// Show a Flutter-controlled full-screen navigation view (LEGACY - Platform Views)
-  /// This provides complete Flutter UI control over the navigation experience
-  /// with native map performance through platform views
+  /// Show a Flutter-controlled navigation view with Flutter overlays (RECOMMENDED)
   ///
-  /// **DEPRECATED: Use startFlutterStyledNavigation() instead for better reliability**
+  /// This embeds the native map inside Flutter using platform views, allowing
+  /// Flutter to render overlays (like marker popups) on top of the map.
+  ///
+  /// **Features:**
+  /// - Native map performance via platform views
+  /// - Cross-platform Flutter marker popups (works on Android & iOS)
+  /// - Customizable popup UI via [markerPopupBuilder]
+  /// - Default Material Design popup when no custom builder provided
+  /// - Full control over navigation UI elements
   ///
   /// [context] Build context for navigation
   /// [wayPoints] must not be null and have at least 2 items
   /// [options] options used to generate the route and used while navigating
-  /// [onMarkerTap] optional callback for marker tap events
-  /// [onMapTap] optional callback for map tap events  
+  /// [markerPopupBuilder] optional custom builder for marker popup UI
+  /// [onMarkerTap] optional callback for marker tap events (called in addition to popup)
+  /// [onMapTap] optional callback for map tap events
   /// [onRouteEvent] optional callback for route progress events
   /// [onNavigationFinished] optional callback when navigation ends
   /// [showDebugOverlay] whether to show debug information overlay
-  @Deprecated('Use startFlutterStyledNavigation() for better reliability')
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.startFlutterNavigation(
+  ///   context: context,
+  ///   wayPoints: [origin, destination],
+  ///   options: MapBoxOptions(simulateRoute: true),
+  ///   // Optional: Custom popup builder
+  ///   markerPopupBuilder: (context, marker, onClose) {
+  ///     return MyCustomPopup(marker: marker, onClose: onClose);
+  ///   },
+  ///   onMarkerTap: (marker) {
+  ///     print('Marker tapped: ${marker.title}');
+  ///   },
+  /// );
+  /// ```
   Future<void> startFlutterNavigation({
     required BuildContext context,
     required List<WayPoint> wayPoints,
     MapBoxOptions? options,
+    MarkerPopupBuilder? markerPopupBuilder,
     Function(StaticMarker)? onMarkerTap,
     Function(double lat, double lng)? onMapTap,
     Function(RouteEvent)? onRouteEvent,
@@ -170,12 +188,13 @@ class MapBoxNavigation {
     bool showDebugOverlay = false,
   }) async {
     options ??= _defaultOptions;
-    
+
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => FlutterFullScreenNavigation(
           wayPoints: wayPoints,
           options: options!,
+          markerPopupBuilder: markerPopupBuilder,
           onMarkerTap: onMarkerTap,
           onMapTap: onMapTap,
           onRouteEvent: onRouteEvent,

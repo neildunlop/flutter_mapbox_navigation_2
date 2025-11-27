@@ -21,5 +21,7 @@ enum class MapBoxEvents(val value: String) {
     REROUTE_ALONG("reroute_along"),
     ON_MAP_TAP("on_map_tap"),
     MARKER_TAP_FULLSCREEN("marker_tap_fullscreen"),
-    MAP_TAP_FULLSCREEN("map_tap_fullscreen")
+    MAP_TAP_FULLSCREEN("map_tap_fullscreen"),
+    WAYPOINT_SKIPPED("waypoint_skipped"),
+    WAYPOINT_RESTORED("waypoint_restored")
 }
