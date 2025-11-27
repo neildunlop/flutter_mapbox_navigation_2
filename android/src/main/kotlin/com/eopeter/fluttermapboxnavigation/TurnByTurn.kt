@@ -393,6 +393,12 @@ open class TurnByTurn(
     private var lastLocation: Location? = null
 
     /**
+     * Get the last known location from the navigation session.
+     * This is updated by the locationObserver and is the most accurate current position.
+     */
+    fun getLastLocation(): Location? = lastLocation
+
+    /**
      * Helper class that keeps added waypoints and transforms them to the [RouteOptions] params.
      */
     private val addedWaypoints = WaypointSet()
@@ -483,6 +489,19 @@ open class TurnByTurn(
 
                 val progressEvent = MapBoxRouteProgressEvent(routeProgress)
                 PluginUtilities.sendEvent(progressEvent)
+
+                // Also update the TripProgressManager for the custom info panel
+                val legIndex = routeProgress.currentLegProgress?.legIndex ?: 0
+                val distanceToNext = routeProgress.currentLegProgress?.distanceRemaining?.toDouble() ?: 0.0
+                val durationToNext = routeProgress.currentLegProgress?.durationRemaining ?: 0.0
+
+                com.eopeter.fluttermapboxnavigation.utilities.TripProgressManager.getInstance().updateProgress(
+                    legIndex = legIndex,
+                    distanceToNextWaypoint = distanceToNext,
+                    totalDistanceRemaining = routeProgress.distanceRemaining.toDouble(),
+                    totalDurationRemaining = routeProgress.durationRemaining,
+                    durationToNextWaypoint = durationToNext
+                )
             } catch (_: java.lang.Exception) {
                 // handle this error
             }

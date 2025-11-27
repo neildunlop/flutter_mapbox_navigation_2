@@ -77,6 +77,7 @@ class NavigationActivity : AppCompatActivity() {
     private var canResetRoute: Boolean = false
     private var accessToken: String? = null
     private var lastLocation: Location? = null
+    private var lastRouteProgressLocation: Point? = null // Cache location from route progress for accurate rerouting
     private var isNavigationInProgress = false
     private var currentTargetWaypointIndex = 0 // Track which waypoint we're heading to
     private lateinit var binding: NavigationActivityBinding
@@ -544,32 +545,50 @@ class NavigationActivity : AppCompatActivity() {
      * Recalculate route from current location to all remaining waypoints.
      */
     private fun recalculateRouteFromCurrentLocation() {
-        // Try to get location from multiple sources
+        // Try to get location from multiple sources - prioritize the most accurate
         var originPoint: Point? = null
 
-        // Source 1: Last known location from location observer
-        lastLocation?.let { loc ->
-            originPoint = Point.fromLngLat(loc.longitude, loc.latitude)
-            Log.d("NavigationActivity", "🔀 Using lastLocation: ${loc.latitude}, ${loc.longitude}")
+        // Source 1: Get location from TurnByTurn's locationObserver (most accurate - it's actually receiving updates!)
+        if (::turnByTurn.isInitialized) {
+            turnByTurn.getLastLocation()?.let { loc ->
+                originPoint = Point.fromLngLat(loc.longitude, loc.latitude)
+                Log.w("NAV_REROUTE", "Using TurnByTurn location: ${loc.latitude}, ${loc.longitude}")
+            }
         }
 
-        // Source 2: Get from current navigation routes if available
+        // Source 2: Cached location from our local observer (backup)
+        if (originPoint == null) {
+            lastRouteProgressLocation?.let { loc ->
+                originPoint = loc
+                Log.w("NAV_REROUTE", "Using cached progress location: ${loc.latitude()}, ${loc.longitude()}")
+            }
+        }
+
+        // Source 3: Last known location from our location observer
+        if (originPoint == null) {
+            lastLocation?.let { loc ->
+                originPoint = Point.fromLngLat(loc.longitude, loc.latitude)
+                Log.w("NAV_REROUTE", "Using lastLocation: ${loc.latitude}, ${loc.longitude}")
+            }
+        }
+
+        // Source 4: Get from current navigation routes - maneuver location (less accurate)
         if (originPoint == null) {
             MapboxNavigationApp.current()?.getNavigationRoutes()?.firstOrNull()?.let { route ->
                 route.directionsRoute.legs()?.firstOrNull()?.steps()?.firstOrNull()?.let { step ->
                     step.maneuver().location()?.let { loc ->
                         originPoint = Point.fromLngLat(loc.longitude(), loc.latitude())
-                        Log.d("NavigationActivity", "🔀 Using route maneuver location: ${loc.latitude()}, ${loc.longitude()}")
+                        Log.w("NAV_REROUTE", "Using route maneuver location (fallback): ${loc.latitude()}, ${loc.longitude()}")
                     }
                 }
             }
         }
 
-        // Source 3: Use first remaining waypoint as origin (less accurate but functional)
+        // Source 5: Use first remaining waypoint as origin (last resort)
         if (originPoint == null && points.isNotEmpty()) {
             val firstPoint = points.first().point
             originPoint = firstPoint
-            Log.w("NavigationActivity", "🔀 Using first waypoint as fallback origin: ${firstPoint.latitude()}, ${firstPoint.longitude()}")
+            Log.w("NAV_REROUTE", "Using first waypoint as fallback origin: ${firstPoint.latitude()}, ${firstPoint.longitude()}")
         }
 
         val origin = originPoint
@@ -592,7 +611,7 @@ class NavigationActivity : AppCompatActivity() {
             }
         }
 
-        Log.d("NavigationActivity", "🔀 Recalculating route with ${points.size} waypoints")
+        Log.w("NAV_REROUTE", "Recalculating with ${points.size} waypoints from: ${origin.latitude()}, ${origin.longitude()}")
 
         // Update trip progress manager with new waypoint list
         val markers = StaticMarkerManager.getInstance().getMarkers()
@@ -602,17 +621,16 @@ class NavigationActivity : AppCompatActivity() {
         currentTargetWaypointIndex = 0
 
         // Immediately update the UI with the new waypoint info
-        // Use current progress values or defaults
-        val currentDistanceRemaining = (FlutterMapboxNavigationPlugin.distanceRemaining ?: 0.0).toDouble()
-        val currentDurationRemaining = (FlutterMapboxNavigationPlugin.durationRemaining ?: 0.0).toDouble()
+        // Use 0 for distance/duration - will be updated when new route progress arrives
+        // This ensures the waypoint name and count update immediately
         tripProgressManager.updateProgress(
             legIndex = 0,  // Starting fresh from first waypoint in updated list
-            distanceToNextWaypoint = currentDistanceRemaining,
-            totalDistanceRemaining = currentDistanceRemaining,
-            totalDurationRemaining = currentDurationRemaining,
-            durationToNextWaypoint = currentDurationRemaining
+            distanceToNextWaypoint = 0.0,  // Will be updated by route progress observer
+            totalDistanceRemaining = 0.0,
+            totalDurationRemaining = 0.0,
+            durationToNextWaypoint = 0.0
         )
-        Log.d("NavigationActivity", "🔀 Triggered immediate UI update with ${points.size} waypoints")
+        Log.w("NAV_REROUTE", "Triggered immediate UI update with ${points.size} waypoints")
 
         // Request new route - use the update method since navigation is already active
         requestRoutesForUpdate(waypointSet)
@@ -663,17 +681,21 @@ class NavigationActivity : AppCompatActivity() {
                     }
 
                     Log.d("NavigationActivity", "🔀 Route update ready, setting ${routes.size} routes")
+                    Log.d("NavigationActivity", "🔀 New Route ID: ${routes.first().id}")
 
-                    // Clear existing routes first to avoid state mismatch
-                    MapboxNavigationApp.current()?.setNavigationRoutes(emptyList())
+                    // Set routes on the core navigation first
+                    MapboxNavigationApp.current()?.setNavigationRoutes(routes)
+                    Log.d("NavigationActivity", "🔀 Routes set on core navigation")
 
-                    // Small delay to allow state to clear, then set new routes
-                    binding.root.postDelayed({
-                        Log.d("NavigationActivity", "🔀 Setting new routes after clear")
-                        binding.navigationView.api.routeReplayEnabled(FlutterMapboxNavigationPlugin.simulateRoute)
-                        binding.navigationView.api.startActiveGuidance(routes)
-                    }, 100)
+                    // Ensure trip session is running (required for progress updates)
+                    MapboxNavigationApp.current()?.startTripSession()
+                    Log.d("NavigationActivity", "🔀 Trip session started/restarted")
 
+                    // Update NavigationView to show the new routes
+                    binding.navigationView.api.routeReplayEnabled(FlutterMapboxNavigationPlugin.simulateRoute)
+                    binding.navigationView.api.startActiveGuidance(routes)
+
+                    Log.d("NavigationActivity", "🔀 startActiveGuidance called with new routes")
                     sendEvent(MapBoxEvents.REROUTE_ALONG)
                 }
             }
@@ -692,27 +714,41 @@ class NavigationActivity : AppCompatActivity() {
      * Gets notified with progress along the currently active route.
      */
     private val routeProgressObserver = RouteProgressObserver { routeProgress ->
-        //Notify the client
-        val progressEvent = MapBoxRouteProgressEvent(routeProgress)
-        FlutterMapboxNavigationPlugin.distanceRemaining = routeProgress.distanceRemaining
-        FlutterMapboxNavigationPlugin.durationRemaining = routeProgress.durationRemaining
-        sendEvent(progressEvent)
+        // Debug: confirm observer is being called
+        Log.w("NAV_PROGRESS", "Observer called - distRemaining=${routeProgress.distanceRemaining}")
 
-        // Update trip progress overlay
-        val legIndex = routeProgress.currentLegProgress?.legIndex ?: 0
-        val distanceToNext = routeProgress.currentLegProgress?.distanceRemaining?.toDouble() ?: 0.0
-        val durationToNext = routeProgress.currentLegProgress?.durationRemaining ?: 0.0
+        try {
+            //Notify the client
+            val progressEvent = MapBoxRouteProgressEvent(routeProgress)
+            FlutterMapboxNavigationPlugin.distanceRemaining = routeProgress.distanceRemaining
+            FlutterMapboxNavigationPlugin.durationRemaining = routeProgress.durationRemaining
+            sendEvent(progressEvent)
 
-        // Track current target waypoint index for skip/prev functionality
-        currentTargetWaypointIndex = legIndex.coerceIn(0, (points.size - 1).coerceAtLeast(0))
+            // Update trip progress overlay
+            val legIndex = routeProgress.currentLegProgress?.legIndex ?: 0
+            val distanceToNext = routeProgress.currentLegProgress?.distanceRemaining?.toDouble() ?: 0.0
+            val durationToNext = routeProgress.currentLegProgress?.durationRemaining ?: 0.0
+            val routeId = routeProgress.navigationRoute.id
 
-        tripProgressManager.updateProgress(
-            legIndex = legIndex,
-            distanceToNextWaypoint = distanceToNext,
-            totalDistanceRemaining = routeProgress.distanceRemaining.toDouble(),
-            totalDurationRemaining = routeProgress.durationRemaining,
-            durationToNextWaypoint = durationToNext
-        )
+            // Use Log.w to ensure it appears in logcat
+            Log.w("NAV_PROGRESS", "Progress: route=${routeId.takeLast(20)}, leg=$legIndex, dist=${String.format("%.0f", distanceToNext)}m, dur=${String.format("%.0f", durationToNext)}s")
+
+            // Track current target waypoint index for skip/prev functionality
+            currentTargetWaypointIndex = legIndex.coerceIn(0, (points.size - 1).coerceAtLeast(0))
+
+            // Update the cached location from the current route position for rerouting
+            // Use the enhanced location from the location matcher if available
+
+            tripProgressManager.updateProgress(
+                legIndex = legIndex,
+                distanceToNextWaypoint = distanceToNext,
+                totalDistanceRemaining = routeProgress.distanceRemaining.toDouble(),
+                totalDurationRemaining = routeProgress.durationRemaining,
+                durationToNextWaypoint = durationToNext
+            )
+        } catch (e: Exception) {
+            Log.e("NAV_PROGRESS", "Error in observer: ${e.message}", e)
+        }
     }
 
     private val arrivalObserver: ArrivalObserver = object : ArrivalObserver {
@@ -739,14 +775,20 @@ class NavigationActivity : AppCompatActivity() {
     private val locationObserver = object : LocationObserver {
         override fun onNewLocationMatcherResult(locationMatcherResult: LocationMatcherResult) {
             lastLocation = locationMatcherResult.enhancedLocation
-            Log.d("NavigationActivity", "📍 Location updated: ${lastLocation?.latitude}, ${lastLocation?.longitude}")
+            // Also update the route progress location cache with the enhanced location
+            lastLocation?.let { loc ->
+                lastRouteProgressLocation = Point.fromLngLat(loc.longitude, loc.latitude)
+            }
+            // Use Log.w to ensure visibility
+            Log.w("NAV_LOCATION", "Enhanced: ${lastLocation?.latitude}, ${lastLocation?.longitude}")
         }
 
         override fun onNewRawLocation(rawLocation: Location) {
             // Also capture raw location as fallback
             if (lastLocation == null) {
                 lastLocation = rawLocation
-                Log.d("NavigationActivity", "📍 Raw location captured: ${rawLocation.latitude}, ${rawLocation.longitude}")
+                lastRouteProgressLocation = Point.fromLngLat(rawLocation.longitude, rawLocation.latitude)
+                Log.w("NAV_LOCATION", "Raw: ${rawLocation.latitude}, ${rawLocation.longitude}")
             }
         }
     }
@@ -766,8 +808,11 @@ class NavigationActivity : AppCompatActivity() {
     }
 
     private val routesObserver = RoutesObserver { routeUpdateResult ->
-        if (routeUpdateResult.navigationRoutes.isNotEmpty()) {
-            sendEvent(MapBoxEvents.REROUTE_ALONG);
+        val routes = routeUpdateResult.navigationRoutes
+        Log.i("NavigationActivity", "📍 RoutesObserver: ${routes.size} routes, reason=${routeUpdateResult.reason}")
+        if (routes.isNotEmpty()) {
+            Log.i("NavigationActivity", "📍 RoutesObserver: route ID=${routes.first().id.takeLast(30)}")
+            sendEvent(MapBoxEvents.REROUTE_ALONG)
         }
     }
 

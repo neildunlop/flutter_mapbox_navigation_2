@@ -146,7 +146,10 @@ class CustomInfoPanelBinder(
             Log.d(TAG, "📊 Updated waypoint name to: $displayName")
 
             // Update distance and time to next waypoint
-            distanceTimeView?.text = "${data.getFormattedDistanceToNext()} • ${data.getFormattedDurationToNext()}"
+            val distStr = data.getFormattedDistanceToNext()
+            val timeStr = data.getFormattedDurationToNext()
+            Log.d(TAG, "📊 Distance: ${data.distanceToNextWaypoint}m -> $distStr, Duration: ${data.durationToNextWaypoint}s -> $timeStr")
+            distanceTimeView?.text = "$distStr • $timeStr"
 
             // Update progress bar
             progressBar?.max = 100
