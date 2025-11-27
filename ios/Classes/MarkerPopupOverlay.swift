@@ -155,15 +155,15 @@ public class MarkerPopupOverlay {
         headerStack.spacing = 14
         headerStack.alignment = .center
 
-        // Icon circle - use theme icon size
-        let iconSize = theme.iconSize
+        // Icon circle - use explicit sizes to match Android (40pt container, 24pt inner icon)
+        let iconContainerSize: CGFloat = 40
         let iconContainer = UIView()
-        iconContainer.backgroundColor = getMarkerColor(marker)
-        iconContainer.layer.cornerRadius = iconSize / 2
+        iconContainer.backgroundColor = marker.getMarkerColor()  // Use marker's own color method for consistency
+        iconContainer.layer.cornerRadius = iconContainerSize / 2
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            iconContainer.widthAnchor.constraint(equalToConstant: iconSize),
-            iconContainer.heightAnchor.constraint(equalToConstant: iconSize)
+            iconContainer.widthAnchor.constraint(equalToConstant: iconContainerSize),
+            iconContainer.heightAnchor.constraint(equalToConstant: iconContainerSize)
         ])
 
         let iconImageView = UIImageView()
@@ -175,8 +175,8 @@ public class MarkerPopupOverlay {
         NSLayoutConstraint.activate([
             iconImageView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
             iconImageView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
-            iconImageView.widthAnchor.constraint(equalToConstant: 22),
-            iconImageView.heightAnchor.constraint(equalToConstant: 22)
+            iconImageView.widthAnchor.constraint(equalToConstant: 24),
+            iconImageView.heightAnchor.constraint(equalToConstant: 24)
         ])
 
         headerStack.addArrangedSubview(iconContainer)
@@ -197,7 +197,7 @@ public class MarkerPopupOverlay {
             let categoryLabel = UILabel()
             categoryLabel.text = formatCategory(marker.category)
             categoryLabel.font = .systemFont(ofSize: 13)
-            categoryLabel.textColor = getMarkerColor(marker)
+            categoryLabel.textColor = marker.getMarkerColor()  // Use marker's own color for consistency
             titleStack.addArrangedSubview(categoryLabel)
         }
 
@@ -272,16 +272,6 @@ public class MarkerPopupOverlay {
 
     @objc private func closeButtonTapped() {
         hideMarkerInfo(animated: true)
-    }
-
-    private func getMarkerColor(_ marker: StaticMarker) -> UIColor {
-        // Use custom color if provided
-        if let customColor = marker.customColor {
-            return customColor
-        }
-
-        // Use theme category color
-        return theme.getCategoryColor(marker.category)
     }
 
     private func getMarkerIcon(_ marker: StaticMarker) -> UIImage? {

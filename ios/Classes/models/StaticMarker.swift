@@ -1,5 +1,6 @@
 import Foundation
 import MapboxMaps
+import UIKit
 
 @objc public class StaticMarker: NSObject, Codable {
     @objc public let id: String
@@ -112,9 +113,46 @@ import MapboxMaps
     @objc public func getDefaultIconId() -> String {
         return iconId ?? "ic_pin"
     }
-    
+
     @objc public func getDefaultColor() -> String {
         return customColor ?? "#FF0000"
+    }
+
+    /// Gets the color for the marker, using custom color if available or category-based default.
+    /// Colors aligned with app's design system: Primary: #2E6578 (teal), Checkpoint: #1565C0 (dark blue)
+    @objc public func getMarkerColor() -> UIColor {
+        // Use custom color if provided
+        if let customColorHex = customColor, let color = UIColor(hex: customColorHex) {
+            return color
+        }
+
+        // Use category-based default color
+        return getDefaultColorForCategory()
+    }
+
+    private func getDefaultColorForCategory() -> UIColor {
+        switch category.lowercased() {
+        case "checkpoint":
+            return UIColor(red: 0.08, green: 0.40, blue: 0.75, alpha: 1)  // #1565C0 Dark blue
+        case "waypoint":
+            return UIColor(red: 0.18, green: 0.40, blue: 0.47, alpha: 1)  // #2E6578 Primary teal
+        case "scenic", "park", "beach", "mountain", "lake", "waterfall", "viewpoint", "hiking":
+            return UIColor(red: 0.55, green: 0.76, blue: 0.29, alpha: 1)  // Light Green
+        case "petrol_station", "charging_station", "parking":
+            return UIColor(red: 0.38, green: 0.49, blue: 0.55, alpha: 1)  // Blue Grey
+        case "restaurant", "cafe", "food":
+            return UIColor(red: 1.0, green: 0.60, blue: 0.0, alpha: 1)    // Orange
+        case "hotel", "accommodation":
+            return UIColor(red: 0.36, green: 0.36, blue: 0.44, alpha: 1)  // Tertiary
+        case "speed_camera", "accident", "construction", "warning":
+            return UIColor(red: 0.96, green: 0.26, blue: 0.21, alpha: 1)  // Red
+        case "hospital", "medical", "police", "fire_station":
+            return UIColor(red: 0.13, green: 0.59, blue: 0.95, alpha: 1)  // Blue
+        case "poi":
+            return UIColor(red: 0.30, green: 0.69, blue: 0.31, alpha: 1)  // Green
+        default:
+            return UIColor(red: 0.18, green: 0.40, blue: 0.47, alpha: 1)  // Primary teal (default)
+        }
     }
     
     // MARK: - Codable Implementation
