@@ -4,6 +4,28 @@
 
 Add Turn By Turn Navigation to Your Flutter Application Using MapBox. Never leave your app when you need to navigate your users to a location.
 
+## Quick Start
+
+```dart
+import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart';
+
+// Define your waypoints
+final origin = WayPoint(name: "Origin", latitude: 37.7749, longitude: -122.4194);
+final destination = WayPoint(name: "Destination", latitude: 37.3382, longitude: -121.8863);
+
+// Start navigation
+await MapBoxNavigation.instance.startNavigation(
+  wayPoints: [origin, destination],
+  options: MapBoxOptions(
+    mode: MapBoxNavigationMode.drivingWithTraffic,
+    simulateRoute: true,  // Set to false for real navigation
+    language: "en",
+  ),
+);
+```
+
+> **Note:** Before using the plugin, complete the [Setup Instructions](#setup-instructions) below to configure your Mapbox access tokens.
+
 ## Features
 
 ### Core Navigation Features
@@ -112,6 +134,114 @@ Add Turn By Turn Navigation to Your Flutter Application Using MapBox. Never leav
      ```
 
 ## Usage Examples
+
+### Complete Minimal Example
+
+Here's a complete, working example you can copy into your project:
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart';
+
+class NavigationExample extends StatefulWidget {
+  const NavigationExample({super.key});
+
+  @override
+  State<NavigationExample> createState() => _NavigationExampleState();
+}
+
+class _NavigationExampleState extends State<NavigationExample> {
+  String _instruction = "";
+  bool _isNavigating = false;
+  double? _distanceRemaining;
+  double? _durationRemaining;
+
+  // Define your waypoints
+  final _origin = WayPoint(
+    name: "San Francisco",
+    latitude: 37.7749,
+    longitude: -122.4194,
+  );
+  final _destination = WayPoint(
+    name: "San Jose",
+    latitude: 37.3382,
+    longitude: -121.8863,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    // Register event listener for navigation updates
+    MapBoxNavigation.instance.registerRouteEventListener(_onRouteEvent);
+  }
+
+  Future<void> _startNavigation() async {
+    await MapBoxNavigation.instance.startNavigation(
+      wayPoints: [_origin, _destination],
+      options: MapBoxOptions(
+        mode: MapBoxNavigationMode.drivingWithTraffic,
+        simulateRoute: true,
+        language: "en",
+        units: VoiceUnits.metric,
+      ),
+    );
+  }
+
+  Future<void> _onRouteEvent(RouteEvent event) async {
+    // Update distance/duration remaining
+    _distanceRemaining = await MapBoxNavigation.instance.getDistanceRemaining();
+    _durationRemaining = await MapBoxNavigation.instance.getDurationRemaining();
+
+    switch (event.eventType) {
+      case MapBoxEvent.progress_change:
+        final progress = event.data as RouteProgressEvent;
+        if (progress.currentStepInstruction != null) {
+          _instruction = progress.currentStepInstruction!;
+        }
+        break;
+      case MapBoxEvent.navigation_running:
+        _isNavigating = true;
+        break;
+      case MapBoxEvent.on_arrival:
+        // Handle arrival at destination
+        await Future.delayed(const Duration(seconds: 3));
+        await MapBoxNavigation.instance.finishNavigation();
+        break;
+      case MapBoxEvent.navigation_finished:
+      case MapBoxEvent.navigation_cancelled:
+        _isNavigating = false;
+        break;
+      default:
+        break;
+    }
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Navigation Demo')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: _isNavigating ? null : _startNavigation,
+              child: const Text('Start Navigation'),
+            ),
+            const SizedBox(height: 20),
+            if (_instruction.isNotEmpty) Text('Next: $_instruction'),
+            if (_distanceRemaining != null)
+              Text('Distance: ${(_distanceRemaining! / 1000).toStringAsFixed(1)} km'),
+            if (_durationRemaining != null)
+              Text('Duration: ${(_durationRemaining! / 60).toStringAsFixed(0)} min'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
 
 ### Basic Navigation Setup
 
