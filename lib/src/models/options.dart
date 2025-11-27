@@ -2,6 +2,7 @@
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mapbox_navigation/src/models/navmode.dart';
+import 'package:flutter_mapbox_navigation/src/models/trip_progress_config.dart';
 import 'package:flutter_mapbox_navigation/src/models/voice_units.dart';
 
 /// Configuration options for the MapBoxNavigation.
@@ -35,6 +36,7 @@ class MapBoxOptions {
     this.showReportFeedbackButton = true,
     this.showEndOfRouteFeedback = true,
     this.enableOnMapTapCallback = false,
+    this.tripProgressConfig,
   });
 
   MapBoxOptions.from(MapBoxOptions option) {
@@ -61,6 +63,7 @@ class MapBoxOptions {
     showReportFeedbackButton = option.showReportFeedbackButton;
     showEndOfRouteFeedback = option.showEndOfRouteFeedback;
     enableOnMapTapCallback = option.enableOnMapTapCallback;
+    tripProgressConfig = option.tripProgressConfig;
   }
 
   /// The initial Latitude of the Map View
@@ -171,6 +174,11 @@ class MapBoxOptions {
   /// to where you tap on the map.
   bool? enableOnMapTapCallback;
 
+  /// Configuration for the trip progress panel.
+  /// Controls what elements are shown and styling.
+  /// If null, uses default configuration.
+  TripProgressConfig? tripProgressConfig;
+
   Map<String, dynamic> toMap() {
     final optionsMap = <String, dynamic>{};
     void addIfNonNull(String fieldName, dynamic value) {
@@ -226,6 +234,7 @@ class MapBoxOptions {
     addIfNonNull('showReportFeedbackButton', showReportFeedbackButton);
     addIfNonNull('showEndOfRouteFeedback', showEndOfRouteFeedback);
     addIfNonNull('enableOnMapTapCallback', enableOnMapTapCallback);
+    addIfNonNull('tripProgressConfig', tripProgressConfig?.toMap());
 
     return optionsMap;
   }

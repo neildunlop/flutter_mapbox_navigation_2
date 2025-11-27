@@ -12,6 +12,7 @@ export 'route_leg.dart';
 export 'route_progress_event.dart';
 export 'route_step.dart';
 export 'static_marker.dart';
+export 'trip_progress_config.dart';
 export 'voice_units.dart';
 export 'way_point.dart';
 export 'waypoint_validation_result.dart';

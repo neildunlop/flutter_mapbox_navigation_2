@@ -14,11 +14,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.eopeter.fluttermapboxnavigation.FlutterMapboxNavigationPlugin
+import com.eopeter.fluttermapboxnavigation.NavigationObserverCallback
 import com.eopeter.fluttermapboxnavigation.R
 import com.eopeter.fluttermapboxnavigation.TurnByTurn
 import com.eopeter.fluttermapboxnavigation.databinding.NavigationActivityBinding
 import com.eopeter.fluttermapboxnavigation.models.MapBoxEvents
-import com.eopeter.fluttermapboxnavigation.models.MapBoxRouteProgressEvent
+import com.eopeter.fluttermapboxnavigation.models.TripProgressConfig
 import com.eopeter.fluttermapboxnavigation.models.Waypoint
 import com.eopeter.fluttermapboxnavigation.models.WaypointSet
 import com.eopeter.fluttermapboxnavigation.utilities.CustomInfoPanelBinder
@@ -49,15 +50,7 @@ import com.mapbox.navigation.base.route.RouterFailure
 import com.mapbox.navigation.base.route.RouterOrigin
 import com.mapbox.navigation.base.trip.model.RouteLegProgress
 import com.mapbox.navigation.base.trip.model.RouteProgress
-import com.mapbox.navigation.core.arrival.ArrivalObserver
-import com.mapbox.navigation.core.directions.session.RoutesObserver
 import com.mapbox.navigation.core.lifecycle.MapboxNavigationApp
-import com.mapbox.navigation.core.trip.session.BannerInstructionsObserver
-import com.mapbox.navigation.core.trip.session.LocationMatcherResult
-import com.mapbox.navigation.core.trip.session.LocationObserver
-import com.mapbox.navigation.core.trip.session.OffRouteObserver
-import com.mapbox.navigation.core.trip.session.RouteProgressObserver
-import com.mapbox.navigation.core.trip.session.VoiceInstructionsObserver
 import com.mapbox.navigation.dropin.map.MapViewObserver
 import com.mapbox.navigation.dropin.navigationview.NavigationViewListener
 import com.mapbox.navigation.utils.internal.ifNonNull
@@ -68,7 +61,7 @@ import org.json.JSONObject
 import androidx.appcompat.app.AlertDialog
 import com.eopeter.fluttermapboxnavigation.models.StaticMarker
 
-class NavigationActivity : AppCompatActivity() {
+class NavigationActivity : AppCompatActivity(), NavigationObserverCallback {
     private var finishBroadcastReceiver: BroadcastReceiver? = null
     private var addWayPointsBroadcastReceiver: BroadcastReceiver? = null
     private var points: MutableList<Waypoint> = mutableListOf()
@@ -86,6 +79,53 @@ class NavigationActivity : AppCompatActivity() {
     private lateinit var tripProgressOverlay: TripProgressOverlay
     private lateinit var customInfoPanelBinder: CustomInfoPanelBinder
     private val tripProgressManager = TripProgressManager.getInstance()
+
+    // ============================================================
+    // NavigationObserverCallback implementation
+    // Receives events from TurnByTurn's observers - no duplicate registration needed
+    // ============================================================
+
+    override fun onLocationUpdate(location: Location, matchedLocation: Location?) {
+        lastLocation = matchedLocation ?: location
+        // Update route progress location for rerouting
+        lastLocation?.let { loc ->
+            lastRouteProgressLocation = Point.fromLngLat(loc.longitude, loc.latitude)
+        }
+    }
+
+    override fun onRouteProgressUpdate(routeProgress: RouteProgress) {
+        // Update current waypoint index from leg progress
+        val legIndex = routeProgress.currentLegProgress?.legIndex ?: 0
+        currentTargetWaypointIndex = legIndex.coerceIn(0, (points.size - 1).coerceAtLeast(0))
+    }
+
+    override fun onOffRoute() {
+        // Handled by TurnByTurn's observer - no additional action needed
+        Log.d("NavigationActivity", "🔄 User went off route")
+    }
+
+    override fun onRoutesUpdate(routes: List<NavigationRoute>) {
+        // Routes updated (e.g., after reroute)
+        Log.d("NavigationActivity", "🛣️ Routes updated: ${routes.size} routes")
+    }
+
+    override fun onFinalDestinationArrival(routeProgress: RouteProgress) {
+        Log.d("NavigationActivity", "🏁 Final destination arrival")
+        sendEvent(MapBoxEvents.ON_ARRIVAL)
+        isNavigationInProgress = false
+    }
+
+    override fun onWaypointArrival(routeProgress: RouteProgress) {
+        val legIndex = routeProgress.currentLegProgress?.legIndex ?: 0
+        Log.d("NavigationActivity", "📍 Waypoint arrival at leg $legIndex")
+        // TurnByTurn already sends the flutter event
+    }
+
+    override fun onNextRouteLegStart(routeLegProgress: RouteLegProgress) {
+        val legIndex = routeLegProgress.legIndex
+        Log.d("NavigationActivity", "➡️ Next route leg started: $legIndex")
+        currentTargetWaypointIndex = legIndex
+    }
     
 
     private val navigationStateListener = object : NavigationViewListener() {
@@ -152,13 +192,9 @@ class NavigationActivity : AppCompatActivity() {
                 CustomInfoPanelEndNavButtonBinder(act)
         }
 
-        MapboxNavigationApp.current()?.registerBannerInstructionsObserver(this.bannerInstructionObserver)
-        MapboxNavigationApp.current()?.registerVoiceInstructionsObserver(this.voiceInstructionObserver)
-        MapboxNavigationApp.current()?.registerOffRouteObserver(this.offRouteObserver)
-        MapboxNavigationApp.current()?.registerRoutesObserver(this.routesObserver)
-        MapboxNavigationApp.current()?.registerLocationObserver(locationObserver)
-        MapboxNavigationApp.current()?.registerRouteProgressObserver(routeProgressObserver)
-        MapboxNavigationApp.current()?.registerArrivalObserver(arrivalObserver)
+        // NOTE: Observers are registered by TurnByTurn.initNavigation()
+        // NavigationActivity receives updates via the NavigationObserverCallback interface
+        // This avoids duplicate observer registration which caused issues
 
         finishBroadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -239,11 +275,13 @@ class NavigationActivity : AppCompatActivity() {
             binding,
             accessToken ?: ""
         )
+        // Set callback to receive observer events without duplicate registration
+        turnByTurn.observerCallback = this
 
         Log.d("NavigationActivity", "📱 Initializing turn-by-turn navigation...")
         turnByTurn.initFlutterChannelHandlers()
         turnByTurn.initNavigation()
-        Log.d("NavigationActivity", "📱 Turn-by-turn initialization completed")
+        Log.d("NavigationActivity", "📱 Turn-by-turn initialization completed (observers via callback)")
         
         // Use Mapbox Drop-in UI customization instead of separate Flutter overlays
         Log.d("NavigationActivity", "🎯 Setting up Mapbox Drop-in UI customization for marker interactions")
@@ -296,13 +334,11 @@ class NavigationActivity : AppCompatActivity() {
         binding.navigationView.unregisterMapObserver(staticMarkerMapObserver)
         binding.navigationView.removeListener(navigationStateListener)
 
-        MapboxNavigationApp.current()?.unregisterBannerInstructionsObserver(this.bannerInstructionObserver)
-        MapboxNavigationApp.current()?.unregisterVoiceInstructionsObserver(this.voiceInstructionObserver)
-        MapboxNavigationApp.current()?.unregisterOffRouteObserver(this.offRouteObserver)
-        MapboxNavigationApp.current()?.unregisterRoutesObserver(this.routesObserver)
-        MapboxNavigationApp.current()?.unregisterLocationObserver(locationObserver)
-        MapboxNavigationApp.current()?.unregisterRouteProgressObserver(routeProgressObserver)
-        MapboxNavigationApp.current()?.unregisterArrivalObserver(arrivalObserver)
+        // NOTE: Observers are unregistered by TurnByTurn.unregisterObservers()
+        // Clear the callback to prevent memory leaks
+        if (::turnByTurn.isInitialized) {
+            turnByTurn.observerCallback = null
+        }
     }
 
     fun tryCancelNavigation() {
@@ -548,11 +584,10 @@ class NavigationActivity : AppCompatActivity() {
         // Try to get location from multiple sources - prioritize the most accurate
         var originPoint: Point? = null
 
-        // Source 1: Get location from TurnByTurn's locationObserver (most accurate - it's actually receiving updates!)
+        // Source 1: Get location from TurnByTurn's locationObserver (most accurate)
         if (::turnByTurn.isInitialized) {
             turnByTurn.getLastLocation()?.let { loc ->
                 originPoint = Point.fromLngLat(loc.longitude, loc.latitude)
-                Log.w("NAV_REROUTE", "Using TurnByTurn location: ${loc.latitude}, ${loc.longitude}")
             }
         }
 
@@ -560,7 +595,6 @@ class NavigationActivity : AppCompatActivity() {
         if (originPoint == null) {
             lastRouteProgressLocation?.let { loc ->
                 originPoint = loc
-                Log.w("NAV_REROUTE", "Using cached progress location: ${loc.latitude()}, ${loc.longitude()}")
             }
         }
 
@@ -568,7 +602,6 @@ class NavigationActivity : AppCompatActivity() {
         if (originPoint == null) {
             lastLocation?.let { loc ->
                 originPoint = Point.fromLngLat(loc.longitude, loc.latitude)
-                Log.w("NAV_REROUTE", "Using lastLocation: ${loc.latitude}, ${loc.longitude}")
             }
         }
 
@@ -578,7 +611,6 @@ class NavigationActivity : AppCompatActivity() {
                 route.directionsRoute.legs()?.firstOrNull()?.steps()?.firstOrNull()?.let { step ->
                     step.maneuver().location()?.let { loc ->
                         originPoint = Point.fromLngLat(loc.longitude(), loc.latitude())
-                        Log.w("NAV_REROUTE", "Using route maneuver location (fallback): ${loc.latitude()}, ${loc.longitude()}")
                     }
                 }
             }
@@ -586,9 +618,7 @@ class NavigationActivity : AppCompatActivity() {
 
         // Source 5: Use first remaining waypoint as origin (last resort)
         if (originPoint == null && points.isNotEmpty()) {
-            val firstPoint = points.first().point
-            originPoint = firstPoint
-            Log.w("NAV_REROUTE", "Using first waypoint as fallback origin: ${firstPoint.latitude()}, ${firstPoint.longitude()}")
+            originPoint = points.first().point
         }
 
         val origin = originPoint
@@ -599,7 +629,9 @@ class NavigationActivity : AppCompatActivity() {
 
         // Rebuild the waypoint set from current location + remaining waypoints
         waypointSet.clear()
-        waypointSet.add(Waypoint(origin)) // Start from current location
+        // IMPORTANT: Origin must NOT be silent - it's the start point of the route
+        // Use constructor with isSilent=false to ensure it's treated as a proper waypoint
+        waypointSet.add(Waypoint(origin, false)) // Start from current location (NOT silent!)
 
         points.forEach { waypoint ->
             if (!waypoint.name.isNullOrBlank()) {
@@ -611,7 +643,7 @@ class NavigationActivity : AppCompatActivity() {
             }
         }
 
-        Log.w("NAV_REROUTE", "Recalculating with ${points.size} waypoints from: ${origin.latitude()}, ${origin.longitude()}")
+        Log.d("NavigationActivity", "Recalculating route with ${points.size} waypoints")
 
         // Update trip progress manager with new waypoint list
         val markers = StaticMarkerManager.getInstance().getMarkers()
@@ -624,13 +656,12 @@ class NavigationActivity : AppCompatActivity() {
         // Use 0 for distance/duration - will be updated when new route progress arrives
         // This ensures the waypoint name and count update immediately
         tripProgressManager.updateProgress(
-            legIndex = 0,  // Starting fresh from first waypoint in updated list
-            distanceToNextWaypoint = 0.0,  // Will be updated by route progress observer
+            legIndex = 0,
+            distanceToNextWaypoint = 0.0,
             totalDistanceRemaining = 0.0,
             totalDurationRemaining = 0.0,
             durationToNextWaypoint = 0.0
         )
-        Log.w("NAV_REROUTE", "Triggered immediate UI update with ${points.size} waypoints")
 
         // Request new route - use the update method since navigation is already active
         requestRoutesForUpdate(waypointSet)
@@ -680,22 +711,17 @@ class NavigationActivity : AppCompatActivity() {
                         return
                     }
 
-                    Log.d("NavigationActivity", "🔀 Route update ready, setting ${routes.size} routes")
-                    Log.d("NavigationActivity", "🔀 New Route ID: ${routes.first().id}")
+                    Log.d("NavigationActivity", "Route update ready with ${routes.size} routes")
 
                     // Set routes on the core navigation first
                     MapboxNavigationApp.current()?.setNavigationRoutes(routes)
-                    Log.d("NavigationActivity", "🔀 Routes set on core navigation")
 
                     // Ensure trip session is running (required for progress updates)
                     MapboxNavigationApp.current()?.startTripSession()
-                    Log.d("NavigationActivity", "🔀 Trip session started/restarted")
 
                     // Update NavigationView to show the new routes
                     binding.navigationView.api.routeReplayEnabled(FlutterMapboxNavigationPlugin.simulateRoute)
                     binding.navigationView.api.startActiveGuidance(routes)
-
-                    Log.d("NavigationActivity", "🔀 startActiveGuidance called with new routes")
                     sendEvent(MapBoxEvents.REROUTE_ALONG)
                 }
             }
@@ -710,111 +736,11 @@ class NavigationActivity : AppCompatActivity() {
     private val addedWaypoints = WaypointSet()
 
 
-    /**
-     * Gets notified with progress along the currently active route.
-     */
-    private val routeProgressObserver = RouteProgressObserver { routeProgress ->
-        // Debug: confirm observer is being called
-        Log.w("NAV_PROGRESS", "Observer called - distRemaining=${routeProgress.distanceRemaining}")
-
-        try {
-            //Notify the client
-            val progressEvent = MapBoxRouteProgressEvent(routeProgress)
-            FlutterMapboxNavigationPlugin.distanceRemaining = routeProgress.distanceRemaining
-            FlutterMapboxNavigationPlugin.durationRemaining = routeProgress.durationRemaining
-            sendEvent(progressEvent)
-
-            // Update trip progress overlay
-            val legIndex = routeProgress.currentLegProgress?.legIndex ?: 0
-            val distanceToNext = routeProgress.currentLegProgress?.distanceRemaining?.toDouble() ?: 0.0
-            val durationToNext = routeProgress.currentLegProgress?.durationRemaining ?: 0.0
-            val routeId = routeProgress.navigationRoute.id
-
-            // Use Log.w to ensure it appears in logcat
-            Log.w("NAV_PROGRESS", "Progress: route=${routeId.takeLast(20)}, leg=$legIndex, dist=${String.format("%.0f", distanceToNext)}m, dur=${String.format("%.0f", durationToNext)}s")
-
-            // Track current target waypoint index for skip/prev functionality
-            currentTargetWaypointIndex = legIndex.coerceIn(0, (points.size - 1).coerceAtLeast(0))
-
-            // Update the cached location from the current route position for rerouting
-            // Use the enhanced location from the location matcher if available
-
-            tripProgressManager.updateProgress(
-                legIndex = legIndex,
-                distanceToNextWaypoint = distanceToNext,
-                totalDistanceRemaining = routeProgress.distanceRemaining.toDouble(),
-                totalDurationRemaining = routeProgress.durationRemaining,
-                durationToNextWaypoint = durationToNext
-            )
-        } catch (e: Exception) {
-            Log.e("NAV_PROGRESS", "Error in observer: ${e.message}", e)
-        }
-    }
-
-    private val arrivalObserver: ArrivalObserver = object : ArrivalObserver {
-        override fun onFinalDestinationArrival(routeProgress: RouteProgress) {
-            isNavigationInProgress = false
-            sendEvent(MapBoxEvents.ON_ARRIVAL)
-        }
-
-        override fun onNextRouteLegStart(routeLegProgress: RouteLegProgress) {
-            // Not needed for basic navigation
-        }
-
-        override fun onWaypointArrival(routeProgress: RouteProgress) {
-            // Not needed for basic navigation
-        }
-    }
-
-    /**
-     * Gets notified with location updates.
-     *
-     * Exposes raw updates coming directly from the location services
-     * and the updates enhanced by the Navigation SDK (cleaned up and matched to the road).
-     */
-    private val locationObserver = object : LocationObserver {
-        override fun onNewLocationMatcherResult(locationMatcherResult: LocationMatcherResult) {
-            lastLocation = locationMatcherResult.enhancedLocation
-            // Also update the route progress location cache with the enhanced location
-            lastLocation?.let { loc ->
-                lastRouteProgressLocation = Point.fromLngLat(loc.longitude, loc.latitude)
-            }
-            // Use Log.w to ensure visibility
-            Log.w("NAV_LOCATION", "Enhanced: ${lastLocation?.latitude}, ${lastLocation?.longitude}")
-        }
-
-        override fun onNewRawLocation(rawLocation: Location) {
-            // Also capture raw location as fallback
-            if (lastLocation == null) {
-                lastLocation = rawLocation
-                lastRouteProgressLocation = Point.fromLngLat(rawLocation.longitude, rawLocation.latitude)
-                Log.w("NAV_LOCATION", "Raw: ${rawLocation.latitude}, ${rawLocation.longitude}")
-            }
-        }
-    }
-
-    private val bannerInstructionObserver = BannerInstructionsObserver { bannerInstructions ->
-        sendEvent(MapBoxEvents.BANNER_INSTRUCTION, bannerInstructions.primary().text())
-    }
-
-    private val voiceInstructionObserver = VoiceInstructionsObserver { voiceInstructions ->
-        sendEvent(MapBoxEvents.SPEECH_ANNOUNCEMENT, voiceInstructions.announcement().toString())
-    }
-
-    private val offRouteObserver = OffRouteObserver { offRoute ->
-        if (offRoute) {
-            sendEvent(MapBoxEvents.USER_OFF_ROUTE)
-        }
-    }
-
-    private val routesObserver = RoutesObserver { routeUpdateResult ->
-        val routes = routeUpdateResult.navigationRoutes
-        Log.i("NavigationActivity", "📍 RoutesObserver: ${routes.size} routes, reason=${routeUpdateResult.reason}")
-        if (routes.isNotEmpty()) {
-            Log.i("NavigationActivity", "📍 RoutesObserver: route ID=${routes.first().id.takeLast(30)}")
-            sendEvent(MapBoxEvents.REROUTE_ALONG)
-        }
-    }
+    // ============================================================
+    // NOTE: Navigation observers are now handled by TurnByTurn
+    // NavigationActivity receives updates via NavigationObserverCallback
+    // This eliminates duplicate observer registration and improves code clarity
+    // ============================================================
 
     /**
      * Notifies with attach and detach events on [MapView]
@@ -935,9 +861,14 @@ class NavigationActivity : AppCompatActivity() {
     private fun setupDropInUICustomization() {
         Log.d("NavigationActivity", "🎯 Setting up Drop-in UI customization - Full panel replacement")
 
+        // Get the config from the plugin (parsed from Dart arguments)
+        val config = FlutterMapboxNavigationPlugin.tripProgressConfig
+        Log.d("NavigationActivity", "🎯 Using tripProgressConfig: showSkipButtons=${config.showSkipButtons}, showEta=${config.showEta}")
+
         // Initialize the custom info panel binder that replaces the entire info panel
         customInfoPanelBinder = CustomInfoPanelBinder(
             activity = this,
+            config = config,
             onSkipPrevious = {
                 Log.d("NavigationActivity", "🔀 Previous button pressed")
                 goToPreviousWaypoint()

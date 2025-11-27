@@ -15,11 +15,13 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.cardview.widget.CardView
+import com.eopeter.fluttermapboxnavigation.FlutterMapboxNavigationPlugin
 import com.eopeter.fluttermapboxnavigation.R
 import com.eopeter.fluttermapboxnavigation.StaticMarkerManager
 import com.eopeter.fluttermapboxnavigation.activity.NavigationActivity
 import com.eopeter.fluttermapboxnavigation.models.StaticMarker
 import com.eopeter.fluttermapboxnavigation.models.MapBoxEvents
+import com.eopeter.fluttermapboxnavigation.models.TripProgressTheme
 import org.json.JSONObject
 
 /**
@@ -27,8 +29,14 @@ import org.json.JSONObject
  *
  * This class creates a CardView overlay that floats above the Mapbox Drop-in UI,
  * showing details when a marker is tapped.
+ *
+ * The appearance uses the same theme as the trip progress panel for visual consistency.
  */
 class MarkerPopupOverlay(private val activity: NavigationActivity) {
+
+    // Use the same theme as trip progress for consistency
+    private val theme: TripProgressTheme
+        get() = FlutterMapboxNavigationPlugin.tripProgressConfig.theme
 
     private var currentMarker: StaticMarker? = null
     private var markerInfoCard: CardView? = null
@@ -146,9 +154,9 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
         val context = activity
 
         return CardView(context).apply {
-            radius = dpToPx(16).toFloat()
+            radius = theme.cornerRadius
             cardElevation = dpToPx(8).toFloat()
-            setCardBackgroundColor(Color.WHITE)
+            setCardBackgroundColor(theme.backgroundColor)
             useCompatPadding = false
 
             // Main content container
@@ -163,9 +171,9 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
                 gravity = Gravity.CENTER_VERTICAL
             }
 
-            // Icon circle
+            // Icon circle - use theme category color
             val iconContainer = FrameLayout(context).apply {
-                val size = dpToPx(44)
+                val size = theme.iconSize.toInt()
                 layoutParams = LinearLayout.LayoutParams(size, size)
                 background = createCircleDrawable(getMarkerColor(marker))
             }
@@ -193,17 +201,17 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
                 }
             }
 
-            // Title
+            // Title - use theme text color
             val titleView = TextView(context).apply {
                 text = marker.title
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
-                setTextColor(Color.parseColor("#1a1a1a"))
+                setTextColor(theme.textPrimaryColor)
                 typeface = Typeface.DEFAULT_BOLD
                 maxLines = 2
             }
             titleContainer.addView(titleView)
 
-            // Category
+            // Category - use marker category color
             if (marker.category.isNotEmpty()) {
                 val categoryView = TextView(context).apply {
                     text = formatCategory(marker.category)
@@ -216,26 +224,26 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
 
             headerLayout.addView(titleContainer)
 
-            // Close button
+            // Close button - use theme button background
             val closeButton = ImageButton(context).apply {
                 val size = dpToPx(36)
                 layoutParams = LinearLayout.LayoutParams(size, size)
                 setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-                setColorFilter(Color.parseColor("#666666"))
-                background = createCircleDrawable(Color.parseColor("#f5f5f5"))
+                setColorFilter(theme.textSecondaryColor)
+                background = createCircleDrawable(theme.buttonBackgroundColor)
                 setOnClickListener { hideMarkerInfo() }
             }
             headerLayout.addView(closeButton)
 
             contentLayout.addView(headerLayout)
 
-            // Description if available
+            // Description if available - use theme secondary text color
             val description = marker.description ?: marker.metadata?.get("description")?.toString()
             if (!description.isNullOrEmpty()) {
                 val descriptionView = TextView(context).apply {
                     text = description
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                    setTextColor(Color.parseColor("#555555"))
+                    setTextColor(theme.textSecondaryColor)
                     setPadding(0, dpToPx(10), 0, 0)
                     maxLines = 3
                     lineHeight = dpToPx(20)
@@ -243,7 +251,7 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
                 contentLayout.addView(descriptionView)
             }
 
-            // ETA row if available
+            // ETA row if available - use theme primary color
             val eta = marker.metadata?.get("eta")?.toString()
             if (!eta.isNullOrEmpty() && eta != "null") {
                 val etaLayout = LinearLayout(context).apply {
@@ -256,14 +264,14 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
                     val iconSize = dpToPx(16)
                     layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
                     setImageResource(android.R.drawable.ic_menu_recent_history)
-                    setColorFilter(Color.parseColor("#888888"))
+                    setColorFilter(theme.primaryColor)
                 }
                 etaLayout.addView(clockIcon)
 
                 val etaView = TextView(context).apply {
                     text = "ETA: $eta"
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                    setTextColor(Color.parseColor("#666666"))
+                    setTextColor(theme.primaryColor)
                     setPadding(dpToPx(6), 0, 0, 0)
                 }
                 etaLayout.addView(etaView)
@@ -283,18 +291,11 @@ class MarkerPopupOverlay(private val activity: NavigationActivity) {
     }
 
     private fun getMarkerColor(marker: StaticMarker): Int {
+        // Use custom color if provided
         marker.customColor?.let { return it }
 
-        return when (marker.category.lowercase()) {
-            "checkpoint" -> Color.parseColor("#FF5722") // Deep Orange
-            "waypoint" -> Color.parseColor("#2196F3") // Blue
-            "poi" -> Color.parseColor("#4CAF50") // Green
-            "scenic" -> Color.parseColor("#8BC34A") // Light Green
-            "restaurant", "food" -> Color.parseColor("#FF9800") // Orange
-            "hotel", "accommodation" -> Color.parseColor("#9C27B0") // Purple
-            "petrol_station", "fuel" -> Color.parseColor("#607D8B") // Blue Grey
-            else -> Color.parseColor("#2196F3") // Default blue
-        }
+        // Use theme category color if defined
+        return theme.getCategoryColor(marker.category)
     }
 
     private fun getMarkerIconResource(marker: StaticMarker): Int {

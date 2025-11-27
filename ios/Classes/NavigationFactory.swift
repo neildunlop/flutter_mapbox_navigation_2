@@ -47,7 +47,13 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
 
     // Trip progress overlay for showing navigation progress
     var tripProgressOverlay: TripProgressOverlay?
-    
+
+    // Trip progress configuration (from Flutter)
+    var _tripProgressConfig: TripProgressConfig = .defaults()
+
+    // Original waypoints for skip/prev functionality
+    var _originalWayPoints: [Waypoint] = []
+
     func addWayPoints(arguments: NSDictionary?, result: @escaping FlutterResult)
     {
         do {
@@ -110,19 +116,23 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
     {
         _wayPoints.removeAll()
         _wayPointOrder.removeAll()
-        
+        _originalWayPoints.removeAll()  // Reset original waypoints for new navigation
+
         guard var locations = getLocationsFromFlutterArgument(arguments: arguments) else { return }
-        
+
         for loc in locations
         {
             let location = Waypoint(coordinate: CLLocationCoordinate2D(latitude: loc.latitude!, longitude: loc.longitude!), name: loc.name)
-            
+
             location.separatesLegs = !loc.isSilent
-            
+
             _wayPoints.append(location)
             _wayPointOrder[loc.order!] = location
         }
-        
+
+        // Store original waypoints for skip/prev functionality
+        _originalWayPoints = _wayPoints
+
         parseFlutterArguments(arguments: arguments)
         
         _options?.includesAlternativeRoutes = _alternatives
@@ -215,12 +225,30 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         let flutterViewController = UIApplication.shared.delegate?.window??.rootViewController as! FlutterViewController
         flutterViewController.present(self._navigationViewController!, animated: true) { [weak self] in
             // Initialize the marker popup overlay after navigation view is presented
-            guard let navVC = self?._navigationViewController else { return }
-            self?.markerPopupOverlay = MarkerPopupOverlay(parentViewController: navVC)
-            self?.markerPopupOverlay?.initialize()
+            guard let strongSelf = self, let navVC = strongSelf._navigationViewController else { return }
+            strongSelf.markerPopupOverlay = MarkerPopupOverlay(parentViewController: navVC, config: strongSelf._tripProgressConfig)
+            strongSelf.markerPopupOverlay?.initialize()
 
-            // Initialize the trip progress overlay
-            self?.tripProgressOverlay = TripProgressOverlay(parentViewController: navVC)
+            // Initialize the trip progress overlay with config
+            print("NavigationFactory: Creating TripProgressOverlay with config")
+            strongSelf.tripProgressOverlay = TripProgressOverlay(
+                parentViewController: navVC,
+                config: strongSelf._tripProgressConfig
+            )
+
+            // Set up skip/prev callbacks
+            strongSelf.tripProgressOverlay?.onSkipPrevious = { [weak self] in
+                print("NavigationFactory: Skip previous button pressed")
+                self?.goToPreviousWaypoint()
+            }
+            strongSelf.tripProgressOverlay?.onSkipNext = { [weak self] in
+                print("NavigationFactory: Skip next button pressed")
+                self?.skipToNextWaypoint()
+            }
+            strongSelf.tripProgressOverlay?.onEndNavigation = { [weak self] in
+                print("NavigationFactory: End navigation button pressed")
+                self?.endNavigation(result: nil)
+            }
 
             // Connect progress manager to overlay
             TripProgressManager.shared.setProgressListener { [weak self] progressData in
@@ -229,15 +257,15 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
 
             // Set up waypoints for progress tracking
             let markers = StaticMarkerManager.shared.getStaticMarkers()
-            if let waypoints = self?._wayPoints, !waypoints.isEmpty {
-                TripProgressManager.shared.setWaypointsFromMarkers(waypoints, markers: markers)
+            if let waypoints = strongSelf._wayPoints, !waypoints.isEmpty {
+                TripProgressManager.shared.setWaypointsFromMarkers(waypoints, markers: markers, isInitialSetup: true)
             }
 
             // Show the trip progress overlay FIRST
-            self?.tripProgressOverlay?.show()
+            strongSelf.tripProgressOverlay?.show()
 
             // Then trigger initial update (after UI is created)
-            if let waypoints = self?._wayPoints, !waypoints.isEmpty {
+            if let waypoints = strongSelf._wayPoints, !waypoints.isEmpty {
                 TripProgressManager.shared.updateProgress(
                     legIndex: 0,
                     distanceToNextWaypoint: 0,
@@ -293,6 +321,14 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         _animateBuildRoute = arguments?["animateBuildRoute"] as? Bool ?? _animateBuildRoute
         _longPressDestinationEnabled = arguments?["longPressDestinationEnabled"] as? Bool ?? _longPressDestinationEnabled
         _alternatives = arguments?["alternatives"] as? Bool ?? _alternatives
+
+        // Parse trip progress configuration
+        if let tripProgressConfigDict = arguments?["tripProgressConfig"] as? [String: Any] {
+            _tripProgressConfig = TripProgressConfig.fromDictionary(tripProgressConfigDict)
+            print("NavigationFactory: Parsed tripProgressConfig: showSkipButtons=\(_tripProgressConfig.showSkipButtons), showEta=\(_tripProgressConfig.showEta)")
+        } else {
+            _tripProgressConfig = .defaults()
+        }
     }
     
     
@@ -356,6 +392,150 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
             }
         }
 
+    }
+
+    // MARK: - Skip/Previous Waypoint Functionality
+
+    /// Skip to the next waypoint (skip the current target waypoint)
+    func skipToNextWaypoint() {
+        print("NavigationFactory: skipToNextWaypoint called, waypoints=\(_wayPoints.count)")
+
+        guard _wayPoints.count > 1 else {
+            print("NavigationFactory: Cannot skip - only \(_wayPoints.count) waypoint(s) remaining")
+            return
+        }
+
+        // Store original waypoints if not already stored
+        if _originalWayPoints.isEmpty {
+            _originalWayPoints = _wayPoints
+        }
+
+        // Remove the first waypoint (current target)
+        let skipped = _wayPoints.removeFirst()
+        print("NavigationFactory: Skipped waypoint: \(skipped.name ?? "unnamed")")
+
+        // Track the skip for correct waypoint numbering
+        TripProgressManager.shared.incrementSkippedCount()
+
+        // Recalculate route with remaining waypoints
+        recalculateRouteFromCurrentLocation()
+
+        sendEvent(eventType: MapBoxEventType.waypoint_arrival, data: "skipped:\(skipped.name ?? "")")
+    }
+
+    /// Go back to the previous waypoint
+    func goToPreviousWaypoint() {
+        print("NavigationFactory: goToPreviousWaypoint called, waypoints=\(_wayPoints.count), original=\(_originalWayPoints.count)")
+
+        guard !_originalWayPoints.isEmpty else {
+            print("NavigationFactory: Cannot go to previous - no original waypoints stored")
+            return
+        }
+
+        guard let currentTarget = _wayPoints.first else {
+            print("NavigationFactory: Cannot go to previous - no current waypoints")
+            return
+        }
+
+        // Find the current target in the original list
+        guard let currentIndex = _originalWayPoints.firstIndex(where: { wp in
+            abs(wp.coordinate.latitude - currentTarget.coordinate.latitude) < 0.00001 &&
+            abs(wp.coordinate.longitude - currentTarget.coordinate.longitude) < 0.00001
+        }) else {
+            print("NavigationFactory: Cannot find current target in original list")
+            return
+        }
+
+        guard currentIndex > 0 else {
+            print("NavigationFactory: Already at first waypoint")
+            return
+        }
+
+        // Get the previous waypoint from original list
+        let previousWaypoint = _originalWayPoints[currentIndex - 1]
+
+        // Check if it's already in our current list
+        let alreadyInList = _wayPoints.contains { wp in
+            abs(wp.coordinate.latitude - previousWaypoint.coordinate.latitude) < 0.00001 &&
+            abs(wp.coordinate.longitude - previousWaypoint.coordinate.longitude) < 0.00001
+        }
+
+        if !alreadyInList {
+            // Insert at the beginning
+            _wayPoints.insert(previousWaypoint, at: 0)
+            print("NavigationFactory: Re-added waypoint: \(previousWaypoint.name ?? "unnamed")")
+
+            // Track the restore for correct waypoint numbering
+            TripProgressManager.shared.decrementSkippedCount()
+        } else {
+            print("NavigationFactory: Previous waypoint already in list")
+            return
+        }
+
+        // Recalculate route
+        recalculateRouteFromCurrentLocation()
+
+        sendEvent(eventType: MapBoxEventType.waypoint_arrival, data: "restored:\(previousWaypoint.name ?? "")")
+    }
+
+    /// Recalculate route from current location to remaining waypoints
+    private func recalculateRouteFromCurrentLocation() {
+        guard let currentLocation = _lastKnownLocation else {
+            print("NavigationFactory: Cannot recalculate - no current location")
+            return
+        }
+
+        // Build new waypoints list starting from current location
+        var newWaypoints = [Waypoint]()
+        let origin = Waypoint(coordinate: currentLocation.coordinate)
+        newWaypoints.append(origin)
+        newWaypoints.append(contentsOf: _wayPoints)
+
+        // Update trip progress manager
+        let markers = StaticMarkerManager.shared.getStaticMarkers()
+        TripProgressManager.shared.setWaypointsFromMarkers(_wayPoints, markers: markers, isInitialSetup: false)
+
+        // Trigger immediate UI update
+        TripProgressManager.shared.updateProgress(
+            legIndex: 0,
+            distanceToNextWaypoint: 0,
+            totalDistanceRemaining: 0,
+            totalDurationRemaining: 0,
+            durationToNextWaypoint: 0
+        )
+
+        // Request new route
+        setNavigationOptions(wayPoints: newWaypoints)
+        _options?.includesAlternativeRoutes = _alternatives
+
+        sendEvent(eventType: MapBoxEventType.route_building)
+
+        Directions.shared.calculate(_options!) { [weak self] (session, result) in
+            guard let strongSelf = self else { return }
+            switch result {
+            case .failure(let error):
+                strongSelf.sendEvent(eventType: MapBoxEventType.route_build_failed, data: error.localizedDescription)
+            case .success(let response):
+                strongSelf.sendEvent(eventType: MapBoxEventType.route_built, data: strongSelf.encodeRouteResponse(response: response))
+                guard let routes = response.routes, !routes.isEmpty else {
+                    strongSelf.sendEvent(eventType: MapBoxEventType.route_build_no_routes_found)
+                    return
+                }
+
+                // Update the navigation with new route
+                strongSelf._navigationViewController?.navigationService.router.updateRoute(
+                    with: IndexedRouteResponse(routeResponse: response, routeIndex: 0),
+                    routeOptions: strongSelf._options
+                ) { success in
+                    if success {
+                        print("NavigationFactory: Route updated successfully")
+                        strongSelf.sendEvent(eventType: MapBoxEventType.reroute_along)
+                    } else {
+                        print("NavigationFactory: Failed to update route")
+                    }
+                }
+            }
+        }
     }
     
     func getLocationsFromFlutterArgument(arguments: NSDictionary?) -> [Location]? {
@@ -493,11 +673,13 @@ extension NavigationFactory : NavigationViewControllerDelegate {
         // Update trip progress overlay
         let legIndex = progress.legIndex
         let distanceToNext = progress.currentLegProgress.distanceRemaining
+        let durationToNext = progress.currentLegProgress.durationRemaining
         TripProgressManager.shared.updateProgress(
             legIndex: legIndex,
             distanceToNextWaypoint: distanceToNext,
             totalDistanceRemaining: progress.distanceRemaining,
-            totalDurationRemaining: progress.durationRemaining
+            totalDurationRemaining: progress.durationRemaining,
+            durationToNextWaypoint: durationToNext
         )
     }
     

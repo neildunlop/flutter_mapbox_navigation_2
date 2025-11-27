@@ -483,6 +483,8 @@ class StaticMarkerManager {
         
         // Fallback to category matching
         return when (marker.category.lowercase()) {
+            "checkpoint" -> R.drawable.ic_flag  // Checkpoints use flag icon
+            "waypoint" -> R.drawable.ic_pin     // Regular waypoints use pin
             "scenic" -> R.drawable.ic_scenic
             "petrol_station", "fuel" -> R.drawable.ic_petrol_station
             "restaurant", "food" -> R.drawable.ic_restaurant

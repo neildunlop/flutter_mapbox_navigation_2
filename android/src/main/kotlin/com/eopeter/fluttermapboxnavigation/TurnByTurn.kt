@@ -40,6 +40,27 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.*
 
+/**
+ * Callback interface for navigation observer events.
+ * Implement this to receive navigation updates without duplicating observer registrations.
+ */
+interface NavigationObserverCallback {
+    /** Called when location is updated */
+    fun onLocationUpdate(location: Location, matchedLocation: Location?)
+    /** Called when route progress is updated */
+    fun onRouteProgressUpdate(routeProgress: RouteProgress)
+    /** Called when user goes off route */
+    fun onOffRoute()
+    /** Called when routes are updated */
+    fun onRoutesUpdate(routes: List<NavigationRoute>)
+    /** Called when arriving at final destination */
+    fun onFinalDestinationArrival(routeProgress: RouteProgress)
+    /** Called when arriving at a waypoint */
+    fun onWaypointArrival(routeProgress: RouteProgress)
+    /** Called when starting next route leg */
+    fun onNextRouteLegStart(routeLegProgress: RouteLegProgress)
+}
+
 open class TurnByTurn(
     ctx: Context,
     act: Activity,
@@ -48,6 +69,9 @@ open class TurnByTurn(
 ) : MethodChannel.MethodCallHandler,
     EventChannel.StreamHandler,
     Application.ActivityLifecycleCallbacks {
+
+    /** Optional callback for observer events. Set this to receive navigation updates. */
+    var observerCallback: NavigationObserverCallback? = null
 
     open fun initFlutterChannelHandlers() {
         this.methodChannel?.setMethodCallHandler(this)
@@ -449,10 +473,18 @@ open class TurnByTurn(
     private val locationObserver = object : LocationObserver {
         override fun onNewLocationMatcherResult(locationMatcherResult: LocationMatcherResult) {
             this@TurnByTurn.lastLocation = locationMatcherResult.enhancedLocation
+            // Notify callback
+            observerCallback?.onLocationUpdate(
+                locationMatcherResult.enhancedLocation,
+                locationMatcherResult.enhancedLocation
+            )
         }
 
         override fun onNewRawLocation(rawLocation: Location) {
-            // no impl
+            // Notify callback with raw location if no enhanced location yet
+            if (this@TurnByTurn.lastLocation == null) {
+                observerCallback?.onLocationUpdate(rawLocation, null)
+            }
         }
     }
 
@@ -467,12 +499,16 @@ open class TurnByTurn(
     private val offRouteObserver = OffRouteObserver { offRoute ->
         if (offRoute) {
             PluginUtilities.sendEvent(MapBoxEvents.USER_OFF_ROUTE)
+            // Notify callback
+            observerCallback?.onOffRoute()
         }
     }
 
     private val routesObserver = RoutesObserver { routeUpdateResult ->
         if (routeUpdateResult.navigationRoutes.isNotEmpty()) {
-            PluginUtilities.sendEvent(MapBoxEvents.REROUTE_ALONG);
+            PluginUtilities.sendEvent(MapBoxEvents.REROUTE_ALONG)
+            // Notify callback
+            observerCallback?.onRoutesUpdate(routeUpdateResult.navigationRoutes)
         }
     }
 
@@ -483,7 +519,6 @@ open class TurnByTurn(
         // update flutter events
         if (!this.isNavigationCanceled) {
             try {
-
                 this.distanceRemaining = routeProgress.distanceRemaining
                 this.durationRemaining = routeProgress.durationRemaining
 
@@ -502,6 +537,9 @@ open class TurnByTurn(
                     totalDurationRemaining = routeProgress.durationRemaining,
                     durationToNextWaypoint = durationToNext
                 )
+
+                // Notify callback
+                observerCallback?.onRouteProgressUpdate(routeProgress)
             } catch (_: java.lang.Exception) {
                 // handle this error
             }
@@ -510,16 +548,19 @@ open class TurnByTurn(
 
     private val arrivalObserver: ArrivalObserver = object : ArrivalObserver {
         override fun onFinalDestinationArrival(routeProgress: RouteProgress) {
-            // Not needed for basic navigation
             isNavigating = false
+            // Notify callback
+            observerCallback?.onFinalDestinationArrival(routeProgress)
         }
 
         override fun onNextRouteLegStart(routeLegProgress: RouteLegProgress) {
-            // Not needed for basic navigation
+            // Notify callback
+            observerCallback?.onNextRouteLegStart(routeLegProgress)
         }
 
         override fun onWaypointArrival(routeProgress: RouteProgress) {
-            // Not needed for basic navigation
+            // Notify callback
+            observerCallback?.onWaypointArrival(routeProgress)
         }
     }
 

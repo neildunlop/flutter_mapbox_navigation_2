@@ -71,16 +71,22 @@ data class StaticMarker(
     }
 
     /**
-     * Gets the default color for the marker category
+     * Gets the default color for the marker category.
+     * Colors aligned with app's design system:
+     * Primary: #2E6578 (teal), Tertiary: #5D5D70 (muted purple-gray)
      */
     private fun getDefaultColorForCategory(): Int {
         return when (category.lowercase()) {
-            "scenic", "park", "beach", "mountain", "lake", "waterfall", "viewpoint", "hiking" -> Color.parseColor("#FF9800") // Orange
-            "petrol_station", "charging_station", "parking" -> Color.parseColor("#4CAF50") // Green
-            "restaurant", "cafe", "hotel", "shop" -> Color.parseColor("#F44336") // Red
-            "speed_camera", "accident", "construction", "warning" -> Color.parseColor("#FF5722") // Deep Orange
-            "hospital", "police", "fire_station" -> Color.parseColor("#2196F3") // Blue
-            else -> Color.parseColor("#9C27B0") // Purple (default)
+            "checkpoint" -> Color.parseColor("#5D5D70") // Tertiary - muted purple-gray (app tertiary)
+            "waypoint" -> Color.parseColor("#2E6578")   // Primary teal (app primary)
+            "scenic", "park", "beach", "mountain", "lake", "waterfall", "viewpoint", "hiking" -> Color.parseColor("#8BC34A") // Light Green
+            "petrol_station", "charging_station", "parking" -> Color.parseColor("#607D8B") // Blue Grey
+            "restaurant", "cafe", "food" -> Color.parseColor("#FF9800") // Orange
+            "hotel", "accommodation" -> Color.parseColor("#5D5D70") // Tertiary
+            "speed_camera", "accident", "construction", "warning" -> Color.parseColor("#F44336") // Red
+            "hospital", "medical", "police", "fire_station" -> Color.parseColor("#2196F3") // Blue
+            "poi" -> Color.parseColor("#4CAF50") // Green
+            else -> Color.parseColor("#2E6578") // Primary teal (default)
         }
     }
 
@@ -96,18 +102,20 @@ data class StaticMarker(
      */
     private fun getDefaultIconForCategory(): String {
         return when (category.lowercase()) {
+            "checkpoint" -> "ic_flag"  // Checkpoints use flag icon
+            "waypoint" -> "ic_pin"     // Regular waypoints use pin
             "scenic", "park", "beach", "mountain", "lake", "waterfall", "viewpoint", "hiking" -> "ic_scenic"
             "petrol_station" -> "ic_petrol_station"
             "charging_station" -> "ic_charging_station"
             "parking" -> "ic_parking"
-            "restaurant" -> "ic_restaurant"
+            "restaurant", "food" -> "ic_restaurant"
             "cafe" -> "ic_cafe"
-            "hotel" -> "ic_hotel"
+            "hotel", "accommodation" -> "ic_hotel"
             "shop" -> "ic_shop"
             "speed_camera" -> "ic_speed_camera"
             "accident" -> "ic_accident"
             "construction" -> "ic_construction"
-            "hospital" -> "ic_hospital"
+            "hospital", "medical" -> "ic_hospital"
             "police" -> "ic_police"
             "fire_station" -> "ic_fire_station"
             else -> "ic_pin"

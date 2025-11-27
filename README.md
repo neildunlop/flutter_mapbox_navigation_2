@@ -466,6 +466,89 @@ await MapBoxNavigation.instance.clearAllStaticMarkers();
 
 For detailed documentation, see [Static Markers Guide](docs/static_markers.md).
 
+### Trip Progress Panel
+
+Customize the trip progress panel that shows navigation progress, waypoint information, and allows users to skip/go back to waypoints.
+
+```dart
+// 1. Use the fluent builder API
+final config = TripProgressConfigBuilder()
+  .withSkipButtons()           // Enable skip prev/next buttons
+  .withProgressBar()           // Show progress bar
+  .withEta()                   // Show estimated arrival time
+  .withWaypointCount()         // Show "Waypoint 3/8"
+  .withDarkTheme()             // Apply dark theme
+  .build();
+
+// 2. Or use factory methods
+final defaultConfig = TripProgressConfig.defaults();  // All features enabled
+final minimalConfig = TripProgressConfig.minimal();   // Essential features only
+
+// 3. Or create with custom options
+final customConfig = TripProgressConfig(
+  showSkipButtons: true,
+  showProgressBar: true,
+  showEta: true,
+  showTotalDistance: true,
+  showEndNavigationButton: true,
+  showWaypointCount: true,
+  showDistanceToNext: true,
+  showDurationToNext: true,
+  enableAudioFeedback: true,
+  theme: TripProgressTheme.light(),
+);
+
+// 4. Start navigation with custom trip progress
+await MapBoxNavigation.instance.startNavigation(
+  wayPoints: waypoints,
+  options: MapBoxOptions(
+    tripProgressConfig: config,
+    // ... other options
+  ),
+);
+```
+
+**Custom Theme Builder:**
+```dart
+// Create a custom theme based on light/dark presets
+final customTheme = TripProgressThemeBuilder()
+  .fromLight()                                    // Start with light theme
+  .primaryColor(Colors.indigo)                    // Custom primary color
+  .accentColor(Colors.amber)                      // Checkpoint accent color
+  .backgroundColor(Color(0xFFFAFAFA))             // Panel background
+  .endButtonColor(Colors.red)                     // End navigation button
+  .cornerRadius(20.0)                             // Rounded corners
+  .addCategoryColor('checkpoint', Colors.orange)  // Custom category color
+  .addCategoryColor('scenic', Colors.green)
+  .build();
+
+final config = TripProgressConfigBuilder()
+  .withTheme(customTheme)
+  .build();
+```
+
+**Trip Progress Features:**
+- **Skip/Previous Buttons** - Navigate between waypoints during navigation
+- **Progress Bar** - Visual indicator of trip progress
+- **Waypoint Count** - Shows current waypoint position (e.g., "Waypoint 3/8")
+- **Distance/Duration** - Shows distance and time to next waypoint
+- **ETA** - Estimated time of arrival
+- **End Navigation** - Button to stop navigation
+- **Theming** - Full customization of colors, dimensions, and category colors
+- **Cross-Platform** - Consistent API on both iOS and Android
+
+**Category Colors:**
+Category colors are used for waypoint icons. Default categories include:
+- `checkpoint` - Important stops (orange)
+- `waypoint` - Regular waypoints (blue)
+- `poi` - Points of interest (green)
+- `scenic` - Scenic viewpoints (light green)
+- `restaurant`, `food` - Dining locations (orange)
+- `hotel`, `accommodation` - Lodging (purple)
+- `petrol_station`, `fuel` - Fuel stops (blue grey)
+- `hospital`, `medical` - Medical facilities (red)
+- `charging_station` - EV charging (cyan)
+
 ### Embedded Navigation View
 
 ```dart
@@ -598,6 +681,16 @@ For detailed technical documentation, architecture overview, and implementation 
 
 ### [Unreleased]
 #### New Features
+- **Trip Progress Panel**: Customizable navigation progress overlay with:
+  - Skip/previous waypoint buttons for multi-stop navigation
+  - Progress bar showing trip completion
+  - Waypoint count, distance, duration, and ETA display
+  - Fluent builder API for easy configuration
+  - Full theming support (light/dark presets, custom colors)
+  - Category-based icon coloring
+  - Cross-platform consistency (iOS and Android)
+  - IconProvider interface for custom icon implementations
+
 - **Static Markers System**: Complete implementation of custom markers with:
   - 30+ predefined icons across 5 categories
   - Flexible string-based categories

@@ -37,14 +37,19 @@ data class TripProgressData(
     val durationToNextWaypoint: Double = 0.0,
 
     /** Whether this is a checkpoint (vs regular waypoint) */
-    val isNextWaypointCheckpoint: Boolean = false
+    val isNextWaypointCheckpoint: Boolean = false,
+
+    /** Initial total distance when navigation started (meters) - used for progress calculation */
+    val initialTotalDistance: Double = 0.0
 ) {
     /**
-     * Get progress as a fraction (0.0 to 1.0)
+     * Get progress as a fraction (0.0 to 1.0) based on distance traveled to final destination.
+     * This provides a smooth, continuous progress indicator that reflects actual travel progress.
      */
     val progressFraction: Float
-        get() = if (totalWaypoints > 1) {
-            (currentWaypointIndex.toFloat()) / (totalWaypoints - 1).toFloat()
+        get() = if (initialTotalDistance > 0) {
+            val distanceTraveled = initialTotalDistance - totalDistanceRemaining
+            (distanceTraveled / initialTotalDistance).toFloat().coerceIn(0f, 1f)
         } else {
             0f
         }

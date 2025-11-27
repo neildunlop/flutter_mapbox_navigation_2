@@ -18,8 +18,11 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.cardview.widget.CardView
+import com.eopeter.fluttermapboxnavigation.FlutterMapboxNavigationPlugin
 import com.eopeter.fluttermapboxnavigation.R
+import com.eopeter.fluttermapboxnavigation.models.TripProgressConfig
 import com.eopeter.fluttermapboxnavigation.models.TripProgressData
+import com.eopeter.fluttermapboxnavigation.models.TripProgressTheme
 import com.mapbox.navigation.core.MapboxNavigation
 import com.mapbox.navigation.core.lifecycle.MapboxNavigationObserver
 import com.mapbox.navigation.ui.base.lifecycle.UIBinder
@@ -36,12 +39,18 @@ import com.mapbox.navigation.ui.base.lifecycle.UIComponent
  * - Line 5: ETA
  *
  * Provides prev/next buttons for skipping waypoints.
+ *
+ * The appearance can be customized via the [TripProgressConfig] from [FlutterMapboxNavigationPlugin].
  */
 class CustomTripProgressBinder(
     private val context: Context,
     private val onSkipPrevious: (() -> Unit)? = null,
     private val onSkipNext: (() -> Unit)? = null
 ) : UIBinder {
+
+    // Get config and theme from plugin
+    private val config: TripProgressConfig get() = FlutterMapboxNavigationPlugin.tripProgressConfig
+    private val theme: TripProgressTheme get() = config.theme
 
     companion object {
         private const val TAG = "CustomTripProgressBinder"
@@ -117,9 +126,9 @@ class CustomTripProgressBinder(
             currentWaypointIndex = data.currentWaypointIndex
             totalWaypoints = data.totalWaypoints
 
-            // Update icon
+            // Update icon - use theme category color
             iconView?.setImageResource(getIconResource(data.nextWaypointIconId, data.nextWaypointCategory))
-            iconView?.background = createCircleDrawable(getCategoryColor(data.nextWaypointCategory))
+            iconView?.background = createCircleDrawable(theme.getCategoryColor(data.nextWaypointCategory))
 
             // Update waypoint name (truncate if too long)
             val displayName = if (data.nextWaypointName.length > 20) {
@@ -178,10 +187,11 @@ class CustomTripProgressBinder(
     }
 
     private fun createTripProgressView(context: Context): View {
+        Log.d(TAG, "🎨 Creating view with theme: backgroundColor=${String.format("#%08X", theme.backgroundColor)}, primaryColor=${String.format("#%08X", theme.primaryColor)}, cornerRadius=${theme.cornerRadius}")
         return CardView(context).apply {
-            radius = dpToPx(context, 12).toFloat()
+            radius = theme.cornerRadius
             cardElevation = dpToPx(context, 4).toFloat()
-            setCardBackgroundColor(Color.WHITE)
+            setCardBackgroundColor(theme.backgroundColor)
             useCompatPadding = false
 
             val contentLayout = LinearLayout(context).apply {
@@ -195,30 +205,32 @@ class CustomTripProgressBinder(
                 gravity = Gravity.CENTER_VERTICAL
             }
 
-            // Prev button
-            prevButton = ImageView(context).apply {
-                val size = dpToPx(context, 32)
-                layoutParams = LinearLayout.LayoutParams(size, size).apply {
-                    marginEnd = dpToPx(context, 8)
-                }
-                setImageResource(R.drawable.ic_chevron_left)
-                setColorFilter(Color.parseColor("#2196F3"))
-                background = createRoundedRectDrawable(Color.parseColor("#E3F2FD"), dpToPx(context, 6).toFloat())
-                setPadding(dpToPx(context, 4), dpToPx(context, 4), dpToPx(context, 4), dpToPx(context, 4))
-                setOnClickListener {
-                    if (isEnabled) {
-                        playButtonSound()
-                        onSkipPrevious?.invoke()
+            // Prev button (only if enabled)
+            if (config.showSkipButtons) {
+                prevButton = ImageView(context).apply {
+                    val size = theme.buttonSize
+                    layoutParams = LinearLayout.LayoutParams(size, size).apply {
+                        marginEnd = dpToPx(context, 8)
+                    }
+                    setImageResource(R.drawable.ic_chevron_left)
+                    setColorFilter(theme.primaryColor)
+                    background = createRoundedRectDrawable(theme.buttonBackgroundColor, dpToPx(context, 6).toFloat())
+                    setPadding(dpToPx(context, 4), dpToPx(context, 4), dpToPx(context, 4), dpToPx(context, 4))
+                    setOnClickListener {
+                        if (isEnabled) {
+                            playButtonSound()
+                            onSkipPrevious?.invoke()
+                        }
                     }
                 }
+                line1.addView(prevButton)
             }
-            line1.addView(prevButton)
 
             // Icon container
             val iconContainer = FrameLayout(context).apply {
-                val size = dpToPx(context, 28)
+                val size = theme.iconSize
                 layoutParams = LinearLayout.LayoutParams(size, size)
-                background = createCircleDrawable(Color.parseColor("#2196F3"))
+                background = createCircleDrawable(theme.primaryColor)
             }
 
             iconView = ImageView(context).apply {
@@ -236,7 +248,7 @@ class CustomTripProgressBinder(
             waypointNameView = TextView(context).apply {
                 text = "Loading..."
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                setTextColor(Color.parseColor("#1a1a1a"))
+                setTextColor(theme.textPrimaryColor)
                 setPadding(dpToPx(context, 8), 0, dpToPx(context, 8), 0)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 maxLines = 1
@@ -244,85 +256,102 @@ class CustomTripProgressBinder(
             }
             line1.addView(waypointNameView)
 
-            // Next button
-            nextButton = ImageView(context).apply {
-                val size = dpToPx(context, 32)
-                layoutParams = LinearLayout.LayoutParams(size, size).apply {
-                    marginStart = dpToPx(context, 8)
-                }
-                setImageResource(R.drawable.ic_chevron_right)
-                setColorFilter(Color.parseColor("#2196F3"))
-                background = createRoundedRectDrawable(Color.parseColor("#E3F2FD"), dpToPx(context, 6).toFloat())
-                setPadding(dpToPx(context, 4), dpToPx(context, 4), dpToPx(context, 4), dpToPx(context, 4))
-                setOnClickListener {
-                    if (isEnabled) {
-                        playButtonSound()
-                        onSkipNext?.invoke()
+            // Next button (only if enabled)
+            if (config.showSkipButtons) {
+                nextButton = ImageView(context).apply {
+                    val size = theme.buttonSize
+                    layoutParams = LinearLayout.LayoutParams(size, size).apply {
+                        marginStart = dpToPx(context, 8)
+                    }
+                    setImageResource(R.drawable.ic_chevron_right)
+                    setColorFilter(theme.primaryColor)
+                    background = createRoundedRectDrawable(theme.buttonBackgroundColor, dpToPx(context, 6).toFloat())
+                    setPadding(dpToPx(context, 4), dpToPx(context, 4), dpToPx(context, 4), dpToPx(context, 4))
+                    setOnClickListener {
+                        if (isEnabled) {
+                            playButtonSound()
+                            onSkipNext?.invoke()
+                        }
                     }
                 }
+                line1.addView(nextButton)
             }
-            line1.addView(nextButton)
 
             contentLayout.addView(line1)
 
             // === Line 2: Distance • Time to next ===
-            distanceTimeView = TextView(context).apply {
-                text = "-- mi • --"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                setTextColor(Color.parseColor("#666666"))
-                gravity = Gravity.CENTER
-                setPadding(0, dpToPx(context, 4), 0, 0)
+            if (config.showDistanceToNext || config.showDurationToNext) {
+                distanceTimeView = TextView(context).apply {
+                    text = "-- mi • --"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                    setTextColor(theme.textSecondaryColor)
+                    gravity = Gravity.CENTER
+                    setPadding(0, dpToPx(context, 4), 0, 0)
+                }
+                contentLayout.addView(distanceTimeView)
             }
-            contentLayout.addView(distanceTimeView)
 
             // === Line 3: Progress bar ===
-            progressBar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dpToPx(context, 6)
-                ).apply {
-                    topMargin = dpToPx(context, 8)
+            if (config.showProgressBar) {
+                progressBar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dpToPx(context, 6)
+                    ).apply {
+                        topMargin = dpToPx(context, 8)
+                    }
+                    max = 100
+                    progress = 0
+                    progressDrawable = createProgressDrawable(context)
                 }
-                max = 100
-                progress = 0
-                progressDrawable = createProgressDrawable(context)
+                contentLayout.addView(progressBar)
             }
-            contentLayout.addView(progressBar)
 
             // === Line 4: Progress text + Total distance ===
-            val line4 = LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dpToPx(context, 6), 0, 0)
-            }
+            if (config.showWaypointCount || config.showTotalDistance) {
+                val line4 = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(0, dpToPx(context, 6), 0, 0)
+                }
 
-            progressTextView = TextView(context).apply {
-                text = "Waypoint 1/1"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setTextColor(Color.parseColor("#666666"))
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            }
-            line4.addView(progressTextView)
+                if (config.showWaypointCount) {
+                    progressTextView = TextView(context).apply {
+                        text = "Waypoint 1/1"
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                        setTextColor(theme.textSecondaryColor)
+                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    }
+                    line4.addView(progressTextView)
+                }
 
-            totalDistanceView = TextView(context).apply {
-                text = "-- mi remaining"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setTextColor(Color.parseColor("#666666"))
-                gravity = Gravity.END
-            }
-            line4.addView(totalDistanceView)
+                if (config.showTotalDistance) {
+                    totalDistanceView = TextView(context).apply {
+                        text = "-- mi remaining"
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                        setTextColor(theme.textSecondaryColor)
+                        gravity = Gravity.END
+                        if (!config.showWaypointCount) {
+                            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                        }
+                    }
+                    line4.addView(totalDistanceView)
+                }
 
-            contentLayout.addView(line4)
+                contentLayout.addView(line4)
+            }
 
             // === Line 5: ETA ===
-            etaView = TextView(context).apply {
-                text = "ETA --:--"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                setTextColor(Color.parseColor("#2196F3"))
-                gravity = Gravity.CENTER
-                setPadding(0, dpToPx(context, 4), 0, 0)
+            if (config.showEta) {
+                etaView = TextView(context).apply {
+                    text = "ETA --:--"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                    setTextColor(theme.primaryColor)
+                    gravity = Gravity.CENTER
+                    setPadding(0, dpToPx(context, 4), 0, 0)
+                }
+                contentLayout.addView(etaView)
             }
-            contentLayout.addView(etaView)
 
             addView(contentLayout)
         }
@@ -332,7 +361,7 @@ class CustomTripProgressBinder(
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = dpToPx(context, 3).toFloat()
-            setColor(Color.parseColor("#2196F3"))
+            setColor(theme.progressBarBackgroundColor)
         }
     }
 
@@ -348,19 +377,6 @@ class CustomTripProgressBinder(
             shape = GradientDrawable.RECTANGLE
             setColor(color)
             this.cornerRadius = cornerRadius
-        }
-    }
-
-    private fun getCategoryColor(category: String): Int {
-        return when (category.lowercase()) {
-            "checkpoint" -> Color.parseColor("#FF5722") // Deep Orange
-            "waypoint" -> Color.parseColor("#2196F3") // Blue
-            "poi" -> Color.parseColor("#4CAF50") // Green
-            "scenic" -> Color.parseColor("#8BC34A") // Light Green
-            "restaurant", "food" -> Color.parseColor("#FF9800") // Orange
-            "hotel", "accommodation" -> Color.parseColor("#9C27B0") // Purple
-            "petrol_station", "fuel" -> Color.parseColor("#607D8B") // Blue Grey
-            else -> Color.parseColor("#2196F3") // Default blue
         }
     }
 

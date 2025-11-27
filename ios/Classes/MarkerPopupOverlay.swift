@@ -5,6 +5,8 @@ import Foundation
 ///
 /// This class creates a card view overlay that floats above the Mapbox navigation view,
 /// showing details when a marker is tapped.
+///
+/// The appearance uses the same theme as the trip progress panel for visual consistency.
 public class MarkerPopupOverlay {
 
     private weak var parentViewController: UIViewController?
@@ -12,11 +14,21 @@ public class MarkerPopupOverlay {
     private var cardView: UIView?
     private var isVisible = false
 
+    // Configuration - uses same theme as trip progress for consistency
+    private var config: TripProgressConfig
+    private var theme: TripProgressTheme { config.theme }
+
     // Bottom margin to position card above the info panel
     private let bottomMargin: CGFloat = 200
 
-    public init(parentViewController: UIViewController) {
+    public init(parentViewController: UIViewController, config: TripProgressConfig = .defaults()) {
         self.parentViewController = parentViewController
+        self.config = config
+    }
+
+    /// Update the configuration.
+    public func setConfig(_ config: TripProgressConfig) {
+        self.config = config
     }
 
     /// Initialize the overlay and set up marker tap listener.
@@ -114,10 +126,10 @@ public class MarkerPopupOverlay {
     }
 
     private func createMarkerInfoCard(_ marker: StaticMarker) -> UIView {
-        // Main card container
+        // Main card container - use theme colors
         let card = UIView()
-        card.backgroundColor = .white
-        card.layer.cornerRadius = 16
+        card.backgroundColor = theme.backgroundColor
+        card.layer.cornerRadius = theme.cornerRadius
         card.layer.shadowColor = UIColor.black.cgColor
         card.layer.shadowOpacity = 0.15
         card.layer.shadowOffset = CGSize(width: 0, height: 4)
@@ -143,14 +155,15 @@ public class MarkerPopupOverlay {
         headerStack.spacing = 14
         headerStack.alignment = .center
 
-        // Icon circle
+        // Icon circle - use theme icon size
+        let iconSize = theme.iconSize
         let iconContainer = UIView()
         iconContainer.backgroundColor = getMarkerColor(marker)
-        iconContainer.layer.cornerRadius = 22
+        iconContainer.layer.cornerRadius = iconSize / 2
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            iconContainer.widthAnchor.constraint(equalToConstant: 44),
-            iconContainer.heightAnchor.constraint(equalToConstant: 44)
+            iconContainer.widthAnchor.constraint(equalToConstant: iconSize),
+            iconContainer.heightAnchor.constraint(equalToConstant: iconSize)
         ])
 
         let iconImageView = UIImageView()
@@ -176,7 +189,7 @@ public class MarkerPopupOverlay {
         let titleLabel = UILabel()
         titleLabel.text = marker.title
         titleLabel.font = .boldSystemFont(ofSize: 17)
-        titleLabel.textColor = UIColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1)
+        titleLabel.textColor = theme.textPrimaryColor
         titleLabel.numberOfLines = 2
         titleStack.addArrangedSubview(titleLabel)
 
@@ -195,34 +208,35 @@ public class MarkerPopupOverlay {
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         headerStack.addArrangedSubview(spacer)
 
-        // Close button
+        // Close button - use theme button size and colors
+        let buttonSize = theme.buttonSize
         let closeButton = UIButton(type: .system)
         closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
-        closeButton.tintColor = UIColor(white: 0.4, alpha: 1)
-        closeButton.backgroundColor = UIColor(white: 0.96, alpha: 1)
-        closeButton.layer.cornerRadius = 18
+        closeButton.tintColor = theme.textSecondaryColor
+        closeButton.backgroundColor = theme.buttonBackgroundColor
+        closeButton.layer.cornerRadius = buttonSize / 2
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            closeButton.widthAnchor.constraint(equalToConstant: 36),
-            closeButton.heightAnchor.constraint(equalToConstant: 36)
+            closeButton.widthAnchor.constraint(equalToConstant: buttonSize),
+            closeButton.heightAnchor.constraint(equalToConstant: buttonSize)
         ])
         closeButton.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
         headerStack.addArrangedSubview(closeButton)
 
         contentStack.addArrangedSubview(headerStack)
 
-        // Description if available
+        // Description if available - use theme secondary text color
         let description = marker.description ?? marker.metadata?["description"] as? String
         if let desc = description, !desc.isEmpty {
             let descLabel = UILabel()
             descLabel.text = desc
             descLabel.font = .systemFont(ofSize: 14)
-            descLabel.textColor = UIColor(white: 0.33, alpha: 1)
+            descLabel.textColor = theme.textSecondaryColor
             descLabel.numberOfLines = 3
             contentStack.addArrangedSubview(descLabel)
         }
 
-        // ETA if available
+        // ETA if available - use theme primary color
         if let eta = marker.metadata?["eta"] as? String, !eta.isEmpty, eta != "null" {
             let etaStack = UIStackView()
             etaStack.axis = .horizontal
@@ -231,7 +245,7 @@ public class MarkerPopupOverlay {
 
             let clockImage = UIImageView()
             clockImage.image = UIImage(systemName: "clock")
-            clockImage.tintColor = UIColor(white: 0.53, alpha: 1)
+            clockImage.tintColor = theme.primaryColor
             clockImage.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
                 clockImage.widthAnchor.constraint(equalToConstant: 16),
@@ -242,7 +256,7 @@ public class MarkerPopupOverlay {
             let etaLabel = UILabel()
             etaLabel.text = "ETA: \(eta)"
             etaLabel.font = .systemFont(ofSize: 13)
-            etaLabel.textColor = UIColor(white: 0.4, alpha: 1)
+            etaLabel.textColor = theme.primaryColor
             etaStack.addArrangedSubview(etaLabel)
 
             // Spacer to push content left
@@ -261,28 +275,13 @@ public class MarkerPopupOverlay {
     }
 
     private func getMarkerColor(_ marker: StaticMarker) -> UIColor {
+        // Use custom color if provided
         if let customColor = marker.customColor {
             return customColor
         }
 
-        switch marker.category.lowercased() {
-        case "checkpoint":
-            return UIColor(red: 1.0, green: 0.34, blue: 0.13, alpha: 1) // Deep Orange
-        case "waypoint":
-            return UIColor(red: 0.13, green: 0.59, blue: 0.95, alpha: 1) // Blue
-        case "poi":
-            return UIColor(red: 0.30, green: 0.69, blue: 0.31, alpha: 1) // Green
-        case "scenic":
-            return UIColor(red: 0.55, green: 0.76, blue: 0.29, alpha: 1) // Light Green
-        case "restaurant", "food":
-            return UIColor(red: 1.0, green: 0.60, blue: 0.0, alpha: 1) // Orange
-        case "hotel", "accommodation":
-            return UIColor(red: 0.61, green: 0.15, blue: 0.69, alpha: 1) // Purple
-        case "petrol_station", "fuel":
-            return UIColor(red: 0.38, green: 0.49, blue: 0.55, alpha: 1) // Blue Grey
-        default:
-            return UIColor(red: 0.13, green: 0.59, blue: 0.95, alpha: 1) // Default blue
-        }
+        // Use theme category color
+        return theme.getCategoryColor(marker.category)
     }
 
     private func getMarkerIcon(_ marker: StaticMarker) -> UIImage? {

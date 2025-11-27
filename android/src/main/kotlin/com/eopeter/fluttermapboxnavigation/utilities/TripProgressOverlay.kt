@@ -1,7 +1,11 @@
 package com.eopeter.fluttermapboxnavigation.utilities
 
 import android.graphics.Color
+import android.graphics.PorterDuff
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
@@ -9,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.FrameLayout
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -16,30 +21,56 @@ import android.widget.TextView
 import androidx.cardview.widget.CardView
 import com.eopeter.fluttermapboxnavigation.R
 import com.eopeter.fluttermapboxnavigation.activity.NavigationActivity
+import com.eopeter.fluttermapboxnavigation.models.TripProgressConfig
 import com.eopeter.fluttermapboxnavigation.models.TripProgressData
+import com.eopeter.fluttermapboxnavigation.models.TripProgressTheme
 
 /**
- * Displays a compact trip progress overlay above the navigation info panel.
+ * Displays a trip progress overlay above the navigation info panel.
  *
  * Shows:
- * - Line 1: Icon + Next waypoint name + Distance to it
- * - Line 2: Progress bar + "Stop X/Y" + Time remaining
+ * - Skip prev/next buttons (configurable)
+ * - Icon + Next waypoint name + Distance/time to it
+ * - Progress bar + "Waypoint X/Y" + Total distance remaining
+ * - ETA
+ * - End navigation button (configurable)
+ *
+ * The appearance can be customized via [TripProgressConfig] and [TripProgressTheme].
  */
-class TripProgressOverlay(private val activity: NavigationActivity) {
+class TripProgressOverlay(
+    private val activity: NavigationActivity,
+    private val config: TripProgressConfig = TripProgressConfig.defaults()
+) {
+    // Theme shortcut
+    private val theme: TripProgressTheme get() = config.theme
 
     private var progressCard: CardView? = null
     private var isVisible = false
 
+    // Callbacks
+    var onSkipPrevious: (() -> Unit)? = null
+    var onSkipNext: (() -> Unit)? = null
+    var onEndNavigation: (() -> Unit)? = null
+
     // UI elements for updating
     private var iconView: ImageView? = null
+    private var iconContainer: FrameLayout? = null
     private var waypointNameView: TextView? = null
-    private var distanceView: TextView? = null
+    private var distanceTimeView: TextView? = null
     private var progressBar: ProgressBar? = null
     private var progressTextView: TextView? = null
-    private var timeRemainingView: TextView? = null
+    private var totalDistanceView: TextView? = null
+    private var etaView: TextView? = null
+    private var prevButton: ImageButton? = null
+    private var nextButton: ImageButton? = null
+    private var endNavButton: TextView? = null
+
+    // Current state for button enable/disable
+    private var currentWaypointIndex = 0
+    private var totalWaypoints = 0
 
     // Bottom margin to position above the info panel
-    private val bottomMarginDp = 160
+    private val bottomMarginDp = 180
 
     /**
      * Show the trip progress overlay.
@@ -89,19 +120,25 @@ class TripProgressOverlay(private val activity: NavigationActivity) {
     /**
      * Hide the trip progress overlay.
      */
-    fun hide() {
+    fun hide(animated: Boolean = true) {
         progressCard?.let { card ->
-            card.animate()
-                .alpha(0f)
-                .translationY(dpToPx(30).toFloat())
-                .setDuration(200)
-                .setInterpolator(AccelerateDecelerateInterpolator())
-                .withEndAction {
-                    (card.parent as? ViewGroup)?.removeView(card)
-                    progressCard = null
-                    isVisible = false
-                }
-                .start()
+            if (animated) {
+                card.animate()
+                    .alpha(0f)
+                    .translationY(dpToPx(30).toFloat())
+                    .setDuration(200)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .withEndAction {
+                        (card.parent as? ViewGroup)?.removeView(card)
+                        progressCard = null
+                        isVisible = false
+                    }
+                    .start()
+            } else {
+                (card.parent as? ViewGroup)?.removeView(card)
+                progressCard = null
+                isVisible = false
+            }
         } ?: run {
             progressCard = null
             isVisible = false
@@ -115,30 +152,77 @@ class TripProgressOverlay(private val activity: NavigationActivity) {
         Log.d("TripProgressOverlay", "updateProgress called: ${data.nextWaypointName}, ${data.progressString}")
         activity.runOnUiThread {
             Log.d("TripProgressOverlay", "Updating UI on main thread, waypointNameView=$waypointNameView")
+
+            currentWaypointIndex = data.currentWaypointIndex
+            totalWaypoints = data.totalWaypoints
+
             // Update icon
             iconView?.setImageResource(getIconResource(data.nextWaypointIconId, data.nextWaypointCategory))
-            iconView?.background = createCircleDrawable(getCategoryColor(data.nextWaypointCategory))
+            iconContainer?.background = createCircleDrawable(theme.getCategoryColor(data.nextWaypointCategory))
 
             // Update waypoint name (truncate if too long)
-            val displayName = if (data.nextWaypointName.length > 25) {
-                data.nextWaypointName.take(22) + "..."
+            val displayName = if (data.nextWaypointName.length > 22) {
+                data.nextWaypointName.take(19) + "..."
             } else {
                 data.nextWaypointName
             }
-            waypointNameView?.text = "Next: $displayName"
+            waypointNameView?.text = displayName
 
-            // Update distance
-            distanceView?.text = data.getFormattedDistanceToNext()
+            // Update distance and time
+            if (config.showDistanceToNext || config.showDurationToNext) {
+                val distStr = if (config.showDistanceToNext) data.getFormattedDistanceToNext() else ""
+                val timeStr = if (config.showDurationToNext) data.getFormattedDurationToNext() else ""
+                val separator = if (config.showDistanceToNext && config.showDurationToNext) " • " else ""
+                distanceTimeView?.text = "$distStr$separator$timeStr"
+            }
 
             // Update progress bar
-            progressBar?.max = 100
-            progressBar?.progress = (data.progressFraction * 100).toInt()
+            if (config.showProgressBar) {
+                progressBar?.max = 100
+                progressBar?.progress = (data.progressFraction * 100).toInt()
+            }
 
             // Update progress text
-            progressTextView?.text = data.progressString
+            if (config.showWaypointCount) {
+                progressTextView?.text = data.progressString
+            }
 
-            // Update time remaining
-            timeRemainingView?.text = data.getFormattedDurationRemaining()
+            // Update total distance
+            if (config.showTotalDistance) {
+                totalDistanceView?.text = "${data.getFormattedTotalDistanceRemaining()} remaining"
+            }
+
+            // Update ETA
+            if (config.showEta) {
+                etaView?.text = "ETA ${data.getFormattedEta()}"
+            }
+
+            // Update button states
+            updateButtonStates()
+        }
+    }
+
+    private fun updateButtonStates() {
+        if (!config.showSkipButtons) return
+
+        // Prev button: disabled if at first waypoint
+        val canGoPrev = currentWaypointIndex > 0
+        prevButton?.alpha = if (canGoPrev) 1.0f else 0.3f
+        prevButton?.isEnabled = canGoPrev
+
+        // Next button: disabled if at last waypoint
+        val canGoNext = currentWaypointIndex < totalWaypoints - 1
+        nextButton?.alpha = if (canGoNext) 1.0f else 0.3f
+        nextButton?.isEnabled = canGoNext
+    }
+
+    private fun playButtonSound() {
+        if (!config.enableAudioFeedback) return
+        try {
+            val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 50)
+            toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50)
+        } catch (e: Exception) {
+            Log.w("TripProgressOverlay", "Could not play button sound: ${e.message}")
         }
     }
 
@@ -146,28 +230,41 @@ class TripProgressOverlay(private val activity: NavigationActivity) {
         val context = activity
 
         return CardView(context).apply {
-            radius = dpToPx(12).toFloat()
+            radius = theme.cornerRadius
             cardElevation = dpToPx(6).toFloat()
-            setCardBackgroundColor(Color.WHITE)
+            setCardBackgroundColor(theme.backgroundColor)
             useCompatPadding = false
 
             // Main content container
             val contentLayout = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+                setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
             }
 
-            // === Line 1: Icon + Waypoint Name + Distance ===
+            // === Line 1: [◀] Icon + Waypoint Name [▶] ===
             val line1 = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
 
+            // Prev button (only if enabled)
+            if (config.showSkipButtons) {
+                prevButton = createSkipButton(android.R.drawable.ic_media_previous).apply {
+                    setOnClickListener {
+                        playButtonSound()
+                        onSkipPrevious?.invoke()
+                    }
+                }
+                line1.addView(prevButton)
+            }
+
             // Icon container
-            val iconContainer = FrameLayout(context).apply {
-                val size = dpToPx(28)
-                layoutParams = LinearLayout.LayoutParams(size, size)
-                background = createCircleDrawable(Color.parseColor("#2196F3"))
+            iconContainer = FrameLayout(context).apply {
+                val size = theme.iconSize
+                layoutParams = LinearLayout.LayoutParams(size, size).apply {
+                    if (config.showSkipButtons) marginStart = dpToPx(12)
+                }
+                background = createCircleDrawable(theme.primaryColor)
             }
 
             iconView = ImageView(context).apply {
@@ -178,75 +275,152 @@ class TripProgressOverlay(private val activity: NavigationActivity) {
                 setImageResource(R.drawable.ic_flag)
                 setColorFilter(Color.WHITE)
             }
-            iconContainer.addView(iconView)
+            iconContainer?.addView(iconView)
             line1.addView(iconContainer)
 
-            // Waypoint name
+            // Waypoint name (takes remaining space)
             waypointNameView = TextView(context).apply {
-                text = "Next: Loading..."
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                setTextColor(Color.parseColor("#1a1a1a"))
-                setPadding(dpToPx(8), 0, 0, 0)
+                text = "Loading..."
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                setTextColor(theme.textPrimaryColor)
+                setPadding(dpToPx(12), 0, dpToPx(12), 0)
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 maxLines = 1
+                gravity = Gravity.CENTER
             }
             line1.addView(waypointNameView)
 
-            // Distance to next
-            distanceView = TextView(context).apply {
-                text = "-- mi"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                setTextColor(Color.parseColor("#2196F3"))
-                setPadding(dpToPx(8), 0, 0, 0)
+            // Next button (only if enabled)
+            if (config.showSkipButtons) {
+                nextButton = createSkipButton(android.R.drawable.ic_media_next).apply {
+                    setOnClickListener {
+                        playButtonSound()
+                        onSkipNext?.invoke()
+                    }
+                }
+                line1.addView(nextButton)
             }
-            line1.addView(distanceView)
 
             contentLayout.addView(line1)
 
-            // === Line 2: Progress bar + Stop X/Y + Time remaining ===
-            val line2 = LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dpToPx(8), 0, 0)
+            // === Line 2: Distance • Time ===
+            if (config.showDistanceToNext || config.showDurationToNext) {
+                distanceTimeView = TextView(context).apply {
+                    text = "-- • --"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                    setTextColor(theme.textSecondaryColor)
+                    gravity = Gravity.CENTER
+                    setPadding(0, dpToPx(10), 0, 0)
+                }
+                contentLayout.addView(distanceTimeView)
             }
 
-            // Progress bar
-            progressBar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
-                layoutParams = LinearLayout.LayoutParams(0, dpToPx(6), 1f)
-                max = 100
-                progress = 0
-                progressDrawable = createProgressDrawable()
+            // === Line 3: Progress bar ===
+            if (config.showProgressBar) {
+                progressBar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dpToPx(6)
+                    ).apply {
+                        topMargin = dpToPx(10)
+                    }
+                    max = 100
+                    progress = 0
+                    progressDrawable = createProgressDrawable()
+                }
+                contentLayout.addView(progressBar)
             }
-            line2.addView(progressBar)
 
-            // Stop counter
-            progressTextView = TextView(context).apply {
-                text = "Stop 1/1"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setTextColor(Color.parseColor("#666666"))
-                setPadding(dpToPx(10), 0, 0, 0)
+            // === Line 4: Progress text + Total distance ===
+            if (config.showWaypointCount || config.showTotalDistance) {
+                val line4 = LinearLayout(context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(0, dpToPx(10), 0, 0)
+                }
+
+                if (config.showWaypointCount) {
+                    progressTextView = TextView(context).apply {
+                        text = "Waypoint 1/1"
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                        setTextColor(theme.textSecondaryColor)
+                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    }
+                    line4.addView(progressTextView)
+                }
+
+                if (config.showTotalDistance) {
+                    totalDistanceView = TextView(context).apply {
+                        text = "-- remaining"
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                        setTextColor(theme.textSecondaryColor)
+                        if (!config.showWaypointCount) {
+                            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                        }
+                    }
+                    line4.addView(totalDistanceView)
+                }
+
+                contentLayout.addView(line4)
             }
-            line2.addView(progressTextView)
 
-            // Bullet separator
-            val separator = TextView(context).apply {
-                text = "•"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setTextColor(Color.parseColor("#cccccc"))
-                setPadding(dpToPx(6), 0, dpToPx(6), 0)
+            // === Line 5: ETA ===
+            if (config.showEta) {
+                etaView = TextView(context).apply {
+                    text = "ETA --:--"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                    setTextColor(theme.primaryColor)
+                    gravity = Gravity.CENTER
+                    setPadding(0, dpToPx(10), 0, 0)
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                }
+                contentLayout.addView(etaView)
             }
-            line2.addView(separator)
 
-            // Time remaining
-            timeRemainingView = TextView(context).apply {
-                text = "-- min"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                setTextColor(Color.parseColor("#666666"))
+            // === End Navigation Button ===
+            if (config.showEndNavigationButton) {
+                endNavButton = TextView(context).apply {
+                    text = "End Navigation"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                    setTextColor(Color.WHITE)
+                    gravity = Gravity.CENTER
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
+                    background = createRoundedDrawable(theme.endButtonColor, 8f)
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        topMargin = dpToPx(12)
+                    }
+                    setOnClickListener {
+                        playButtonSound()
+                        onEndNavigation?.invoke()
+                    }
+                }
+                contentLayout.addView(endNavButton)
             }
-            line2.addView(timeRemainingView)
 
-            contentLayout.addView(line2)
             addView(contentLayout)
+        }
+    }
+
+    private fun createSkipButton(iconRes: Int): ImageButton {
+        return ImageButton(activity).apply {
+            val size = theme.buttonSize
+            layoutParams = LinearLayout.LayoutParams(size, size)
+            setImageResource(iconRes)
+            setColorFilter(theme.primaryColor, PorterDuff.Mode.SRC_IN)
+            background = createRoundedDrawable(theme.buttonBackgroundColor, 8f)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+        }
+    }
+
+    private fun createRoundedDrawable(color: Int, radiusDp: Float): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpToPx(radiusDp.toInt()).toFloat()
+            setColor(color)
         }
     }
 
@@ -254,7 +428,7 @@ class TripProgressOverlay(private val activity: NavigationActivity) {
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = dpToPx(3).toFloat()
-            setColor(Color.parseColor("#E3F2FD")) // Light blue background
+            setColor(theme.progressBarBackgroundColor)
         }
     }
 
@@ -262,19 +436,6 @@ class TripProgressOverlay(private val activity: NavigationActivity) {
         return GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(color)
-        }
-    }
-
-    private fun getCategoryColor(category: String): Int {
-        return when (category.lowercase()) {
-            "checkpoint" -> Color.parseColor("#FF5722") // Deep Orange
-            "waypoint" -> Color.parseColor("#2196F3") // Blue
-            "poi" -> Color.parseColor("#4CAF50") // Green
-            "scenic" -> Color.parseColor("#8BC34A") // Light Green
-            "restaurant", "food" -> Color.parseColor("#FF9800") // Orange
-            "hotel", "accommodation" -> Color.parseColor("#9C27B0") // Purple
-            "petrol_station", "fuel" -> Color.parseColor("#607D8B") // Blue Grey
-            else -> Color.parseColor("#2196F3") // Default blue
         }
     }
 

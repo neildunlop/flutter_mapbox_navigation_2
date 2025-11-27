@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import com.eopeter.fluttermapboxnavigation.activity.NavigationLauncher
 import com.eopeter.fluttermapboxnavigation.activity.FlutterNavigationLauncher
 import com.eopeter.fluttermapboxnavigation.factory.EmbeddedNavigationViewFactory
@@ -12,6 +13,7 @@ import com.eopeter.fluttermapboxnavigation.views.FlutterNavigationPlatformViewFa
 import com.eopeter.fluttermapboxnavigation.models.Waypoint
 import com.eopeter.fluttermapboxnavigation.models.StaticMarker
 import com.eopeter.fluttermapboxnavigation.models.MarkerConfiguration
+import com.eopeter.fluttermapboxnavigation.models.TripProgressConfig
 import com.mapbox.api.directions.v5.DirectionsCriteria
 import com.mapbox.api.directions.v5.models.DirectionsRoute
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -106,8 +108,14 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         var binaryMessenger: BinaryMessenger? = null
 
         var viewId = "FlutterMapboxNavigationView"
-        
+
         var enableFlutterStyleOverlays = false
+
+        /**
+         * Trip progress panel configuration passed from Dart.
+         * Controls what UI elements to show and their styling.
+         */
+        var tripProgressConfig: TripProgressConfig = TripProgressConfig.defaults()
 
         /**
          * Converts string unit type to DirectionsCriteria constant.
@@ -249,6 +257,12 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         if (longPress != null) {
             longPressDestinationEnabled = longPress
         }
+
+        // Parse trip progress configuration
+        @Suppress("UNCHECKED_CAST")
+        val tripProgressConfigMap = arguments?.get("tripProgressConfig") as? Map<String, Any>
+        tripProgressConfig = TripProgressConfig.fromMap(tripProgressConfigMap)
+        Log.d("FlutterMapboxNav", "🎨 Parsed tripProgressConfig: backgroundColor=${String.format("#%08X", tripProgressConfig.theme.backgroundColor)}, primaryColor=${String.format("#%08X", tripProgressConfig.theme.primaryColor)}")
 
         wayPoints.clear()
 
@@ -585,6 +599,14 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             if (longPress != null) {
                 longPressDestinationEnabled = longPress
             }
+
+            // Parse trip progress configuration (CRITICAL for theming)
+            @Suppress("UNCHECKED_CAST")
+            val tripProgressConfigMap = arguments?.get("tripProgressConfig") as? Map<String, Any>
+            Log.d("FlutterMapboxNav", "🎨 startFlutterNavigation: tripProgressConfigMap keys=${tripProgressConfigMap?.keys}")
+            Log.d("FlutterMapboxNav", "🎨 startFlutterNavigation: tripProgressConfigMap theme=${tripProgressConfigMap?.get("theme")}")
+            tripProgressConfig = TripProgressConfig.fromMap(tripProgressConfigMap)
+            Log.d("FlutterMapboxNav", "🎨 startFlutterNavigation: Parsed config - backgroundColor=${String.format("#%08X", tripProgressConfig.theme.backgroundColor)}, primaryColor=${String.format("#%08X", tripProgressConfig.theme.primaryColor)}, textPrimaryColor=${String.format("#%08X", tripProgressConfig.theme.textPrimaryColor)}")
 
             // Parse debug flag
             val showDebug = arguments?.get("showDebugOverlay") as? Boolean ?: false

@@ -17,6 +17,7 @@ class TripProgressManager {
     private var lastProgressData: TripProgressData? = null  // Cache for new listeners
     private var originalTotalWaypoints: Int = 0  // Track original count for display
     private var skippedWaypointsCount: Int = 0  // Track how many have been skipped
+    private var initialTotalDistance: Double = 0.0  // Track initial distance for progress bar
 
     /**
      * Information about a waypoint for progress tracking.
@@ -131,6 +132,12 @@ class TripProgressManager {
             return
         }
 
+        // Set initial total distance on first progress update (used for progress bar calculation)
+        if (initialTotalDistance <= 0 && totalDistanceRemaining > 0) {
+            initialTotalDistance = totalDistanceRemaining
+            Log.d("TripProgressManager", "Set initial total distance: ${String.format("%.1f", initialTotalDistance / 1609.34)} mi")
+        }
+
         // legIndex is 0-based, represents which leg we're on
         // Leg 0 = origin to waypoint 0
         // Leg 1 = waypoint 0 to waypoint 1
@@ -158,7 +165,8 @@ class TripProgressManager {
             totalDistanceRemaining = totalDistanceRemaining,
             totalDurationRemaining = totalDurationRemaining,
             durationToNextWaypoint = durationToNextWaypoint,
-            isNextWaypointCheckpoint = nextWaypoint.isCheckpoint
+            isNextWaypointCheckpoint = nextWaypoint.isCheckpoint,
+            initialTotalDistance = initialTotalDistance
         )
 
         // Cache for new listeners that attach later
@@ -176,6 +184,7 @@ class TripProgressManager {
         lastProgressData = null
         originalTotalWaypoints = 0
         skippedWaypointsCount = 0
+        initialTotalDistance = 0.0
         Log.d("TripProgressManager", "Cleared trip progress data")
     }
 

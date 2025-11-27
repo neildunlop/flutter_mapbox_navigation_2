@@ -278,15 +278,17 @@ class MarkerPopupBinder(private val activity: NavigationActivity) : UIBinder {
     private fun getMarkerColor(marker: StaticMarker): Int {
         marker.customColor?.let { return it }
 
+        // Colors aligned with app's design system:
+        // Primary: #2E6578 (teal), Tertiary: #5D5D70 (muted purple-gray)
         return when (marker.category.lowercase()) {
-            "checkpoint" -> Color.parseColor("#FF5722") // Deep Orange
-            "waypoint" -> Color.parseColor("#2196F3") // Blue
-            "poi" -> Color.parseColor("#4CAF50") // Green
-            "scenic" -> Color.parseColor("#8BC34A") // Light Green
+            "checkpoint" -> Color.parseColor("#5D5D70") // Tertiary - muted purple-gray (matches app tertiary)
+            "waypoint" -> Color.parseColor("#2E6578")   // Primary teal (matches app primary)
+            "poi" -> Color.parseColor("#4CAF50")        // Green
+            "scenic" -> Color.parseColor("#8BC34A")     // Light Green
             "restaurant", "food" -> Color.parseColor("#FF9800") // Orange
-            "hotel", "accommodation" -> Color.parseColor("#9C27B0") // Purple
+            "hotel", "accommodation" -> Color.parseColor("#5D5D70") // Tertiary
             "petrol_station", "fuel" -> Color.parseColor("#607D8B") // Blue Grey
-            else -> Color.parseColor("#2196F3") // Default blue
+            else -> Color.parseColor("#2E6578")         // Default primary teal
         }
     }
 
