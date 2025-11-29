@@ -127,10 +127,139 @@ class MethodChannelFlutterMapboxNavigation
   /// Will download the navigation engine and the user's region
   /// to allow offline routing
   @override
+  @Deprecated('Use downloadOfflineRegion instead for more control')
   Future<bool?> enableOfflineRouting() async {
     final success =
         await methodChannel.invokeMethod<bool?>('enableOfflineRouting');
     return success;
+  }
+
+  /// Download map tiles and routing data for a specific region.
+  @override
+  Future<bool?> downloadOfflineRegion({
+    required double southWestLat,
+    required double southWestLng,
+    required double northEastLat,
+    required double northEastLng,
+    int minZoom = 10,
+    int maxZoom = 16,
+    void Function(double progress)? onProgress,
+  }) async {
+    try {
+      // Set up progress listener if callback provided
+      if (onProgress != null) {
+        await methodChannel.invokeMethod('startOfflineProgressListener');
+        // Listen for progress updates via method channel handler
+        methodChannel.setMethodCallHandler((call) async {
+          if (call.method == 'onOfflineDownloadProgress') {
+            final progress = call.arguments as double;
+            onProgress(progress);
+          }
+        });
+      }
+
+      final args = <String, dynamic>{
+        'southWestLat': southWestLat,
+        'southWestLng': southWestLng,
+        'northEastLat': northEastLat,
+        'northEastLng': northEastLng,
+        'minZoom': minZoom,
+        'maxZoom': maxZoom,
+      };
+
+      final result = await methodChannel.invokeMethod<bool?>(
+        'downloadOfflineRegion',
+        args,
+      );
+
+      // Clean up progress listener
+      methodChannel.setMethodCallHandler(null);
+
+      return result;
+    } catch (e) {
+      log('Error downloading offline region: $e');
+      return false;
+    }
+  }
+
+  /// Check if offline routing data is available for a location.
+  @override
+  Future<bool> isOfflineRoutingAvailable({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'latitude': latitude,
+        'longitude': longitude,
+      };
+
+      final result = await methodChannel.invokeMethod<bool?>(
+        'isOfflineRoutingAvailable',
+        args,
+      );
+
+      return result ?? false;
+    } catch (e) {
+      log('Error checking offline routing availability: $e');
+      return false;
+    }
+  }
+
+  /// Delete cached offline routing data for a region.
+  @override
+  Future<bool?> deleteOfflineRegion({
+    required double southWestLat,
+    required double southWestLng,
+    required double northEastLat,
+    required double northEastLng,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'southWestLat': southWestLat,
+        'southWestLng': southWestLng,
+        'northEastLat': northEastLat,
+        'northEastLng': northEastLng,
+      };
+
+      final result = await methodChannel.invokeMethod<bool?>(
+        'deleteOfflineRegion',
+        args,
+      );
+
+      return result;
+    } catch (e) {
+      log('Error deleting offline region: $e');
+      return false;
+    }
+  }
+
+  /// Get the total size of cached offline data in bytes.
+  @override
+  Future<int> getOfflineCacheSize() async {
+    try {
+      final result = await methodChannel.invokeMethod<int?>(
+        'getOfflineCacheSize',
+      );
+      return result ?? 0;
+    } catch (e) {
+      log('Error getting offline cache size: $e');
+      return 0;
+    }
+  }
+
+  /// Clear all cached offline routing data.
+  @override
+  Future<bool?> clearOfflineCache() async {
+    try {
+      final result = await methodChannel.invokeMethod<bool?>(
+        'clearOfflineCache',
+      );
+      return result;
+    } catch (e) {
+      log('Error clearing offline cache: $e');
+      return false;
+    }
   }
 
   @override

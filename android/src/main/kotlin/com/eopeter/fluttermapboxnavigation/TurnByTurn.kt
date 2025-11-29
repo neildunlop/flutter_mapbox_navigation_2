@@ -530,12 +530,16 @@ open class TurnByTurn(
                 val distanceToNext = routeProgress.currentLegProgress?.distanceRemaining?.toDouble() ?: 0.0
                 val durationToNext = routeProgress.currentLegProgress?.durationRemaining ?: 0.0
 
+                // Get current speed from last known location
+                val currentSpeed = lastLocation?.speed ?: 0f
+
                 com.eopeter.fluttermapboxnavigation.utilities.TripProgressManager.getInstance().updateProgress(
                     legIndex = legIndex,
                     distanceToNextWaypoint = distanceToNext,
                     totalDistanceRemaining = routeProgress.distanceRemaining.toDouble(),
                     totalDurationRemaining = routeProgress.durationRemaining,
-                    durationToNextWaypoint = durationToNext
+                    durationToNextWaypoint = durationToNext,
+                    currentSpeedMps = currentSpeed
                 )
 
                 // Notify callback

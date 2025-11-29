@@ -118,13 +118,15 @@ class TripProgressManager {
      * @param totalDistanceRemaining Total distance to final destination (meters)
      * @param totalDurationRemaining Total time to final destination (seconds)
      * @param durationToNextWaypoint Duration remaining to next waypoint (seconds)
+     * @param currentSpeedMps Current speed in meters per second (from GPS)
      */
     fun updateProgress(
         legIndex: Int,
         distanceToNextWaypoint: Double,
         totalDistanceRemaining: Double,
         totalDurationRemaining: Double,
-        durationToNextWaypoint: Double = 0.0
+        durationToNextWaypoint: Double = 0.0,
+        currentSpeedMps: Float = 0f
     ) {
         Log.d("TripProgressManager", "updateProgress called: legIndex=$legIndex, waypoints=${waypoints.size}, listener=${progressListener != null}")
         if (waypoints.isEmpty()) {
@@ -166,7 +168,8 @@ class TripProgressManager {
             totalDurationRemaining = totalDurationRemaining,
             durationToNextWaypoint = durationToNextWaypoint,
             isNextWaypointCheckpoint = nextWaypoint.isCheckpoint,
-            initialTotalDistance = initialTotalDistance
+            initialTotalDistance = initialTotalDistance,
+            currentSpeedMps = currentSpeedMps
         )
 
         // Cache for new listeners that attach later

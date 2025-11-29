@@ -108,9 +108,75 @@ abstract class FlutterMapboxNavigationPlatform extends PlatformInterface {
 
   /// Will download the navigation engine and the user's region
   /// to allow offline routing
+  @Deprecated('Use downloadOfflineRegion instead for more control')
   Future<bool?> enableOfflineRouting() async {
     throw UnimplementedError(
       'enableOfflineRouting() has not been implemented.',
+    );
+  }
+
+  /// Download map tiles and routing data for a specific region.
+  ///
+  /// [southWestLat] Southwest corner latitude
+  /// [southWestLng] Southwest corner longitude
+  /// [northEastLat] Northeast corner latitude
+  /// [northEastLng] Northeast corner longitude
+  /// [minZoom] Minimum zoom level to download (default: 10)
+  /// [maxZoom] Maximum zoom level to download (default: 16)
+  /// [onProgress] Optional callback for download progress (0.0 to 1.0)
+  ///
+  /// Returns true if download succeeds, false otherwise.
+  Future<bool?> downloadOfflineRegion({
+    required double southWestLat,
+    required double southWestLng,
+    required double northEastLat,
+    required double northEastLng,
+    int minZoom = 10,
+    int maxZoom = 16,
+    void Function(double progress)? onProgress,
+  }) async {
+    throw UnimplementedError(
+      'downloadOfflineRegion() has not been implemented.',
+    );
+  }
+
+  /// Check if offline routing data is available for a region.
+  ///
+  /// Returns true if routing tiles are cached for the specified bounds.
+  Future<bool> isOfflineRoutingAvailable({
+    required double latitude,
+    required double longitude,
+  }) async {
+    throw UnimplementedError(
+      'isOfflineRoutingAvailable() has not been implemented.',
+    );
+  }
+
+  /// Delete cached offline routing data for a region.
+  ///
+  /// Returns true if deletion succeeds.
+  Future<bool?> deleteOfflineRegion({
+    required double southWestLat,
+    required double southWestLng,
+    required double northEastLat,
+    required double northEastLng,
+  }) async {
+    throw UnimplementedError(
+      'deleteOfflineRegion() has not been implemented.',
+    );
+  }
+
+  /// Get the total size of cached offline data in bytes.
+  Future<int> getOfflineCacheSize() async {
+    throw UnimplementedError(
+      'getOfflineCacheSize() has not been implemented.',
+    );
+  }
+
+  /// Clear all cached offline routing data.
+  Future<bool?> clearOfflineCache() async {
+    throw UnimplementedError(
+      'clearOfflineCache() has not been implemented.',
     );
   }
 

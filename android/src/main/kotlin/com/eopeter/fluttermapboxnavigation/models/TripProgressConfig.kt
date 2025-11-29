@@ -34,6 +34,9 @@ data class TripProgressConfig(
     /** Whether to show duration to the next waypoint. */
     val showDurationToNext: Boolean = true,
 
+    /** Whether to show current speed (e.g., "45 mph"). */
+    val showCurrentSpeed: Boolean = false,
+
     /** Whether to play audio feedback when buttons are pressed. */
     val enableAudioFeedback: Boolean = true,
 
@@ -79,6 +82,7 @@ data class TripProgressConfig(
                 showWaypointCount = map["showWaypointCount"] as? Boolean ?: true,
                 showDistanceToNext = map["showDistanceToNext"] as? Boolean ?: true,
                 showDurationToNext = map["showDurationToNext"] as? Boolean ?: true,
+                showCurrentSpeed = map["showCurrentSpeed"] as? Boolean ?: false,
                 enableAudioFeedback = map["enableAudioFeedback"] as? Boolean ?: true,
                 panelHeight = (map["panelHeight"] as? Number)?.toInt(),
                 theme = TripProgressTheme.fromMap(themeMap)

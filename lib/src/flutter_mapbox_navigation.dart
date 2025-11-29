@@ -213,8 +213,143 @@ class MapBoxNavigation {
 
   /// Will download the navigation engine and the user's region
   /// to allow offline routing
+  @Deprecated('Use downloadOfflineRegion instead for more control')
   Future<bool?> enableOfflineRouting() async {
     return FlutterMapboxNavigationPlatform.instance.enableOfflineRouting();
+  }
+
+  // MARK: Offline Routing Methods
+
+  /// Download map tiles and routing data for a specific region.
+  ///
+  /// Creates offline cache for navigation within the specified bounding box.
+  /// Progress updates are sent via the optional [onProgress] callback.
+  ///
+  /// [southWestLat] Southwest corner latitude
+  /// [southWestLng] Southwest corner longitude
+  /// [northEastLat] Northeast corner latitude
+  /// [northEastLng] Northeast corner longitude
+  /// [minZoom] Minimum zoom level to download (default: 10)
+  /// [maxZoom] Maximum zoom level to download (default: 16)
+  /// [onProgress] Optional callback for download progress (0.0 to 1.0)
+  ///
+  /// Returns true if download succeeds, false otherwise.
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// final success = await MapBoxNavigation.instance.downloadOfflineRegion(
+  ///   southWestLat: 46.0,
+  ///   southWestLng: 6.0,
+  ///   northEastLat: 47.0,
+  ///   northEastLng: 7.0,
+  ///   minZoom: 10,
+  ///   maxZoom: 16,
+  ///   onProgress: (progress) {
+  ///     print('Download: ${(progress * 100).toStringAsFixed(0)}%');
+  ///   },
+  /// );
+  /// ```
+  Future<bool?> downloadOfflineRegion({
+    required double southWestLat,
+    required double southWestLng,
+    required double northEastLat,
+    required double northEastLng,
+    int minZoom = 10,
+    int maxZoom = 16,
+    void Function(double progress)? onProgress,
+  }) async {
+    return FlutterMapboxNavigationPlatform.instance.downloadOfflineRegion(
+      southWestLat: southWestLat,
+      southWestLng: southWestLng,
+      northEastLat: northEastLat,
+      northEastLng: northEastLng,
+      minZoom: minZoom,
+      maxZoom: maxZoom,
+      onProgress: onProgress,
+    );
+  }
+
+  /// Check if offline routing data is available for a location.
+  ///
+  /// Returns true if routing tiles are cached for the specified coordinates.
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// final isAvailable = await MapBoxNavigation.instance.isOfflineRoutingAvailable(
+  ///   latitude: 46.5,
+  ///   longitude: 6.5,
+  /// );
+  /// if (isAvailable) {
+  ///   print('Offline routing available for this location');
+  /// }
+  /// ```
+  Future<bool> isOfflineRoutingAvailable({
+    required double latitude,
+    required double longitude,
+  }) async {
+    return FlutterMapboxNavigationPlatform.instance.isOfflineRoutingAvailable(
+      latitude: latitude,
+      longitude: longitude,
+    );
+  }
+
+  /// Delete cached offline routing data for a region.
+  ///
+  /// Removes offline tiles and routing data for the specified bounding box.
+  ///
+  /// Returns true if deletion succeeds.
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.deleteOfflineRegion(
+  ///   southWestLat: 46.0,
+  ///   southWestLng: 6.0,
+  ///   northEastLat: 47.0,
+  ///   northEastLng: 7.0,
+  /// );
+  /// ```
+  Future<bool?> deleteOfflineRegion({
+    required double southWestLat,
+    required double southWestLng,
+    required double northEastLat,
+    required double northEastLng,
+  }) async {
+    return FlutterMapboxNavigationPlatform.instance.deleteOfflineRegion(
+      southWestLat: southWestLat,
+      southWestLng: southWestLng,
+      northEastLat: northEastLat,
+      northEastLng: northEastLng,
+    );
+  }
+
+  /// Get the total size of cached offline data in bytes.
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// final sizeBytes = await MapBoxNavigation.instance.getOfflineCacheSize();
+  /// final sizeMB = sizeBytes / (1024 * 1024);
+  /// print('Offline cache: ${sizeMB.toStringAsFixed(1)} MB');
+  /// ```
+  Future<int> getOfflineCacheSize() async {
+    return FlutterMapboxNavigationPlatform.instance.getOfflineCacheSize();
+  }
+
+  /// Clear all cached offline routing data.
+  ///
+  /// Removes all offline tiles and routing data from the device.
+  /// Use with caution - this operation cannot be undone.
+  ///
+  /// Returns true if clearing succeeds.
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// final success = await MapBoxNavigation.instance.clearOfflineCache();
+  /// if (success == true) {
+  ///   print('Offline cache cleared');
+  /// }
+  /// ```
+  Future<bool?> clearOfflineCache() async {
+    return FlutterMapboxNavigationPlatform.instance.clearOfflineCache();
   }
 
   /// Event listener for RouteEvents

@@ -89,6 +89,27 @@ public class FlutterMapboxNavigationPlugin: NavigationFactory, FlutterPlugin {
         {
             getStaticMarkers(result: result)
         }
+        // MARK: - Offline Routing Methods
+        else if(call.method == "downloadOfflineRegion")
+        {
+            downloadOfflineRegion(arguments: arguments, result: result)
+        }
+        else if(call.method == "isOfflineRoutingAvailable")
+        {
+            isOfflineRoutingAvailable(arguments: arguments, result: result)
+        }
+        else if(call.method == "deleteOfflineRegion")
+        {
+            deleteOfflineRegion(arguments: arguments, result: result)
+        }
+        else if(call.method == "getOfflineCacheSize")
+        {
+            getOfflineCacheSize(result: result)
+        }
+        else if(call.method == "clearOfflineCache")
+        {
+            clearOfflineCache(result: result)
+        }
         else
         {
             result("Method is Not Implemented");

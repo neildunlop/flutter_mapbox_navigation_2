@@ -20,6 +20,7 @@ class TripProgressConfigBuilder {
   bool _showWaypointCount = true;
   bool _showDistanceToNext = true;
   bool _showDurationToNext = true;
+  bool _showCurrentSpeed = false;
   bool _enableAudioFeedback = true;
   double? _panelHeight;
   TripProgressTheme? _theme;
@@ -134,6 +135,18 @@ class TripProgressConfigBuilder {
     return this;
   }
 
+  /// Enable current speed display.
+  TripProgressConfigBuilder withCurrentSpeed() {
+    _showCurrentSpeed = true;
+    return this;
+  }
+
+  /// Disable current speed display.
+  TripProgressConfigBuilder hideCurrentSpeed() {
+    _showCurrentSpeed = false;
+    return this;
+  }
+
   /// Enable audio feedback for button presses.
   TripProgressConfigBuilder enableAudioFeedback() {
     _enableAudioFeedback = true;
@@ -181,6 +194,7 @@ class TripProgressConfigBuilder {
       showWaypointCount: _showWaypointCount,
       showDistanceToNext: _showDistanceToNext,
       showDurationToNext: _showDurationToNext,
+      showCurrentSpeed: _showCurrentSpeed,
       enableAudioFeedback: _enableAudioFeedback,
       panelHeight: _panelHeight,
       theme: _theme,
@@ -374,6 +388,7 @@ class TripProgressConfig {
     this.showWaypointCount = true,
     this.showDistanceToNext = true,
     this.showDurationToNext = true,
+    this.showCurrentSpeed = false,
     this.enableAudioFeedback = true,
     this.panelHeight,
     this.theme,
@@ -418,6 +433,9 @@ class TripProgressConfig {
   /// Whether to show duration to the next waypoint.
   final bool showDurationToNext;
 
+  /// Whether to show current speed (e.g., "45 mph").
+  final bool showCurrentSpeed;
+
   /// Whether to play audio feedback when buttons are pressed.
   final bool enableAudioFeedback;
 
@@ -439,6 +457,7 @@ class TripProgressConfig {
       'showWaypointCount': showWaypointCount,
       'showDistanceToNext': showDistanceToNext,
       'showDurationToNext': showDurationToNext,
+      'showCurrentSpeed': showCurrentSpeed,
       'enableAudioFeedback': enableAudioFeedback,
       if (panelHeight != null) 'panelHeight': panelHeight,
       if (theme != null) 'theme': theme!.toMap(),
@@ -455,6 +474,7 @@ class TripProgressConfig {
     bool? showWaypointCount,
     bool? showDistanceToNext,
     bool? showDurationToNext,
+    bool? showCurrentSpeed,
     bool? enableAudioFeedback,
     double? panelHeight,
     TripProgressTheme? theme,
@@ -469,6 +489,7 @@ class TripProgressConfig {
       showWaypointCount: showWaypointCount ?? this.showWaypointCount,
       showDistanceToNext: showDistanceToNext ?? this.showDistanceToNext,
       showDurationToNext: showDurationToNext ?? this.showDurationToNext,
+      showCurrentSpeed: showCurrentSpeed ?? this.showCurrentSpeed,
       enableAudioFeedback: enableAudioFeedback ?? this.enableAudioFeedback,
       panelHeight: panelHeight ?? this.panelHeight,
       theme: theme ?? this.theme,

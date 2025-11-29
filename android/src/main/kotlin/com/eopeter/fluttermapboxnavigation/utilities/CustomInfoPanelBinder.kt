@@ -80,6 +80,7 @@ class CustomInfoPanelBinder(
     private var progressTextView: TextView? = null
     private var totalDistanceView: TextView? = null
     private var etaView: TextView? = null
+    private var speedView: TextView? = null
     private var prevButton: ImageView? = null
     private var nextButton: ImageView? = null
     private var endNavButton: TextView? = null
@@ -210,6 +211,14 @@ class CustomInfoPanelBinder(
                 etaView?.visibility = View.VISIBLE
             } else {
                 etaView?.visibility = View.GONE
+            }
+
+            // Update current speed
+            if (config.showCurrentSpeed) {
+                speedView?.text = data.getFormattedSpeed()
+                speedView?.visibility = View.VISIBLE
+            } else {
+                speedView?.visibility = View.GONE
             }
 
             // Update button states
@@ -465,14 +474,11 @@ class CustomInfoPanelBinder(
             innerContainer.addView(statsRow)
         }
 
-        // === ROW 5: ETA ===
-        if (config.showEta) {
-            etaView = TextView(context).apply {
-                text = "ETA --:--"
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-                setTextColor(theme.primaryColor)
-                setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD))
-                gravity = Gravity.CENTER
+        // === ROW 5: ETA and Speed ===
+        if (config.showEta || config.showCurrentSpeed) {
+            val etaSpeedRow = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
@@ -480,7 +486,46 @@ class CustomInfoPanelBinder(
                     topMargin = dpToPx(context, 6)
                 }
             }
-            innerContainer.addView(etaView)
+
+            if (config.showEta) {
+                etaView = TextView(context).apply {
+                    text = "ETA --:--"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                    setTextColor(theme.primaryColor)
+                    setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD))
+                    gravity = if (config.showCurrentSpeed) Gravity.START else Gravity.CENTER
+                    layoutParams = LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        1f
+                    )
+                }
+                etaSpeedRow.addView(etaView)
+            }
+
+            if (config.showCurrentSpeed) {
+                speedView = TextView(context).apply {
+                    text = "0 mph"
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                    setTextColor(theme.primaryColor)
+                    setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD))
+                    gravity = if (config.showEta) Gravity.END else Gravity.CENTER
+                    layoutParams = if (config.showEta) {
+                        LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
+                    } else {
+                        LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
+                    }
+                }
+                etaSpeedRow.addView(speedView)
+            }
+
+            innerContainer.addView(etaSpeedRow)
         }
 
         // === End Navigation Button ===

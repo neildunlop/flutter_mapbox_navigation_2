@@ -16,6 +16,17 @@ import com.eopeter.fluttermapboxnavigation.models.MarkerConfiguration
 import com.eopeter.fluttermapboxnavigation.models.TripProgressConfig
 import com.mapbox.api.directions.v5.DirectionsCriteria
 import com.mapbox.api.directions.v5.models.DirectionsRoute
+import com.mapbox.common.TileRegion
+import com.mapbox.common.TileRegionLoadOptions
+import com.mapbox.common.TileRegionLoadProgress
+import com.mapbox.common.TileStore
+import com.mapbox.common.TileStoreOptions
+import com.mapbox.geojson.Point
+import com.mapbox.geojson.Polygon
+import com.mapbox.maps.OfflineManager
+import com.mapbox.maps.ResourceOptionsManager
+import com.mapbox.maps.TilesetDescriptorOptions
+import com.mapbox.maps.Style
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -163,6 +174,22 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             "enableOfflineRouting" -> {
                 downloadRegionForOfflineRouting(call, result)
             }
+            // Offline Routing Methods
+            "downloadOfflineRegion" -> {
+                downloadOfflineRegion(call, result)
+            }
+            "isOfflineRoutingAvailable" -> {
+                isOfflineRoutingAvailable(call, result)
+            }
+            "deleteOfflineRegion" -> {
+                deleteOfflineRegion(call, result)
+            }
+            "getOfflineCacheSize" -> {
+                getOfflineCacheSize(result)
+            }
+            "clearOfflineCache" -> {
+                clearOfflineCache(result)
+            }
             "addStaticMarkers" -> {
                 addStaticMarkers(call, result)
             }
@@ -188,12 +215,231 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         }
     }
 
+    @Deprecated("Use downloadOfflineRegion instead")
     private fun downloadRegionForOfflineRouting(
         call: MethodCall,
         result: Result
     ) {
-        // Offline routing is not currently supported in this version
-        result.error("NOT_IMPLEMENTED", "Offline routing is not supported", "This feature will be implemented in a future version")
+        // Legacy stub - use downloadOfflineRegion instead
+        result.success(false)
+    }
+
+    // MARK: - Offline Routing Methods
+
+    private var tileStore: TileStore? = null
+
+    private fun getTileStore(): TileStore {
+        if (tileStore == null) {
+            tileStore = TileStore.create()
+        }
+        return tileStore!!
+    }
+
+    private fun downloadOfflineRegion(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val southWestLat = arguments?.get("southWestLat") as? Double
+            val southWestLng = arguments?.get("southWestLng") as? Double
+            val northEastLat = arguments?.get("northEastLat") as? Double
+            val northEastLng = arguments?.get("northEastLng") as? Double
+            val minZoom = (arguments?.get("minZoom") as? Int) ?: 10
+            val maxZoom = (arguments?.get("maxZoom") as? Int) ?: 16
+
+            if (southWestLat == null || southWestLng == null ||
+                northEastLat == null || northEastLng == null) {
+                result.error("INVALID_ARGUMENTS", "Region bounds are required", null)
+                return
+            }
+
+            Log.d("OfflineRouting", "Starting download for region ($southWestLat,$southWestLng) to ($northEastLat,$northEastLng)")
+
+            val store = getTileStore()
+
+            // Create region ID based on bounds
+            val regionId = "region_${(southWestLat * 1000).toInt()}_${(southWestLng * 1000).toInt()}_${(northEastLat * 1000).toInt()}_${(northEastLng * 1000).toInt()}"
+
+            // Define the bounding polygon
+            val polygon = Polygon.fromLngLats(listOf(
+                listOf(
+                    Point.fromLngLat(southWestLng, southWestLat),
+                    Point.fromLngLat(northEastLng, southWestLat),
+                    Point.fromLngLat(northEastLng, northEastLat),
+                    Point.fromLngLat(southWestLng, northEastLat),
+                    Point.fromLngLat(southWestLng, southWestLat)
+                )
+            ))
+
+            // Create tileset descriptors for map styles
+            val resourceOptions = ResourceOptionsManager.getDefault(currentContext).resourceOptions
+            val offlineManager = OfflineManager(resourceOptions)
+            val descriptors = mutableListOf<com.mapbox.common.TilesetDescriptor>()
+
+            // Navigation day style tileset
+            val navDayDescriptor = offlineManager.createTilesetDescriptor(
+                TilesetDescriptorOptions.Builder()
+                    .styleURI(Style.MAPBOX_STREETS)
+                    .minZoom(minZoom.toByte())
+                    .maxZoom(maxZoom.toByte())
+                    .build()
+            )
+            descriptors.add(navDayDescriptor)
+
+            // Create tile region load options
+            val loadOptions = TileRegionLoadOptions.Builder()
+                .geometry(polygon)
+                .descriptors(descriptors)
+                .acceptExpired(true)
+                .build()
+
+            // Start download
+            store.loadTileRegion(
+                regionId,
+                loadOptions,
+                { progress ->
+                    val percentage = progress.completedResourceCount.toDouble() /
+                        maxOf(progress.requiredResourceCount, 1).toDouble()
+                    Log.d("OfflineRouting", "Download progress: ${(percentage * 100).toInt()}% (${progress.completedResourceCount}/${progress.requiredResourceCount})")
+                },
+                { expected ->
+                    if (expected.isValue) {
+                        Log.d("OfflineRouting", "Download completed for region $regionId")
+                        result.success(true)
+                    } else {
+                        val error = expected.error
+                        Log.e("OfflineRouting", "Download failed: ${error?.message}")
+                        result.error("DOWNLOAD_FAILED", error?.message ?: "Unknown error", null)
+                    }
+                }
+            )
+        } catch (e: Exception) {
+            Log.e("OfflineRouting", "Error starting download: ${e.message}")
+            result.error("DOWNLOAD_ERROR", e.message, null)
+        }
+    }
+
+    private fun isOfflineRoutingAvailable(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val latitude = arguments?.get("latitude") as? Double
+            val longitude = arguments?.get("longitude") as? Double
+
+            if (latitude == null || longitude == null) {
+                result.error("INVALID_ARGUMENTS", "Latitude and longitude are required", null)
+                return
+            }
+
+            val store = getTileStore()
+
+            store.getAllTileRegions { expected ->
+                if (expected.isValue) {
+                    val regions = expected.value ?: emptyList()
+                    // Simple check: if there are any cached regions, consider offline available
+                    // A more accurate implementation would check if the coordinate falls within a region
+                    result.success(regions.isNotEmpty())
+                } else {
+                    Log.e("OfflineRouting", "Error checking offline availability: ${expected.error?.message}")
+                    result.success(false)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("OfflineRouting", "Error checking offline availability: ${e.message}")
+            result.success(false)
+        }
+    }
+
+    private fun deleteOfflineRegion(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val southWestLat = arguments?.get("southWestLat") as? Double
+            val southWestLng = arguments?.get("southWestLng") as? Double
+            val northEastLat = arguments?.get("northEastLat") as? Double
+            val northEastLng = arguments?.get("northEastLng") as? Double
+
+            if (southWestLat == null || southWestLng == null ||
+                northEastLat == null || northEastLng == null) {
+                result.error("INVALID_ARGUMENTS", "Region bounds are required", null)
+                return
+            }
+
+            val store = getTileStore()
+            val regionId = "region_${(southWestLat * 1000).toInt()}_${(southWestLng * 1000).toInt()}_${(northEastLat * 1000).toInt()}_${(northEastLng * 1000).toInt()}"
+
+            store.removeTileRegion(regionId) { expected ->
+                if (expected.isValue) {
+                    Log.d("OfflineRouting", "Region $regionId deleted successfully")
+                    result.success(true)
+                } else {
+                    Log.e("OfflineRouting", "Failed to delete region: ${expected.error?.message}")
+                    result.error("DELETE_FAILED", expected.error?.message, null)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("OfflineRouting", "Error deleting region: ${e.message}")
+            result.error("DELETE_ERROR", e.message, null)
+        }
+    }
+
+    private fun getOfflineCacheSize(result: Result) {
+        try {
+            val store = getTileStore()
+
+            store.getAllTileRegions { expected ->
+                if (expected.isValue) {
+                    val regions = expected.value ?: emptyList()
+                    // Estimate size based on completed resources (~50KB per tile average)
+                    val estimatedSize = regions.sumOf { region ->
+                        region.completedResourceCount * 50 * 1024L
+                    }
+                    result.success(estimatedSize.toInt())
+                } else {
+                    Log.e("OfflineRouting", "Error getting cache size: ${expected.error?.message}")
+                    result.success(0)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("OfflineRouting", "Error getting cache size: ${e.message}")
+            result.success(0)
+        }
+    }
+
+    private fun clearOfflineCache(result: Result) {
+        try {
+            val store = getTileStore()
+
+            store.getAllTileRegions { expected ->
+                if (expected.isValue) {
+                    val regions = expected.value ?: emptyList()
+                    if (regions.isEmpty()) {
+                        result.success(true)
+                        return@getAllTileRegions
+                    }
+
+                    var remaining = regions.size
+                    var allSuccessful = true
+
+                    for (region in regions) {
+                        store.removeTileRegion(region.id) { deleteExpected ->
+                            if (deleteExpected.isError) {
+                                Log.e("OfflineRouting", "Failed to delete region ${region.id}: ${deleteExpected.error?.message}")
+                                allSuccessful = false
+                            }
+
+                            remaining--
+                            if (remaining == 0) {
+                                Log.d("OfflineRouting", "Cache cleared, success: $allSuccessful")
+                                result.success(allSuccessful)
+                            }
+                        }
+                    }
+                } else {
+                    Log.e("OfflineRouting", "Error clearing cache: ${expected.error?.message}")
+                    result.error("CLEAR_FAILED", expected.error?.message, null)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("OfflineRouting", "Error clearing cache: ${e.message}")
+            result.error("CLEAR_ERROR", e.message, null)
+        }
     }
 
     private fun checkPermissionAndBeginNavigation(

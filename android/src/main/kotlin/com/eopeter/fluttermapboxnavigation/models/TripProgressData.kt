@@ -40,7 +40,10 @@ data class TripProgressData(
     val isNextWaypointCheckpoint: Boolean = false,
 
     /** Initial total distance when navigation started (meters) - used for progress calculation */
-    val initialTotalDistance: Double = 0.0
+    val initialTotalDistance: Double = 0.0,
+
+    /** Current speed in meters per second (from GPS) */
+    val currentSpeedMps: Float = 0f
 ) {
     /**
      * Get progress as a fraction (0.0 to 1.0) based on distance traveled to final destination.
@@ -135,6 +138,19 @@ data class TripProgressData(
             String.format("%.1f mi", miles)
         } else {
             String.format("%.1f km", totalDistanceRemaining / 1000)
+        }
+    }
+
+    /**
+     * Get formatted current speed
+     */
+    fun getFormattedSpeed(useImperial: Boolean = true): String {
+        return if (useImperial) {
+            val mph = currentSpeedMps * 2.23694f  // m/s to mph
+            "${mph.toInt()} mph"
+        } else {
+            val kmh = currentSpeedMps * 3.6f  // m/s to km/h
+            "${kmh.toInt()} km/h"
         }
     }
 }
