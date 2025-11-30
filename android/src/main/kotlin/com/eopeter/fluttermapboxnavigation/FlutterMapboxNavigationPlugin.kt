@@ -3,12 +3,16 @@ package com.eopeter.fluttermapboxnavigation
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.content.pm.PackageManager
+import androidx.lifecycle.LifecycleOwner
 import android.os.Build
 import android.util.Log
 import com.eopeter.fluttermapboxnavigation.activity.NavigationLauncher
 import com.eopeter.fluttermapboxnavigation.activity.FlutterNavigationLauncher
 import com.eopeter.fluttermapboxnavigation.factory.EmbeddedNavigationViewFactory
+import com.eopeter.fluttermapboxnavigation.utilities.PluginUtilities
 import com.eopeter.fluttermapboxnavigation.views.FlutterNavigationPlatformViewFactory
 import com.eopeter.fluttermapboxnavigation.models.Waypoint
 import com.eopeter.fluttermapboxnavigation.models.StaticMarker
@@ -27,6 +31,9 @@ import com.mapbox.maps.OfflineManager
 import com.mapbox.maps.ResourceOptionsManager
 import com.mapbox.maps.TilesetDescriptorOptions
 import com.mapbox.maps.Style
+import com.mapbox.navigation.base.options.NavigationOptions
+import com.mapbox.navigation.base.options.RoutingTilesOptions
+import com.mapbox.navigation.core.lifecycle.MapboxNavigationApp
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -190,6 +197,12 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             "clearOfflineCache" -> {
                 clearOfflineCache(result)
             }
+            "getOfflineRegionStatus" -> {
+                getOfflineRegionStatus(call, result)
+            }
+            "listOfflineRegions" -> {
+                listOfflineRegions(result)
+            }
             "addStaticMarkers" -> {
                 addStaticMarkers(call, result)
             }
@@ -228,11 +241,94 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
 
     private var tileStore: TileStore? = null
 
+    // Offline tile storage configuration constants
+    private object TileStoreConfig {
+        // 1GB quota for offline tiles (maps + routing)
+        const val TILE_STORE_QUOTA_BYTES = 1_073_741_824L
+        // Cleanup threshold: start cleanup when above 80%
+        const val CLEANUP_THRESHOLD_PERCENT = 0.80
+        // Target after cleanup: reduce to 60%
+        const val CLEANUP_TARGET_PERCENT = 0.60
+        // Mapbox SDK limit for tiles per region
+        const val MAX_TILES_PER_REGION = 750
+        // Default max zoom for offline (lower = fewer tiles, 14 is good for navigation)
+        const val DEFAULT_MAX_ZOOM_OFFLINE = 14
+    }
+
+    /**
+     * Estimate the number of tiles for a region at given zoom levels.
+     * Uses the standard Web Mercator tile calculation.
+     */
+    private fun estimateTileCount(
+        southWestLat: Double,
+        southWestLng: Double,
+        northEastLat: Double,
+        northEastLng: Double,
+        minZoom: Int,
+        maxZoom: Int
+    ): Int {
+        var total = 0
+        for (z in minZoom..maxZoom) {
+            val tilesPerDegree = (1 shl z) / 360.0
+            val latTiles = kotlin.math.ceil((northEastLat - southWestLat) * tilesPerDegree).toInt()
+            val lngTiles = kotlin.math.ceil((northEastLng - southWestLng) * tilesPerDegree).toInt()
+            total += maxOf(1, latTiles) * maxOf(1, lngTiles)
+        }
+        return total
+    }
+
+    /**
+     * Find the optimal max zoom level that keeps tile count under the limit.
+     */
+    private fun findOptimalMaxZoom(
+        southWestLat: Double,
+        southWestLng: Double,
+        northEastLat: Double,
+        northEastLng: Double,
+        minZoom: Int,
+        requestedMaxZoom: Int,
+        maxTiles: Int = TileStoreConfig.MAX_TILES_PER_REGION
+    ): Int {
+        var optimalMaxZoom = requestedMaxZoom
+        while (optimalMaxZoom > minZoom) {
+            val tileCount = estimateTileCount(
+                southWestLat, southWestLng,
+                northEastLat, northEastLng,
+                minZoom, optimalMaxZoom
+            )
+            if (tileCount <= maxTiles) {
+                return optimalMaxZoom
+            }
+            optimalMaxZoom--
+        }
+        return minZoom // Fallback to minimum zoom only
+    }
+
     private fun getTileStore(): TileStore {
         if (tileStore == null) {
-            tileStore = TileStore.create()
+            tileStore = TileStore.create().also { store ->
+                // Set 1GB disk quota for offline tiles using Value wrapper
+                try {
+                    store.setOption(
+                        TileStoreOptions.DISK_QUOTA,
+                        com.mapbox.bindgen.Value.valueOf(TileStoreConfig.TILE_STORE_QUOTA_BYTES)
+                    )
+                    Log.d("OfflineRouting", "TileStore configured with ${TileStoreConfig.TILE_STORE_QUOTA_BYTES / (1024 * 1024)}MB quota")
+                } catch (e: Exception) {
+                    Log.w("OfflineRouting", "Could not set disk quota: ${e.message}")
+                }
+            }
         }
         return tileStore!!
+    }
+
+    private fun getMapboxAccessToken(): String {
+        return try {
+            PluginUtilities.getResourceFromContext(currentContext, "mapbox_access_token")
+        } catch (e: Exception) {
+            Log.w("OfflineRouting", "Could not get Mapbox access token: ${e.message}")
+            ""
+        }
     }
 
     private fun downloadOfflineRegion(call: MethodCall, result: Result) {
@@ -244,6 +340,7 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             val northEastLng = arguments?.get("northEastLng") as? Double
             val minZoom = (arguments?.get("minZoom") as? Int) ?: 10
             val maxZoom = (arguments?.get("maxZoom") as? Int) ?: 16
+            val includeRoutingTiles = arguments?.get("includeRoutingTiles") as? Boolean ?: true
 
             if (southWestLat == null || southWestLng == null ||
                 northEastLat == null || northEastLng == null) {
@@ -251,12 +348,32 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
                 return
             }
 
+            // Calculate optimal max zoom to stay under tile limit
+            val requestedMaxZoom = minOf(maxZoom, TileStoreConfig.DEFAULT_MAX_ZOOM_OFFLINE)
+            val optimalMaxZoom = findOptimalMaxZoom(
+                southWestLat, southWestLng,
+                northEastLat, northEastLng,
+                minZoom, requestedMaxZoom
+            )
+
+            val estimatedTiles = estimateTileCount(
+                southWestLat, southWestLng,
+                northEastLat, northEastLng,
+                minZoom, optimalMaxZoom
+            )
+
+            if (optimalMaxZoom < requestedMaxZoom) {
+                Log.w("OfflineRouting", "Reduced max zoom from $requestedMaxZoom to $optimalMaxZoom to fit tile limit (estimated $estimatedTiles tiles)")
+            }
+
             Log.d("OfflineRouting", "Starting download for region ($southWestLat,$southWestLng) to ($northEastLat,$northEastLng)")
+            Log.d("OfflineRouting", "Zoom range: $minZoom-$optimalMaxZoom, estimated tiles: $estimatedTiles, includeRouting=$includeRoutingTiles")
 
             val store = getTileStore()
 
-            // Create region ID based on bounds
-            val regionId = "region_${(southWestLat * 1000).toInt()}_${(southWestLng * 1000).toInt()}_${(northEastLat * 1000).toInt()}_${(northEastLng * 1000).toInt()}"
+            // Create region ID based on bounds (include routing flag in ID)
+            val routingSuffix = if (includeRoutingTiles) "_nav" else ""
+            val regionId = "region_${(southWestLat * 1000).toInt()}_${(southWestLng * 1000).toInt()}_${(northEastLat * 1000).toInt()}_${(northEastLng * 1000).toInt()}$routingSuffix"
 
             // Define the bounding polygon
             val polygon = Polygon.fromLngLats(listOf(
@@ -274,15 +391,67 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             val offlineManager = OfflineManager(resourceOptions)
             val descriptors = mutableListOf<com.mapbox.common.TilesetDescriptor>()
 
-            // Navigation day style tileset
-            val navDayDescriptor = offlineManager.createTilesetDescriptor(
+            // Map tiles (MAPBOX_STREETS for display) - use optimal zoom
+            val mapDescriptor = offlineManager.createTilesetDescriptor(
                 TilesetDescriptorOptions.Builder()
                     .styleURI(Style.MAPBOX_STREETS)
                     .minZoom(minZoom.toByte())
-                    .maxZoom(maxZoom.toByte())
+                    .maxZoom(optimalMaxZoom.toByte())
                     .build()
             )
-            descriptors.add(navDayDescriptor)
+            descriptors.add(mapDescriptor)
+            Log.d("OfflineRouting", "Added map tileset descriptor (MAPBOX_STREETS)")
+
+            // Navigation routing tiles (for offline turn-by-turn routing)
+            // We need MapboxNavigationApp to be setup AND attached to get the routing tileset descriptor.
+            // If not already setup, we initialize it here so routing tiles can be downloaded
+            // before the user starts navigation.
+            if (includeRoutingTiles) {
+                try {
+                    // Setup MapboxNavigationApp if not already setup
+                    if (!MapboxNavigationApp.isSetup()) {
+                        Log.d("OfflineRouting", "Setting up MapboxNavigationApp for routing tile download")
+
+                        // Use the same TileStore for navigation so tiles are shared
+                        val routingTilesOptions = RoutingTilesOptions.Builder()
+                            .tileStore(store)
+                            .build()
+
+                        val navigationOptions = NavigationOptions.Builder(currentContext)
+                            .accessToken(getMapboxAccessToken())
+                            .routingTilesOptions(routingTilesOptions)
+                            .build()
+
+                        MapboxNavigationApp.setup(navigationOptions)
+                        Log.d("OfflineRouting", "MapboxNavigationApp setup complete")
+                    }
+
+                    // Attach to activity lifecycle to get an active navigation instance
+                    // This is required for MapboxNavigationApp.current() to return non-null
+                    val activity = currentActivity
+                    if (activity != null && activity is LifecycleOwner) {
+                        if (MapboxNavigationApp.current() == null) {
+                            MapboxNavigationApp.attach(activity)
+                            Log.d("OfflineRouting", "Attached MapboxNavigationApp to activity lifecycle")
+                        }
+                    }
+
+                    // Now get the routing tileset descriptor
+                    val navApp = MapboxNavigationApp.current()
+                    if (navApp != null) {
+                        val navigationDescriptor = navApp.tilesetDescriptorFactory.getLatest()
+                        descriptors.add(navigationDescriptor)
+                        Log.d("OfflineRouting", "Added navigation routing tileset descriptor")
+                    } else {
+                        Log.w("OfflineRouting", "MapboxNavigationApp.current() returned null - routing tiles will not be downloaded")
+                        Log.w("OfflineRouting", "Offline navigation may not work. Activity: $activity, isLifecycleOwner: ${activity is LifecycleOwner}")
+                    }
+                } catch (e: Exception) {
+                    Log.w("OfflineRouting", "Could not add navigation tileset descriptor: ${e.message}")
+                    e.printStackTrace()
+                    // Continue with map tiles only
+                }
+            }
 
             // Create tile region load options
             val loadOptions = TileRegionLoadOptions.Builder()
@@ -299,11 +468,36 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
                     val percentage = progress.completedResourceCount.toDouble() /
                         maxOf(progress.requiredResourceCount, 1).toDouble()
                     Log.d("OfflineRouting", "Download progress: ${(percentage * 100).toInt()}% (${progress.completedResourceCount}/${progress.requiredResourceCount})")
+
+                    // Send progress to Flutter (must be on main thread)
+                    val progressData = mapOf(
+                        "regionId" to regionId,
+                        "progress" to percentage,
+                        "completedResources" to progress.completedResourceCount,
+                        "requiredResources" to progress.requiredResourceCount
+                    )
+                    Handler(Looper.getMainLooper()).post {
+                        eventSink?.success(mapOf(
+                            "eventType" to "download_progress",
+                            "data" to progressData
+                        ))
+                    }
                 },
                 { expected ->
                     if (expected.isValue) {
-                        Log.d("OfflineRouting", "Download completed for region $regionId")
-                        result.success(true)
+                        val region = expected.value
+                        Log.d("OfflineRouting", "Download completed for region $regionId (${region?.completedResourceCount} resources)")
+
+                        // Trigger auto-cleanup if needed, protecting current region
+                        performAutoCleanupIfNeeded(listOf(regionId))
+
+                        // Return success with region details
+                        result.success(mapOf(
+                            "success" to true,
+                            "regionId" to regionId,
+                            "resourceCount" to (region?.completedResourceCount ?: 0),
+                            "includesRoutingTiles" to includeRoutingTiles
+                        ))
                     } else {
                         val error = expected.error
                         Log.e("OfflineRouting", "Download failed: ${error?.message}")
@@ -439,6 +633,162 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         } catch (e: Exception) {
             Log.e("OfflineRouting", "Error clearing cache: ${e.message}")
             result.error("CLEAR_ERROR", e.message, null)
+        }
+    }
+
+    /**
+     * Get the status of a specific offline region.
+     * Returns details about map tiles, routing tiles readiness, and size.
+     */
+    private fun getOfflineRegionStatus(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val regionId = arguments?.get("regionId") as? String
+
+            if (regionId == null) {
+                result.error("INVALID_ARGUMENTS", "Region ID is required", null)
+                return
+            }
+
+            val store = getTileStore()
+
+            store.getAllTileRegions { expected ->
+                if (expected.isValue) {
+                    val regions = expected.value ?: emptyList()
+                    val region = regions.find { it.id == regionId }
+
+                    if (region != null) {
+                        // Check if this region includes routing tiles (ID ends with _nav)
+                        val includesRouting = region.id.endsWith("_nav")
+
+                        // Estimate size (~50KB per tile average, routing tiles ~30% extra)
+                        val estimatedSizeBytes = region.completedResourceCount * 50 * 1024L
+
+                        result.success(mapOf(
+                            "regionId" to region.id,
+                            "exists" to true,
+                            "completedResourceCount" to region.completedResourceCount,
+                            "requiredResourceCount" to region.requiredResourceCount,
+                            "mapTilesReady" to true,
+                            "routingTilesReady" to includesRouting,
+                            "estimatedSizeBytes" to estimatedSizeBytes,
+                            "isComplete" to (region.completedResourceCount >= region.requiredResourceCount)
+                        ))
+                    } else {
+                        result.success(mapOf(
+                            "regionId" to regionId,
+                            "exists" to false,
+                            "mapTilesReady" to false,
+                            "routingTilesReady" to false
+                        ))
+                    }
+                } else {
+                    Log.e("OfflineRouting", "Error getting region status: ${expected.error?.message}")
+                    result.error("STATUS_FAILED", expected.error?.message, null)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("OfflineRouting", "Error getting region status: ${e.message}")
+            result.error("STATUS_ERROR", e.message, null)
+        }
+    }
+
+    /**
+     * List all offline regions with their status.
+     */
+    private fun listOfflineRegions(result: Result) {
+        try {
+            val store = getTileStore()
+
+            store.getAllTileRegions { expected ->
+                if (expected.isValue) {
+                    val regions = expected.value ?: emptyList()
+                    val regionsList = regions.map { region ->
+                        val includesRouting = region.id.endsWith("_nav")
+                        val estimatedSizeBytes = region.completedResourceCount * 50 * 1024L
+
+                        mapOf(
+                            "regionId" to region.id,
+                            "completedResourceCount" to region.completedResourceCount,
+                            "requiredResourceCount" to region.requiredResourceCount,
+                            "mapTilesReady" to true,
+                            "routingTilesReady" to includesRouting,
+                            "estimatedSizeBytes" to estimatedSizeBytes,
+                            "isComplete" to (region.completedResourceCount >= region.requiredResourceCount)
+                        )
+                    }
+
+                    result.success(mapOf(
+                        "regions" to regionsList,
+                        "totalCount" to regions.size,
+                        "totalSizeBytes" to regionsList.sumOf { (it["estimatedSizeBytes"] as Long) }
+                    ))
+                } else {
+                    Log.e("OfflineRouting", "Error listing regions: ${expected.error?.message}")
+                    result.error("LIST_FAILED", expected.error?.message, null)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("OfflineRouting", "Error listing regions: ${e.message}")
+            result.error("LIST_ERROR", e.message, null)
+        }
+    }
+
+    /**
+     * Performs automatic cleanup of old offline regions when storage exceeds threshold.
+     * Called internally after successful downloads or when storage is queried.
+     * Protects current trip regions from deletion.
+     *
+     * @param protectedRegionIds List of region IDs that should not be deleted (current trip)
+     */
+    private fun performAutoCleanupIfNeeded(protectedRegionIds: List<String> = emptyList()) {
+        try {
+            val store = getTileStore()
+
+            store.getAllTileRegions { expected ->
+                if (expected.isValue) {
+                    val regions = expected.value ?: emptyList()
+
+                    // Calculate total size
+                    val totalSizeBytes = regions.sumOf { it.completedResourceCount * 50 * 1024L }
+                    val thresholdBytes = (TileStoreConfig.TILE_STORE_QUOTA_BYTES * TileStoreConfig.CLEANUP_THRESHOLD_PERCENT).toLong()
+                    val targetBytes = (TileStoreConfig.TILE_STORE_QUOTA_BYTES * TileStoreConfig.CLEANUP_TARGET_PERCENT).toLong()
+
+                    if (totalSizeBytes > thresholdBytes) {
+                        Log.d("OfflineRouting", "Storage cleanup triggered: ${totalSizeBytes / (1024 * 1024)}MB > ${thresholdBytes / (1024 * 1024)}MB threshold")
+
+                        // Sort regions by ID (older regions likely have smaller IDs)
+                        // In a real implementation, we'd use creation timestamps
+                        val sortedRegions = regions
+                            .filter { !protectedRegionIds.contains(it.id) }
+                            .sortedBy { it.id }
+
+                        var currentSize = totalSizeBytes
+                        val regionsToDelete = mutableListOf<TileRegion>()
+
+                        for (region in sortedRegions) {
+                            if (currentSize <= targetBytes) break
+                            val regionSize = region.completedResourceCount * 50 * 1024L
+                            regionsToDelete.add(region)
+                            currentSize -= regionSize
+                        }
+
+                        Log.d("OfflineRouting", "Cleaning up ${regionsToDelete.size} old regions to free space")
+
+                        for (region in regionsToDelete) {
+                            store.removeTileRegion(region.id) { deleteExpected ->
+                                if (deleteExpected.isValue) {
+                                    Log.d("OfflineRouting", "Auto-deleted old region: ${region.id}")
+                                } else {
+                                    Log.w("OfflineRouting", "Failed to auto-delete region ${region.id}: ${deleteExpected.error?.message}")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("OfflineRouting", "Error during auto-cleanup: ${e.message}")
         }
     }
 

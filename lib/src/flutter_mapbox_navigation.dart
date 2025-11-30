@@ -223,7 +223,8 @@ class MapBoxNavigation {
   /// Download map tiles and routing data for a specific region.
   ///
   /// Creates offline cache for navigation within the specified bounding box.
-  /// Progress updates are sent via the optional [onProgress] callback.
+  /// By default, downloads both map tiles (for display) and routing tiles (for
+  /// turn-by-turn navigation). Set [includeRoutingTiles] to false for map-only.
   ///
   /// [southWestLat] Southwest corner latitude
   /// [southWestLng] Southwest corner longitude
@@ -231,31 +232,39 @@ class MapBoxNavigation {
   /// [northEastLng] Northeast corner longitude
   /// [minZoom] Minimum zoom level to download (default: 10)
   /// [maxZoom] Maximum zoom level to download (default: 16)
+  /// [includeRoutingTiles] Download routing tiles for offline navigation (default: true)
   /// [onProgress] Optional callback for download progress (0.0 to 1.0)
   ///
-  /// Returns true if download succeeds, false otherwise.
+  /// Returns a map with download result:
+  /// - `success`: Whether download succeeded
+  /// - `regionId`: Unique identifier for the region
+  /// - `resourceCount`: Number of tiles downloaded
+  /// - `includesRoutingTiles`: Whether routing tiles were included
   ///
   /// **Usage Example:**
   /// ```dart
-  /// final success = await MapBoxNavigation.instance.downloadOfflineRegion(
+  /// final result = await MapBoxNavigation.instance.downloadOfflineRegion(
   ///   southWestLat: 46.0,
   ///   southWestLng: 6.0,
   ///   northEastLat: 47.0,
   ///   northEastLng: 7.0,
-  ///   minZoom: 10,
-  ///   maxZoom: 16,
+  ///   includeRoutingTiles: true, // Enable offline navigation
   ///   onProgress: (progress) {
   ///     print('Download: ${(progress * 100).toStringAsFixed(0)}%');
   ///   },
   /// );
+  /// if (result?['success'] == true) {
+  ///   print('Downloaded region: ${result!['regionId']}');
+  /// }
   /// ```
-  Future<bool?> downloadOfflineRegion({
+  Future<Map<String, dynamic>?> downloadOfflineRegion({
     required double southWestLat,
     required double southWestLng,
     required double northEastLat,
     required double northEastLng,
     int minZoom = 10,
     int maxZoom = 16,
+    bool includeRoutingTiles = true,
     void Function(double progress)? onProgress,
   }) async {
     return FlutterMapboxNavigationPlatform.instance.downloadOfflineRegion(
@@ -265,6 +274,7 @@ class MapBoxNavigation {
       northEastLng: northEastLng,
       minZoom: minZoom,
       maxZoom: maxZoom,
+      includeRoutingTiles: includeRoutingTiles,
       onProgress: onProgress,
     );
   }
@@ -350,6 +360,57 @@ class MapBoxNavigation {
   /// ```
   Future<bool?> clearOfflineCache() async {
     return FlutterMapboxNavigationPlatform.instance.clearOfflineCache();
+  }
+
+  /// Get the status of a specific offline region.
+  ///
+  /// [regionId] The unique identifier for the region
+  ///
+  /// Returns a map with:
+  /// - `regionId`: The region identifier
+  /// - `exists`: Whether the region exists
+  /// - `mapTilesReady`: Whether map tiles are downloaded
+  /// - `routingTilesReady`: Whether routing tiles are downloaded (for offline navigation)
+  /// - `estimatedSizeBytes`: Estimated size in bytes
+  /// - `isComplete`: Whether download is complete
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// final status = await MapBoxNavigation.instance.getOfflineRegionStatus(
+  ///   regionId: 'region_46000_6000_47000_7000_nav',
+  /// );
+  /// if (status != null && status['routingTilesReady'] == true) {
+  ///   print('Region ready for offline navigation');
+  /// }
+  /// ```
+  Future<Map<String, dynamic>?> getOfflineRegionStatus({
+    required String regionId,
+  }) async {
+    return FlutterMapboxNavigationPlatform.instance.getOfflineRegionStatus(
+      regionId: regionId,
+    );
+  }
+
+  /// List all offline regions with their status.
+  ///
+  /// Returns a map with:
+  /// - `regions`: List of region status maps
+  /// - `totalCount`: Total number of regions
+  /// - `totalSizeBytes`: Total size of all regions in bytes
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// final result = await MapBoxNavigation.instance.listOfflineRegions();
+  /// if (result != null) {
+  ///   final regions = result['regions'] as List;
+  ///   print('Total offline regions: ${result['totalCount']}');
+  ///   for (final region in regions) {
+  ///     print('Region ${region['regionId']}: routing=${region['routingTilesReady']}');
+  ///   }
+  /// }
+  /// ```
+  Future<Map<String, dynamic>?> listOfflineRegions() async {
+    return FlutterMapboxNavigationPlatform.instance.listOfflineRegions();
   }
 
   /// Event listener for RouteEvents

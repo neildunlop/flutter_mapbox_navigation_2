@@ -123,16 +123,19 @@ abstract class FlutterMapboxNavigationPlatform extends PlatformInterface {
   /// [northEastLng] Northeast corner longitude
   /// [minZoom] Minimum zoom level to download (default: 10)
   /// [maxZoom] Maximum zoom level to download (default: 16)
+  /// [includeRoutingTiles] Whether to include routing tiles for offline navigation (default: true)
   /// [onProgress] Optional callback for download progress (0.0 to 1.0)
   ///
-  /// Returns true if download succeeds, false otherwise.
-  Future<bool?> downloadOfflineRegion({
+  /// Returns a map with download result details, or null on error.
+  /// The map includes: success, regionId, resourceCount, includesRoutingTiles
+  Future<Map<String, dynamic>?> downloadOfflineRegion({
     required double southWestLat,
     required double southWestLng,
     required double northEastLat,
     required double northEastLng,
     int minZoom = 10,
     int maxZoom = 16,
+    bool includeRoutingTiles = true,
     void Function(double progress)? onProgress,
   }) async {
     throw UnimplementedError(
@@ -177,6 +180,37 @@ abstract class FlutterMapboxNavigationPlatform extends PlatformInterface {
   Future<bool?> clearOfflineCache() async {
     throw UnimplementedError(
       'clearOfflineCache() has not been implemented.',
+    );
+  }
+
+  /// Get the status of a specific offline region.
+  ///
+  /// [regionId] The unique identifier for the region
+  ///
+  /// Returns a map with:
+  /// - `regionId`: The region identifier
+  /// - `exists`: Whether the region exists
+  /// - `mapTilesReady`: Whether map tiles are downloaded
+  /// - `routingTilesReady`: Whether routing tiles are downloaded
+  /// - `estimatedSizeBytes`: Estimated size in bytes
+  /// - `isComplete`: Whether download is complete
+  Future<Map<String, dynamic>?> getOfflineRegionStatus({
+    required String regionId,
+  }) async {
+    throw UnimplementedError(
+      'getOfflineRegionStatus() has not been implemented.',
+    );
+  }
+
+  /// List all offline regions with their status.
+  ///
+  /// Returns a map with:
+  /// - `regions`: List of region status maps
+  /// - `totalCount`: Total number of regions
+  /// - `totalSizeBytes`: Total size of all regions in bytes
+  Future<Map<String, dynamic>?> listOfflineRegions() async {
+    throw UnimplementedError(
+      'listOfflineRegions() has not been implemented.',
     );
   }
 

@@ -135,27 +135,57 @@ class MethodChannelFlutterMapboxNavigation
   }
 
   /// Download map tiles and routing data for a specific region.
+  ///
+  /// [includeRoutingTiles] - When true (default), downloads routing tiles for offline
+  /// turn-by-turn navigation. Set to false to only download map display tiles.
   @override
-  Future<bool?> downloadOfflineRegion({
+  Future<Map<String, dynamic>?> downloadOfflineRegion({
     required double southWestLat,
     required double southWestLng,
     required double northEastLat,
     required double northEastLng,
     int minZoom = 10,
     int maxZoom = 16,
+    bool includeRoutingTiles = true,
     void Function(double progress)? onProgress,
   }) async {
+    StreamSubscription<dynamic>? progressSubscription;
+
     try {
       // Set up progress listener if callback provided
       if (onProgress != null) {
-        await methodChannel.invokeMethod('startOfflineProgressListener');
-        // Listen for progress updates via method channel handler
-        methodChannel.setMethodCallHandler((call) async {
-          if (call.method == 'onOfflineDownloadProgress') {
-            final progress = call.arguments as double;
-            onProgress(progress);
-          }
-        });
+        progressSubscription = eventChannel.receiveBroadcastStream().listen(
+          (dynamic event) {
+            try {
+              Map<String, dynamic>? eventData;
+
+              if (event is Map) {
+                // Recursively convert nested maps
+                eventData = _convertMap(event);
+              } else if (event is String) {
+                // Some platforms send JSON strings
+                eventData = jsonDecode(event) as Map<String, dynamic>?;
+              }
+
+              if (eventData != null &&
+                  eventData['eventType'] == 'download_progress') {
+                final data = eventData['data'];
+                if (data is Map) {
+                  final dataMap = _convertMap(data);
+                  final progress = (dataMap['progress'] as num?)?.toDouble();
+                  if (progress != null) {
+                    onProgress(progress);
+                  }
+                }
+              }
+            } catch (e) {
+              log('Error parsing download progress event: $e');
+            }
+          },
+          onError: (dynamic error) {
+            log('Download progress stream error: $error');
+          },
+        );
       }
 
       final args = <String, dynamic>{
@@ -165,20 +195,32 @@ class MethodChannelFlutterMapboxNavigation
         'northEastLng': northEastLng,
         'minZoom': minZoom,
         'maxZoom': maxZoom,
+        'includeRoutingTiles': includeRoutingTiles,
       };
 
-      final result = await methodChannel.invokeMethod<bool?>(
+      final result = await methodChannel.invokeMethod<dynamic>(
         'downloadOfflineRegion',
         args,
       );
 
-      // Clean up progress listener
-      methodChannel.setMethodCallHandler(null);
+      // Handle different response formats
+      if (result is Map) {
+        return Map<String, dynamic>.from(result);
+      } else if (result is bool) {
+        // Legacy response format
+        return {
+          'success': result,
+          'includesRoutingTiles': includeRoutingTiles,
+        };
+      }
 
-      return result;
+      return null;
     } catch (e) {
       log('Error downloading offline region: $e');
-      return false;
+      return null;
+    } finally {
+      // Clean up progress listener
+      await progressSubscription?.cancel();
     }
   }
 
@@ -259,6 +301,64 @@ class MethodChannelFlutterMapboxNavigation
     } catch (e) {
       log('Error clearing offline cache: $e');
       return false;
+    }
+  }
+
+  /// Get the status of a specific offline region.
+  ///
+  /// Returns a map with:
+  /// - `regionId`: The region identifier
+  /// - `exists`: Whether the region exists
+  /// - `mapTilesReady`: Whether map tiles are downloaded
+  /// - `routingTilesReady`: Whether routing tiles are downloaded
+  /// - `estimatedSizeBytes`: Estimated size in bytes
+  /// - `isComplete`: Whether download is complete
+  @override
+  Future<Map<String, dynamic>?> getOfflineRegionStatus({
+    required String regionId,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'regionId': regionId,
+      };
+
+      final result = await methodChannel.invokeMethod<dynamic>(
+        'getOfflineRegionStatus',
+        args,
+      );
+
+      if (result is Map) {
+        return Map<String, dynamic>.from(result);
+      }
+
+      return null;
+    } catch (e) {
+      log('Error getting offline region status: $e');
+      return null;
+    }
+  }
+
+  /// List all offline regions with their status.
+  ///
+  /// Returns a map with:
+  /// - `regions`: List of region status maps
+  /// - `totalCount`: Total number of regions
+  /// - `totalSizeBytes`: Total size of all regions in bytes
+  @override
+  Future<Map<String, dynamic>?> listOfflineRegions() async {
+    try {
+      final result = await methodChannel.invokeMethod<dynamic>(
+        'listOfflineRegions',
+      );
+
+      if (result is Map) {
+        return Map<String, dynamic>.from(result);
+      }
+
+      return null;
+    } catch (e) {
+      log('Error listing offline regions: $e');
+      return null;
     }
   }
 
@@ -528,5 +628,32 @@ class MethodChannelFlutterMapboxNavigation
       pointList.add(pointMap);
     }
     return pointList;
+  }
+
+  /// Converts a platform Map (which may have Object? keys/values) to Map<String, dynamic>
+  Map<String, dynamic> _convertMap(Map<dynamic, dynamic> map) {
+    return map.map((key, value) {
+      final stringKey = key?.toString() ?? '';
+      if (value is Map) {
+        return MapEntry(stringKey, _convertMap(value));
+      } else if (value is List) {
+        return MapEntry(stringKey, _convertList(value));
+      } else {
+        return MapEntry(stringKey, value);
+      }
+    });
+  }
+
+  /// Converts a platform List to List<dynamic> with proper map conversion
+  List<dynamic> _convertList(List<dynamic> list) {
+    return list.map((item) {
+      if (item is Map) {
+        return _convertMap(item);
+      } else if (item is List) {
+        return _convertList(item);
+      } else {
+        return item;
+      }
+    }).toList();
   }
 }

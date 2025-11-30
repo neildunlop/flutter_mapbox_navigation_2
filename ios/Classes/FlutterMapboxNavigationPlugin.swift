@@ -110,6 +110,14 @@ public class FlutterMapboxNavigationPlugin: NavigationFactory, FlutterPlugin {
         {
             clearOfflineCache(result: result)
         }
+        else if(call.method == "getOfflineRegionStatus")
+        {
+            getOfflineRegionStatus(arguments: arguments, result: result)
+        }
+        else if(call.method == "listOfflineRegions")
+        {
+            listOfflineRegions(result: result)
+        }
         else
         {
             result("Method is Not Implemented");

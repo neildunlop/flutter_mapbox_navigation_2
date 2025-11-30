@@ -591,6 +591,15 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         flutterResult(false)
     }
 
+    // MARK: - TileStore Configuration
+
+    /// 1GB quota for offline tiles (maps + routing)
+    private static let tileStoreQuotaBytes: Int64 = 1_073_741_824
+    /// Cleanup threshold: start cleanup when above 80%
+    private static let cleanupThresholdPercent: Double = 0.80
+    /// Target after cleanup: reduce to 60%
+    private static let cleanupTargetPercent: Double = 0.60
+
     /// Download map tiles and routing data for a specific region
     func downloadOfflineRegion(arguments: NSDictionary?, result: @escaping FlutterResult) {
         guard let args = arguments as? [String: Any],
@@ -604,8 +613,9 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
 
         let minZoom = args["minZoom"] as? Int ?? 10
         let maxZoom = args["maxZoom"] as? Int ?? 16
+        let includeRoutingTiles = args["includeRoutingTiles"] as? Bool ?? true
 
-        print("OfflineRouting: Starting download for region (\(southWestLat),\(southWestLng)) to (\(northEastLat),\(northEastLng))")
+        print("OfflineRouting: Starting download for region (\(southWestLat),\(southWestLng)) to (\(northEastLat),\(northEastLng)), includeRouting=\(includeRoutingTiles)")
 
         // Define the bounding box
         let southWest = CLLocationCoordinate2D(latitude: southWestLat, longitude: southWestLng)
@@ -615,8 +625,9 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         // Get the default TileStore
         let tileStore = TileStore.default
 
-        // Create tile region ID based on bounds
-        let regionId = "region_\(Int(southWestLat * 1000))_\(Int(southWestLng * 1000))_\(Int(northEastLat * 1000))_\(Int(northEastLng * 1000))"
+        // Create tile region ID based on bounds (include routing flag in ID)
+        let routingSuffix = includeRoutingTiles ? "_nav" : ""
+        let regionId = "region_\(Int(southWestLat * 1000))_\(Int(southWestLng * 1000))_\(Int(northEastLat * 1000))_\(Int(northEastLng * 1000))\(routingSuffix)"
 
         // Define the tile region geometry
         let geometry = Geometry.polygon(Polygon([
@@ -629,10 +640,10 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
             ]
         ]))
 
-        // Create tile region load options for map tiles
+        // Create tile region load options for map and optionally routing tiles
         let tileRegionLoadOptions = TileRegionLoadOptions(
             geometry: geometry,
-            descriptors: getMapTilesetDescriptors(minZoom: UInt8(minZoom), maxZoom: UInt8(maxZoom)),
+            descriptors: getMapTilesetDescriptors(minZoom: UInt8(minZoom), maxZoom: UInt8(maxZoom), includeRoutingTiles: includeRoutingTiles),
             acceptExpired: true
         )
 
@@ -640,15 +651,42 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         let downloadTask = tileStore.loadTileRegion(
             forId: regionId,
             loadOptions: tileRegionLoadOptions!
-        ) { progress in
+        ) { [weak self] progress in
             // Progress callback
             let percentage = Double(progress.completedResourceCount) / Double(max(progress.requiredResourceCount, 1))
             print("OfflineRouting: Download progress \(Int(percentage * 100))% (\(progress.completedResourceCount)/\(progress.requiredResourceCount))")
-        } completion: { downloadResult in
+
+            // Send progress to Flutter
+            if let sink = self?._eventSink {
+                let progressData: [String: Any] = [
+                    "eventType": "download_progress",
+                    "data": [
+                        "regionId": regionId,
+                        "progress": percentage,
+                        "completedResources": progress.completedResourceCount,
+                        "requiredResources": progress.requiredResourceCount
+                    ]
+                ]
+                if let jsonData = try? JSONSerialization.data(withJSONObject: progressData),
+                   let jsonString = String(data: jsonData, encoding: .utf8) {
+                    sink(jsonString)
+                }
+            }
+        } completion: { [weak self] downloadResult in
             switch downloadResult {
             case .success(let region):
-                print("OfflineRouting: Download completed for region \(region.id)")
-                result(true)
+                print("OfflineRouting: Download completed for region \(region.id) (\(region.completedResourceCount) resources)")
+
+                // Trigger auto-cleanup if needed, protecting current region
+                self?.performAutoCleanupIfNeeded(protectedRegionIds: [regionId])
+
+                // Return success with region details
+                result([
+                    "success": true,
+                    "regionId": regionId,
+                    "resourceCount": region.completedResourceCount,
+                    "includesRoutingTiles": includeRoutingTiles
+                ])
             case .failure(let error):
                 print("OfflineRouting: Download failed - \(error.localizedDescription)")
                 result(FlutterError(code: "DOWNLOAD_FAILED", message: error.localizedDescription, details: nil))
@@ -660,28 +698,169 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
     }
 
     /// Get tileset descriptors for offline map download
-    private func getMapTilesetDescriptors(minZoom: UInt8, maxZoom: UInt8) -> [TilesetDescriptor] {
+    private func getMapTilesetDescriptors(minZoom: UInt8, maxZoom: UInt8, includeRoutingTiles: Bool = true) -> [TilesetDescriptor] {
         var descriptors: [TilesetDescriptor] = []
 
-        // Navigation tileset for routing
-        let navigationOptions = TilesetDescriptorOptions(
-            styleURI: .navigationDay,
-            zoomRange: minZoom...maxZoom
-        )
-        if let navDescriptor = OfflineManager().createTilesetDescriptor(for: navigationOptions) {
-            descriptors.append(navDescriptor)
-        }
-
-        // Standard map tileset
+        // Standard map tileset (always included)
         let standardOptions = TilesetDescriptorOptions(
             styleURI: .streets,
             zoomRange: minZoom...maxZoom
         )
         if let mapDescriptor = OfflineManager().createTilesetDescriptor(for: standardOptions) {
             descriptors.append(mapDescriptor)
+            print("OfflineRouting: Added map tileset descriptor (streets)")
+        }
+
+        // Navigation tileset for routing (included if requested)
+        if includeRoutingTiles {
+            let navigationOptions = TilesetDescriptorOptions(
+                styleURI: .navigationDay,
+                zoomRange: minZoom...maxZoom
+            )
+            if let navDescriptor = OfflineManager().createTilesetDescriptor(for: navigationOptions) {
+                descriptors.append(navDescriptor)
+                print("OfflineRouting: Added navigation routing tileset descriptor")
+            }
         }
 
         return descriptors
+    }
+
+    /// Get the status of a specific offline region
+    func getOfflineRegionStatus(arguments: NSDictionary?, result: @escaping FlutterResult) {
+        guard let args = arguments as? [String: Any],
+              let regionId = args["regionId"] as? String else {
+            result(FlutterError(code: "INVALID_ARGUMENTS", message: "Region ID is required", details: nil))
+            return
+        }
+
+        let tileStore = TileStore.default
+
+        tileStore.allTileRegions { regionsResult in
+            switch regionsResult {
+            case .success(let regions):
+                if let region = regions.first(where: { $0.id == regionId }) {
+                    // Check if this region includes routing tiles (ID ends with _nav)
+                    let includesRouting = region.id.hasSuffix("_nav")
+
+                    // Estimate size (~50KB per tile average)
+                    let estimatedSizeBytes = Int64(region.completedResourceCount) * 50 * 1024
+
+                    result([
+                        "regionId": region.id,
+                        "exists": true,
+                        "completedResourceCount": region.completedResourceCount,
+                        "requiredResourceCount": region.requiredResourceCount,
+                        "mapTilesReady": true,
+                        "routingTilesReady": includesRouting,
+                        "estimatedSizeBytes": estimatedSizeBytes,
+                        "isComplete": region.completedResourceCount >= region.requiredResourceCount
+                    ])
+                } else {
+                    result([
+                        "regionId": regionId,
+                        "exists": false,
+                        "mapTilesReady": false,
+                        "routingTilesReady": false
+                    ])
+                }
+            case .failure(let error):
+                print("OfflineRouting: Error getting region status - \(error.localizedDescription)")
+                result(FlutterError(code: "STATUS_FAILED", message: error.localizedDescription, details: nil))
+            }
+        }
+    }
+
+    /// List all offline regions with their status
+    func listOfflineRegions(result: @escaping FlutterResult) {
+        let tileStore = TileStore.default
+
+        tileStore.allTileRegions { regionsResult in
+            switch regionsResult {
+            case .success(let regions):
+                var regionsList: [[String: Any]] = []
+                var totalSizeBytes: Int64 = 0
+
+                for region in regions {
+                    let includesRouting = region.id.hasSuffix("_nav")
+                    let estimatedSizeBytes = Int64(region.completedResourceCount) * 50 * 1024
+                    totalSizeBytes += estimatedSizeBytes
+
+                    regionsList.append([
+                        "regionId": region.id,
+                        "completedResourceCount": region.completedResourceCount,
+                        "requiredResourceCount": region.requiredResourceCount,
+                        "mapTilesReady": true,
+                        "routingTilesReady": includesRouting,
+                        "estimatedSizeBytes": estimatedSizeBytes,
+                        "isComplete": region.completedResourceCount >= region.requiredResourceCount
+                    ])
+                }
+
+                result([
+                    "regions": regionsList,
+                    "totalCount": regions.count,
+                    "totalSizeBytes": totalSizeBytes
+                ])
+            case .failure(let error):
+                print("OfflineRouting: Error listing regions - \(error.localizedDescription)")
+                result(FlutterError(code: "LIST_FAILED", message: error.localizedDescription, details: nil))
+            }
+        }
+    }
+
+    /// Performs automatic cleanup of old offline regions when storage exceeds threshold
+    private func performAutoCleanupIfNeeded(protectedRegionIds: [String] = []) {
+        let tileStore = TileStore.default
+
+        tileStore.allTileRegions { [weak self] regionsResult in
+            guard let strongSelf = self else { return }
+
+            switch regionsResult {
+            case .success(let regions):
+                // Calculate total size
+                let totalSizeBytes = regions.reduce(0) { sum, region in
+                    sum + Int64(region.completedResourceCount) * 50 * 1024
+                }
+
+                let thresholdBytes = Int64(Double(NavigationFactory.tileStoreQuotaBytes) * NavigationFactory.cleanupThresholdPercent)
+                let targetBytes = Int64(Double(NavigationFactory.tileStoreQuotaBytes) * NavigationFactory.cleanupTargetPercent)
+
+                if totalSizeBytes > thresholdBytes {
+                    print("OfflineRouting: Storage cleanup triggered: \(totalSizeBytes / (1024 * 1024))MB > \(thresholdBytes / (1024 * 1024))MB threshold")
+
+                    // Sort regions by ID (older regions likely have smaller IDs)
+                    let sortedRegions = regions
+                        .filter { !protectedRegionIds.contains($0.id) }
+                        .sorted { $0.id < $1.id }
+
+                    var currentSize = totalSizeBytes
+                    var regionsToDelete: [TileRegion] = []
+
+                    for region in sortedRegions {
+                        if currentSize <= targetBytes { break }
+                        let regionSize = Int64(region.completedResourceCount) * 50 * 1024
+                        regionsToDelete.append(region)
+                        currentSize -= regionSize
+                    }
+
+                    print("OfflineRouting: Cleaning up \(regionsToDelete.count) old regions to free space")
+
+                    for region in regionsToDelete {
+                        tileStore.removeTileRegion(forId: region.id) { deleteResult in
+                            switch deleteResult {
+                            case .success:
+                                print("OfflineRouting: Auto-deleted old region: \(region.id)")
+                            case .failure(let error):
+                                print("OfflineRouting: Failed to auto-delete region \(region.id) - \(error.localizedDescription)")
+                            }
+                        }
+                    }
+                }
+            case .failure(let error):
+                print("OfflineRouting: Error during auto-cleanup - \(error.localizedDescription)")
+            }
+        }
     }
 
     /// Check if offline routing data is available for a location

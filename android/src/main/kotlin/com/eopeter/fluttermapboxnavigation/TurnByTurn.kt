@@ -23,7 +23,9 @@ import com.mapbox.geojson.Point
 import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
 import com.mapbox.navigation.base.extensions.applyLanguageAndVoiceUnitOptions
 import com.mapbox.navigation.base.options.NavigationOptions
+import com.mapbox.navigation.base.options.RoutingTilesOptions
 import com.mapbox.navigation.base.route.NavigationRoute
+import com.mapbox.common.TileStore
 import com.mapbox.navigation.base.route.NavigationRouterCallback
 import com.mapbox.navigation.base.route.RouterFailure
 import com.mapbox.navigation.base.route.RouterOrigin
@@ -79,13 +81,26 @@ open class TurnByTurn(
     }
 
     open fun initNavigation() {
+        // Get the shared TileStore instance (same one used for downloads)
+        // This ensures navigation can find the offline routing tiles we downloaded
+        val tileStore = TileStore.create()
+
+        // Configure routing tiles options to use the shared TileStore
+        // This enables offline turn-by-turn navigation when tiles are cached
+        val routingTilesOptions = RoutingTilesOptions.Builder()
+            .tileStore(tileStore)
+            .build()
+
         val navigationOptions = NavigationOptions.Builder(this.context)
             .accessToken(this.token)
+            .routingTilesOptions(routingTilesOptions)
             .build()
 
         MapboxNavigationApp
             .setup(navigationOptions)
             .attach(this.activity as LifecycleOwner)
+
+        Log.d("TurnByTurn", "Navigation initialized with offline routing support (TileStore configured)")
 
         // Set initial units configuration
         binding.navigationView.customizeViewOptions {
