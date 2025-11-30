@@ -6,6 +6,16 @@ This document provides an overview of the architecture of the `flutter_mapbox_na
 
 The package follows a platform-specific implementation pattern, where Flutter code provides a unified API that developers can use, while platform-specific implementations (Android and iOS) handle the actual Mapbox SDK integration.
 
+### Key Features
+
+- **Turn-by-turn Navigation**: Full-screen and embedded navigation views
+- **Multi-stop Navigation**: Support for multiple waypoints with silent waypoint options
+- **Free Drive Mode**: Passive navigation without destination
+- **Static Markers**: Custom POI markers with clustering and tap interactions
+- **Trip Progress Panel**: Customizable waypoint progress with skip functionality
+- **Offline Navigation**: Download map tiles and routing data for offline use
+- **Event System**: Comprehensive events for navigation progress and user interactions
+
 ### Key Components
 
 1. **Flutter Layer**
@@ -14,8 +24,8 @@ The package follows a platform-specific implementation pattern, where Flutter co
    - Manages configuration options and state
 
 2. **Platform-Specific Implementations**
-   - Android: Kotlin implementation interfacing with Mapbox Android SDK
-   - iOS: Swift implementation interfacing with Mapbox iOS SDK
+   - Android: Kotlin implementation interfacing with Mapbox Android SDK v2.16
+   - iOS: Swift implementation interfacing with Mapbox iOS SDK v2.11
    - Each platform handles its own navigation view and routing logic
 
 ## Key Files and Their Purposes
@@ -87,7 +97,7 @@ The package follows a platform-specific implementation pattern, where Flutter co
 The package uses Flutter's platform channel system to communicate between Flutter and native code:
 
 1. **Method Channel**
-   - Used for direct method calls (e.g., starting navigation, adding waypoints)
+   - Used for direct method calls (e.g., starting navigation, adding waypoints, offline downloads)
    - Channel name: `flutter_mapbox_navigation`
 
 2. **Event Channel**
@@ -97,6 +107,10 @@ The package uses Flutter's platform channel system to communicate between Flutte
 3. **Static Marker Event Channel**
    - Used for marker tap events and interactions
    - Channel name: `flutter_mapbox_navigation/marker_events`
+
+4. **Offline Download Progress**
+   - Progress updates for offline region downloads are handled via callbacks
+   - Supports real-time progress tracking (0.0 to 1.0)
 
 ## Adding New Features
 

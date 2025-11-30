@@ -42,7 +42,7 @@ This document compares the features available in the Mapbox Navigation SDKs with
 
 | Feature | Android SDK | iOS SDK | Flutter Wrapper | Notes |
 |---------|------------|---------|----------------|-------|
-| Offline routing | ✅ | ✅ | ❌ | Not implemented - API exists but native methods return errors |
+| Offline routing | ✅ | ✅ | ✅ | Full implementation with region downloads, progress tracking, and cache management |
 | Traffic avoidance | ✅ | ✅ | ✅ | Via `mode` option |
 | Incident reporting | ✅ | ✅ | ❌ | Not implemented |
 | Speed limits | ✅ | ✅ | ❌ | Not implemented |
@@ -83,10 +83,9 @@ This document compares the features available in the Mapbox Navigation SDKs with
 
 ### High Priority
 1. Unit system fixes (especially for iOS)
-2. Offline routing completion
-3. Lane guidance improvements
-4. Map camera controls enhancement
-5. Custom UI components
+2. Lane guidance improvements
+3. Map camera controls enhancement
+4. Custom UI components
 
 ### Medium Priority
 1. Location history
@@ -94,6 +93,7 @@ This document compares the features available in the Mapbox Navigation SDKs with
 3. Junction views
 4. Custom instruction views
 5. Enhanced marker features (animations, custom icons)
+6. Complete Android icon coverage (35 remaining icons)
 
 ### Low Priority
 1. EV routing

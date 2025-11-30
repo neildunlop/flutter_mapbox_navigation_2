@@ -51,7 +51,7 @@ await MapBoxNavigation.instance.startNavigation(
 ### Advanced Features
 * **Event-Driven Architecture** - Comprehensive event system for navigation progress, route updates, and user interactions
 * **Static Markers** - Display custom points of interest with interactive markers and clustering
-* **Offline Routing** - Download navigation data for offline use *(Coming Soon)*
+* **Offline Navigation** - Download map tiles and routing data for offline use with progress tracking
 * **Modern Android Support** - Android 13+ compatibility with enhanced security
 * **Type-Safe API** - Improved error handling and type safety across all platforms
 
@@ -679,6 +679,81 @@ Category colors are used for waypoint icons. Default categories include:
 - `hospital`, `medical` - Medical facilities (red)
 - `charging_station` - EV charging (cyan)
 
+### Offline Navigation
+
+Download map tiles and routing data for offline use. This allows navigation without an internet connection.
+
+```dart
+// 1. Download a region for offline use
+final result = await MapBoxNavigation.instance.downloadOfflineRegion(
+  southWestLat: 46.0,
+  southWestLng: 6.0,
+  northEastLat: 47.0,
+  northEastLng: 7.0,
+  minZoom: 10,
+  maxZoom: 16,
+  includeRoutingTiles: true, // Enable offline navigation
+  onProgress: (progress) {
+    print('Download: ${(progress * 100).toStringAsFixed(0)}%');
+  },
+);
+
+if (result?['success'] == true) {
+  print('Downloaded region: ${result!['regionId']}');
+}
+
+// 2. Check if offline routing is available for a location
+final isAvailable = await MapBoxNavigation.instance.isOfflineRoutingAvailable(
+  latitude: 46.5,
+  longitude: 6.5,
+);
+
+// 3. List all downloaded regions
+final regions = await MapBoxNavigation.instance.listOfflineRegions();
+if (regions != null) {
+  print('Total regions: ${regions['totalCount']}');
+  print('Total size: ${(regions['totalSizeBytes'] / 1024 / 1024).toStringAsFixed(1)} MB');
+}
+
+// 4. Get status of a specific region
+final status = await MapBoxNavigation.instance.getOfflineRegionStatus(
+  regionId: 'region_46000_6000_47000_7000_nav',
+);
+
+// 5. Get cache size
+final sizeBytes = await MapBoxNavigation.instance.getOfflineCacheSize();
+print('Cache size: ${(sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB');
+
+// 6. Delete a specific region
+await MapBoxNavigation.instance.deleteOfflineRegion(
+  southWestLat: 46.0,
+  southWestLng: 6.0,
+  northEastLat: 47.0,
+  northEastLng: 7.0,
+);
+
+// 7. Clear all offline data
+await MapBoxNavigation.instance.clearOfflineCache();
+```
+
+**Offline Navigation Features:**
+- **Region Downloads**: Download specific geographic areas by bounding box coordinates
+- **Progress Tracking**: Real-time download progress callbacks (0.0 to 1.0)
+- **Routing Tiles**: Optional download of turn-by-turn navigation data
+- **Cache Management**: List, check status, and delete offline regions
+- **Size Monitoring**: Track offline cache size on device
+
+**API Methods:**
+| Method | Description |
+|--------|-------------|
+| `downloadOfflineRegion()` | Download map tiles and optional routing data for a region |
+| `isOfflineRoutingAvailable()` | Check if offline routing is available for a location |
+| `listOfflineRegions()` | List all downloaded regions with status |
+| `getOfflineRegionStatus()` | Get status of a specific region |
+| `getOfflineCacheSize()` | Get total cache size in bytes |
+| `deleteOfflineRegion()` | Delete offline data for a specific region |
+| `clearOfflineCache()` | Clear all offline data |
+
 ### Embedded Navigation View
 
 ```dart
@@ -740,17 +815,17 @@ await _controller?.startFreeDrive();
 ## Roadmap
 * [DONE] Android Implementation
 * [DONE] Add more settings like Navigation Mode (driving, walking, etc)
-* [DONE] Stream Events like relevant navigation notifications, metrics, current location, etc. 
-* [DONE] Embeddable Navigation View 
-* [PLANNED] Offline Routing
+* [DONE] Stream Events like relevant navigation notifications, metrics, current location, etc.
+* [DONE] Embeddable Navigation View
 * [DONE] Free Drive Mode
 * [DONE] Multi-stop Navigation
 * [DONE] Enhanced Error Handling
 * [DONE] Android 13+ Security Updates
 * [DONE] Static Markers System
+* [DONE] Trip Progress Panel with waypoint skipping
+* [DONE] Offline Navigation (map tiles and routing data)
 * [PLANNED] Vehicle Movement Simulation
 * [PLANNED] Enhanced UI Components
-* [PLANNED] Offline Routing Implementation
 
 ## Technical Notes
 
@@ -760,8 +835,14 @@ Voice instruction units are locked at first initialization of the navigation ses
 ### Android Security
 The plugin has been updated for Android 13+ compatibility with proper receiver registration and enhanced security measures.
 
-### Offline Routing Status
-The `enableOfflineRouting()` method exists in the API but is not currently implemented. Android returns a "NOT_IMPLEMENTED" error, and iOS has the implementation commented out. This feature is planned for future releases.
+### Offline Navigation
+The plugin supports downloading map tiles and routing data for offline use. Key features include:
+- **Region Downloads**: Download specific geographic areas by bounding box
+- **Progress Tracking**: Monitor download progress with callbacks
+- **Cache Management**: List, check status, and delete offline regions
+- **Routing Tiles**: Optional download of routing data for turn-by-turn navigation offline
+
+> **Note**: The legacy `enableOfflineRouting()` method is deprecated. Use `downloadOfflineRegion()` instead for full control over offline data.
 
 ### Mapbox API Limits
 
@@ -811,6 +892,13 @@ For detailed technical documentation, architecture overview, and implementation 
 
 ### [Unreleased]
 #### New Features
+- **Offline Navigation**: Complete offline routing and map tile support with:
+  - Region downloads with bounding box coordinates
+  - Progress tracking callbacks during downloads
+  - Optional routing tile downloads for offline turn-by-turn navigation
+  - Cache management (list, status, delete regions)
+  - Cache size monitoring
+
 - **Trip Progress Panel**: Customizable navigation progress overlay with:
   - Skip/previous waypoint buttons for multi-stop navigation
   - Progress bar showing trip completion
