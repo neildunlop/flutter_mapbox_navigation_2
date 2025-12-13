@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_mapbox_navigation/src/flutter_mapbox_navigation_platform_interface.dart';
 import 'package:flutter_mapbox_navigation/src/models/models.dart';
 import 'package:flutter_mapbox_navigation/src/models/waypoint_result.dart';
+import 'package:flutter_mapbox_navigation/src/platform/channel_constants.dart';
 
 /// An implementation of [FlutterMapboxNavigationPlatform]
 /// that uses method channels.
@@ -15,15 +16,15 @@ class MethodChannelFlutterMapboxNavigation
     extends FlutterMapboxNavigationPlatform {
   /// The method channel used to interact with the native platform.
   @visibleForTesting
-  final methodChannel = const MethodChannel('flutter_mapbox_navigation');
+  final methodChannel = const MethodChannel(kMethodChannelName);
 
   /// The event channel used to interact with the native platform.
   @visibleForTesting
-  final eventChannel = const EventChannel('flutter_mapbox_navigation/events');
+  final eventChannel = const EventChannel(kEventChannelName);
 
   /// The event channel used for static marker events.
   @visibleForTesting
-  final markerEventChannel = const EventChannel('flutter_mapbox_navigation/marker_events');
+  final markerEventChannel = const EventChannel(kMarkerEventChannelName);
 
   late StreamSubscription<RouteEvent> _routeEventSubscription;
   late StreamSubscription<StaticMarker> _markerEventSubscription;
@@ -34,21 +35,21 @@ class MethodChannelFlutterMapboxNavigation
   @override
   Future<String?> getPlatformVersion() async {
     final version =
-        await methodChannel.invokeMethod<String>('getPlatformVersion');
+        await methodChannel.invokeMethod<String>(Methods.getPlatformVersion);
     return version;
   }
 
   @override
   Future<double?> getDistanceRemaining() async {
     final distance =
-        await methodChannel.invokeMethod<double?>('getDistanceRemaining');
+        await methodChannel.invokeMethod<double?>(Methods.getDistanceRemaining);
     return distance;
   }
 
   @override
   Future<double?> getDurationRemaining() async {
     final duration =
-        await methodChannel.invokeMethod<double?>('getDurationRemaining');
+        await methodChannel.invokeMethod<double?>(Methods.getDurationRemaining);
     return duration;
   }
 
@@ -56,7 +57,7 @@ class MethodChannelFlutterMapboxNavigation
   Future<bool?> startFreeDrive(MapBoxOptions options) async {
     _routeEventSubscription = routeEventsListener!.listen(_onProgressData);
     final args = options.toMap();
-    final result = await methodChannel.invokeMethod('startFreeDrive', args);
+    final result = await methodChannel.invokeMethod(Methods.startFreeDrive, args);
     if (result is bool) return result;
     log(result.toString());
     return false;
@@ -82,7 +83,7 @@ class MethodChannelFlutterMapboxNavigation
     args['wayPoints'] = wayPointMap;
 
     _routeEventSubscription = routeEventsListener!.listen(_onProgressData);
-    final result = await methodChannel.invokeMethod('startNavigation', args);
+    final result = await methodChannel.invokeMethod(Methods.startNavigation, args);
     if (result is bool) return result;
     log(result.toString());
     return false;
@@ -98,7 +99,7 @@ class MethodChannelFlutterMapboxNavigation
       final args = <String, dynamic>{};
       args['wayPoints'] = wayPointMap;
       
-      final result = await methodChannel.invokeMethod('addWayPoints', args);
+      final result = await methodChannel.invokeMethod(Methods.addWayPoints, args);
       if (result is Map) {
         return WaypointResult(
           success: result['success'] as bool,
@@ -120,7 +121,7 @@ class MethodChannelFlutterMapboxNavigation
 
   @override
   Future<bool?> finishNavigation() async {
-    final success = await methodChannel.invokeMethod<bool?>('finishNavigation');
+    final success = await methodChannel.invokeMethod<bool?>(Methods.finishNavigation);
     return success;
   }
 
@@ -130,7 +131,7 @@ class MethodChannelFlutterMapboxNavigation
   @Deprecated('Use downloadOfflineRegion instead for more control')
   Future<bool?> enableOfflineRouting() async {
     final success =
-        await methodChannel.invokeMethod<bool?>('enableOfflineRouting');
+        await methodChannel.invokeMethod<bool?>(Methods.enableOfflineRouting);
     return success;
   }
 
@@ -198,8 +199,8 @@ class MethodChannelFlutterMapboxNavigation
         'includeRoutingTiles': includeRoutingTiles,
       };
 
-      final result = await methodChannel.invokeMethod<dynamic>(
-        'downloadOfflineRegion',
+      final result = await methodChannel.invokeMethod<Object?>(
+        Methods.downloadOfflineRegion,
         args,
       );
 
@@ -237,7 +238,7 @@ class MethodChannelFlutterMapboxNavigation
       };
 
       final result = await methodChannel.invokeMethod<bool?>(
-        'isOfflineRoutingAvailable',
+        Methods.isOfflineRoutingAvailable,
         args,
       );
 
@@ -265,7 +266,7 @@ class MethodChannelFlutterMapboxNavigation
       };
 
       final result = await methodChannel.invokeMethod<bool?>(
-        'deleteOfflineRegion',
+        Methods.deleteOfflineRegion,
         args,
       );
 
@@ -281,7 +282,7 @@ class MethodChannelFlutterMapboxNavigation
   Future<int> getOfflineCacheSize() async {
     try {
       final result = await methodChannel.invokeMethod<int?>(
-        'getOfflineCacheSize',
+        Methods.getOfflineCacheSize,
       );
       return result ?? 0;
     } catch (e) {
@@ -295,7 +296,7 @@ class MethodChannelFlutterMapboxNavigation
   Future<bool?> clearOfflineCache() async {
     try {
       final result = await methodChannel.invokeMethod<bool?>(
-        'clearOfflineCache',
+        Methods.clearOfflineCache,
       );
       return result;
     } catch (e) {
@@ -322,8 +323,8 @@ class MethodChannelFlutterMapboxNavigation
         'regionId': regionId,
       };
 
-      final result = await methodChannel.invokeMethod<dynamic>(
-        'getOfflineRegionStatus',
+      final result = await methodChannel.invokeMethod<Object?>(
+        Methods.getOfflineRegionStatus,
         args,
       );
 
@@ -347,8 +348,8 @@ class MethodChannelFlutterMapboxNavigation
   @override
   Future<Map<String, dynamic>?> listOfflineRegions() async {
     try {
-      final result = await methodChannel.invokeMethod<dynamic>(
-        'listOfflineRegions',
+      final result = await methodChannel.invokeMethod<Object?>(
+        Methods.listOfflineRegions,
       );
 
       if (result is Map) {
@@ -393,7 +394,7 @@ class MethodChannelFlutterMapboxNavigation
         args['configuration'] = configuration.toJson();
       }
       
-      final result = await methodChannel.invokeMethod('addStaticMarkers', args);
+      final result = await methodChannel.invokeMethod(Methods.addStaticMarkers, args);
       return result as bool?;
     } catch (e) {
       log('Error adding static markers: $e');
@@ -410,7 +411,7 @@ class MethodChannelFlutterMapboxNavigation
         'markerIds': markerIds,
       };
       
-      final result = await methodChannel.invokeMethod('removeStaticMarkers', args);
+      final result = await methodChannel.invokeMethod(Methods.removeStaticMarkers, args);
       return result as bool?;
     } catch (e) {
       log('Error removing static markers: $e');
@@ -421,7 +422,7 @@ class MethodChannelFlutterMapboxNavigation
   @override
   Future<bool?> clearAllStaticMarkers() async {
     try {
-      final result = await methodChannel.invokeMethod('clearAllStaticMarkers');
+      final result = await methodChannel.invokeMethod(Methods.clearAllStaticMarkers);
       return result as bool?;
     } catch (e) {
       log('Error clearing static markers: $e');
@@ -438,7 +439,7 @@ class MethodChannelFlutterMapboxNavigation
         'configuration': configuration.toJson(),
       };
       
-      final result = await methodChannel.invokeMethod('updateMarkerConfiguration', args);
+      final result = await methodChannel.invokeMethod(Methods.updateMarkerConfiguration, args);
       return result as bool?;
     } catch (e) {
       log('Error updating marker configuration: $e');
@@ -449,7 +450,7 @@ class MethodChannelFlutterMapboxNavigation
   @override
   Future<List<StaticMarker>?> getStaticMarkers() async {
     try {
-      final result = await methodChannel.invokeMethod('getStaticMarkers');
+      final result = await methodChannel.invokeMethod(Methods.getStaticMarkers);
       if (result is List) {
         return result
             .map((markerJson) => StaticMarker.fromJson(markerJson as Map<String, dynamic>))
@@ -463,17 +464,23 @@ class MethodChannelFlutterMapboxNavigation
   }
 
   @override
-  Future<dynamic> registerStaticMarkerTapListener(
+  Future<void> registerStaticMarkerTapListener(
     ValueSetter<StaticMarker> listener,
   ) async {
     _onMarkerTap = listener;
     _markerEventSubscription = markerEventsListener!.listen(_onMarkerTapData);
   }
+
+  /// Unregisters the static marker tap listener and cancels the subscription.
+  Future<void> unregisterStaticMarkerTapListener() async {
+    await _markerEventSubscription.cancel();
+    _onMarkerTap = null;
+  }
   
   @override
   Future<Map<String, double>?> getMarkerScreenPosition(String markerId) async {
     try {
-      final result = await methodChannel.invokeMethod('getMarkerScreenPosition', {
+      final result = await methodChannel.invokeMethod(Methods.getMarkerScreenPosition, {
         'markerId': markerId,
       });
       
@@ -492,8 +499,8 @@ class MethodChannelFlutterMapboxNavigation
   @override
   Future<Map<String, dynamic>?> getMapViewport() async {
     try {
-      final result = await methodChannel.invokeMethod('getMapViewport');
-      return result != null ? Map<String, dynamic>.from(result) : null;
+      final result = await methodChannel.invokeMethod(Methods.getMapViewport);
+      return result != null ? Map<String, dynamic>.from(result as Map) : null;
     } catch (e) {
       log('Error getting map viewport: $e');
       return null;
@@ -614,7 +621,6 @@ class MethodChannelFlutterMapboxNavigation
 
     for (var i = 0; i < wayPoints.length; i++) {
       final wayPoint = wayPoints[i];
-      assert(wayPoint.name != null, 'Error: waypoints need name');
       assert(wayPoint.latitude != null, 'Error: waypoints need latitude');
       assert(wayPoint.longitude != null, 'Error: waypoints need longitude');
 

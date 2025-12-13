@@ -5,7 +5,6 @@ import '../embedded/controller.dart';
 import '../models/models.dart';
 import '../managers/marker_popup_manager.dart';
 import '../utilities/coordinate_converter.dart';
-import 'marker_popup_overlay.dart';
 
 /// Enhanced navigation view that supports marker popup overlays
 class MapBoxNavigationViewWithPopups extends StatefulWidget {
@@ -42,6 +41,7 @@ class MapBoxNavigationViewWithPopups extends StatefulWidget {
 }
 
 class _MapBoxNavigationViewWithPopupsState extends State<MapBoxNavigationViewWithPopups> {
+  // ignore: unused_field
   MapBoxNavigationViewController? _controller;
   MarkerPopupManager? _popupManager;
   StreamSubscription<StaticMarker>? _markerTapSubscription;
@@ -230,7 +230,7 @@ class MarkerPopupIntegration extends StatefulWidget {
   final MarkerConfiguration configuration;
   
   /// Callback when a marker is tapped (before popup is shown)
-  final Function(StaticMarker)? onMarkerTap;
+  final void Function(StaticMarker)? onMarkerTap;
   
   const MarkerPopupIntegration({
     super.key,

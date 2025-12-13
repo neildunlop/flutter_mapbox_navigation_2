@@ -77,6 +77,62 @@ class MockFlutterMapboxNavigationPlatform
     ValueSetter<FullScreenEvent> listener,
   ) =>
       Future.value();
+
+  // Offline navigation methods
+  @override
+  Future<Map<String, dynamic>?> downloadOfflineRegion({
+    required double southWestLat,
+    required double southWestLng,
+    required double northEastLat,
+    required double northEastLng,
+    int minZoom = 10,
+    int maxZoom = 16,
+    bool includeRoutingTiles = false,
+    void Function(double)? onProgress,
+  }) =>
+      Future.value({'success': true, 'regionId': 'test_region'});
+
+  @override
+  Future<bool> isOfflineRoutingAvailable({
+    required double latitude,
+    required double longitude,
+  }) =>
+      Future.value(false);
+
+  @override
+  Future<bool?> deleteOfflineRegion({
+    required double southWestLat,
+    required double southWestLng,
+    required double northEastLat,
+    required double northEastLng,
+  }) =>
+      Future.value(true);
+
+  @override
+  Future<int> getOfflineCacheSize() => Future.value(0);
+
+  @override
+  Future<bool?> clearOfflineCache() => Future.value(true);
+
+  @override
+  Future<Map<String, dynamic>?> getOfflineRegionStatus({
+    required String regionId,
+  }) =>
+      Future.value({'status': 'complete'});
+
+  @override
+  Future<Map<String, dynamic>?> listOfflineRegions() =>
+      Future.value({'regions': [], 'totalCount': 0});
+
+  @override
+  Future<Map<String, double>?> getMarkerScreenPosition(
+    String markerId,
+  ) =>
+      Future.value({'x': 0.0, 'y': 0.0});
+
+  @override
+  Future<Map<String, dynamic>?> getMapViewport() =>
+      Future.value({'center': [0.0, 0.0], 'zoom': 10.0});
 }
 
 void main() {

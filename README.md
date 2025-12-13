@@ -594,7 +594,7 @@ await MapBoxNavigation.instance.clearAllStaticMarkers();
 > - **Android**: 12 essential icons implemented (petrol, restaurant, hotel, hospital, etc.), 35 additional icons fall back to default pin
 > - **TODO**: Create remaining Android vector drawables for complete cross-platform icon parity
 
-For detailed documentation, see [Static Markers Guide](docs/static_markers.md).
+For detailed documentation, see [Static Markers Guide](doc/static_markers.md).
 
 ### Trip Progress Panel
 
@@ -880,13 +880,13 @@ This plugin uses the Mapbox Directions API for route calculation. Understanding 
 
 ## Documentation
 
-For detailed technical documentation, architecture overview, and implementation guides, see the `/docs` directory:
-- [Architecture Overview](docs/overview.md)
-- [Feature Comparison](docs/feature_comparison.md)
-- [Modernization Summary](docs/modernisation.md)
-- [Testing Strategy](docs/testing_strategy.md)
-- [Static Markers Guide](docs/static_markers.md)
-- [Map Marker Implementation Plan](docs/marker_implementation.md)
+For detailed technical documentation, architecture overview, and implementation guides, see the `/doc` directory:
+- [Architecture Overview](doc/overview.md)
+- [Feature Comparison](doc/feature_comparison.md)
+- [Modernization Summary](doc/modernisation.md)
+- [Testing Strategy](doc/testing_strategy.md)
+- [Static Markers Guide](doc/static_markers.md)
+- [Map Marker Implementation Plan](doc/marker_implementation.md)
 
 ## Changelog
 
@@ -928,9 +928,3 @@ For detailed technical documentation, architecture overview, and implementation 
 - Improved type safety across the navigation API
 - Enhanced test coverage for platform communication
 - Added comprehensive static marker documentation and examples
-
-<!-- Links -->
-[pub_badge]: https://img.shields.io/pub/v/flutter_mapbox_navigation.svg
-[pub]: https://pub.dev/packages/flutter_mapbox_navigation
-[buy_me_a_coffee]: https://www.buymeacoffee.com/eopeter
-[buy_me_a_coffee_badge]: https://img.buymeacoffee.com/button-api/?text=Donate&emoji=&slug=eopeter&button_colour=29b6f6&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00

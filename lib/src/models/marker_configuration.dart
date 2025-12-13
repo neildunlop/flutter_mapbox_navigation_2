@@ -26,7 +26,7 @@ class MarkerConfiguration {
   final int? maxMarkersToShow;
   
   /// Callback function when a marker is tapped
-  final Function(StaticMarker)? onMarkerTap;
+  final void Function(StaticMarker)? onMarkerTap;
   
   /// Flutter widget builder for popup overlays when markers are tapped
   /// If provided, popups will be shown as Flutter overlays
@@ -106,7 +106,7 @@ class MarkerConfiguration {
     double? minZoomLevel,
     bool? enableClustering,
     int? maxMarkersToShow,
-    Function(StaticMarker)? onMarkerTap,
+    void Function(StaticMarker)? onMarkerTap,
     Widget Function(StaticMarker, BuildContext)? popupBuilder,
     Duration? popupDuration,
     Offset? popupOffset,

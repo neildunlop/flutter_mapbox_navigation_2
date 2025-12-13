@@ -6,8 +6,8 @@ import 'package:flutter_mapbox_navigation/src/flutter_mapbox_navigation.dart';
 /// This replaces native Android dialogs with Flutter UI components
 class FullScreenNavigationOverlay extends StatefulWidget {
   final Widget child;
-  final Function(StaticMarker)? onMarkerDetails;
-  final Function(double lat, double lng)? onMapTap;
+  final void Function(StaticMarker)? onMarkerDetails;
+  final void Function(double lat, double lng)? onMapTap;
   final Duration animationDuration;
   final bool showDebugInfo;
 
@@ -27,6 +27,7 @@ class FullScreenNavigationOverlay extends StatefulWidget {
 class _FullScreenNavigationOverlayState extends State<FullScreenNavigationOverlay>
     with TickerProviderStateMixin {
   OverlayEntry? _overlayEntry;
+  // ignore: unused_field
   StaticMarker? _currentMarker;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -99,15 +100,17 @@ class _FullScreenNavigationOverlayState extends State<FullScreenNavigationOverla
     }
   }
 
+  // TODO(cleanup): This method is currently unused but kept for potential future use.
+  // ignore: unused_element
   void _showMarkerOverlay(StaticMarker marker) {
     // For the main Flutter app context, we should not create overlays
     // since we're already in Flutter. Instead, use the callback.
     // Overlays are primarily for native navigation contexts.
-    
+
     if (widget.showDebugInfo) {
       debugPrint('🎯 Handling marker via callback instead of overlay: ${marker.title}');
     }
-    
+
     // Use callback instead of creating conflicting overlay
     widget.onMarkerDetails?.call(marker);
   }
@@ -120,6 +123,8 @@ class _FullScreenNavigationOverlayState extends State<FullScreenNavigationOverla
     }
   }
 
+  // TODO(cleanup): This method is currently unused but kept for potential future use.
+  // ignore: unused_element
   Widget _buildMarkerOverlay(StaticMarker marker) {
     return AnimatedBuilder(
       animation: _animationController,

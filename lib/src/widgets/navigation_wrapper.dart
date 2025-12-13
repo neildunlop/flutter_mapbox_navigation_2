@@ -6,8 +6,8 @@ import 'fullscreen_overlay.dart';
 /// This is used to replace native Android dialogs in full-screen navigation
 class NavigationWrapper extends StatelessWidget {
   final Widget child;
-  final Function(StaticMarker)? onMarkerTap;
-  final Function(double lat, double lng)? onMapTap;
+  final void Function(StaticMarker)? onMarkerTap;
+  final void Function(double lat, double lng)? onMapTap;
   final bool enableFullScreenOverlays;
   final bool showDebugInfo;
 
@@ -46,7 +46,7 @@ class MarkerDialogHelper {
     StaticMarker marker, {
     VoidCallback? onClose,
   }) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(

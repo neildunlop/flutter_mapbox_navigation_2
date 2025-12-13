@@ -16,7 +16,8 @@
       "Bash(test:*)",
       "Bash(git check-ignore:*)",
       "Bash(git add:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(dart pub publish:*)"
     ],
     "deny": []
   }

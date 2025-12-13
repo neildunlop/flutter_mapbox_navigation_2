@@ -9,7 +9,7 @@ This example project demonstrates how to use the Flutter Mapbox Navigation plugi
 1. **Open in Android Studio:**
    - Open Android Studio
    - Click "Open" (not "Create New Project")
-   - Navigate to: `/Users/neildunlop/Dev/flutter_mapbox_navigation_2/example`
+   - Navigate to the `example` folder within this repository
    - Click "Open"
 
 2. **Let Android Studio auto-configure:**
@@ -21,7 +21,7 @@ This example project demonstrates how to use the Flutter Mapbox Navigation plugi
 
 3. **Configure Mapbox Access Token (Required for real functionality):**
    ```bash
-   cd /Users/neildunlop/Dev/flutter_mapbox_navigation_2/example/android
+   cd example/android
    cp gradle.properties.template gradle.properties
    ```
    
@@ -41,7 +41,7 @@ This example project demonstrates how to use the Flutter Mapbox Navigation plugi
 
 ### **Alternative: Command Line (Faster)**
 ```bash
-cd /Users/neildunlop/Dev/flutter_mapbox_navigation_2/example
+cd example
 flutter run
 ```
 

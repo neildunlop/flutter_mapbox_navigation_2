@@ -265,4 +265,4 @@ The project has comprehensive test coverage across:
 - Feature branches should be created from `master`
 
 ## Documentation
-Comprehensive documentation available in `docs/` directory including architecture overview, testing strategy, feature comparisons, and popup usage guide.
+Comprehensive documentation available in `doc/` directory including architecture overview, testing strategy, feature comparisons, and popup usage guide.

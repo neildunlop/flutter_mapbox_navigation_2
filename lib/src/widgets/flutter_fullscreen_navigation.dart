@@ -39,16 +39,16 @@ class FlutterFullScreenNavigation extends StatefulWidget {
   final MarkerPopupBuilder? markerPopupBuilder;
 
   /// Callback when a marker is tapped (called in addition to showing popup)
-  final Function(StaticMarker)? onMarkerTap;
+  final void Function(StaticMarker)? onMarkerTap;
 
   /// Callback when the map is tapped (not on a marker)
-  final Function(double lat, double lng)? onMapTap;
+  final void Function(double lat, double lng)? onMapTap;
 
   /// Callback for route progress events
-  final Function(RouteEvent)? onRouteEvent;
+  final void Function(RouteEvent)? onRouteEvent;
 
   /// Callback when navigation finishes or is cancelled
-  final Function()? onNavigationFinished;
+  final void Function()? onNavigationFinished;
 
   /// Whether to show debug information overlay
   final bool showDebugOverlay;
@@ -77,8 +77,11 @@ class _FlutterFullScreenNavigationState
   // Navigation state
   bool _isNavigating = false;
   bool _isInitialized = false;
+  // TODO(feature): These fields are populated but not yet displayed in the UI.
+  // ignore: unused_field
   String? _currentInstruction;
   double? _distanceRemaining;
+  // ignore: unused_field
   double? _durationRemaining;
 
   // Popup state

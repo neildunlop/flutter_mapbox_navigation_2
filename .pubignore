@@ -3,3 +3,6 @@
 .idea/modules.xml
 flutter_mapbox_navigation.iml
 pubspec.lock
+example/pubspec.lock
+example/android/temp_project/
+test/integration/popup_navigation_test.dart

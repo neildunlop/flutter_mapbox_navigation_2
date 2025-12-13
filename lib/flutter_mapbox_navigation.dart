@@ -1,8 +1,11 @@
+export 'src/accessibility/accessibility_utils.dart';
 export 'src/embedded/controller.dart';
 export 'src/embedded/view.dart';
+export 'src/exceptions/navigation_exception.dart';
 export 'src/flutter_mapbox_navigation.dart';
-export 'src/models/models.dart';
-export 'src/widgets/widgets.dart';
-export 'src/navigation_overlay_app.dart';
 export 'src/managers/marker_popup_manager.dart';
+export 'src/models/models.dart';
+export 'src/navigation_overlay_app.dart';
+export 'src/platform/channel_constants.dart';
 export 'src/utilities/coordinate_converter.dart';
+export 'src/widgets/widgets.dart';

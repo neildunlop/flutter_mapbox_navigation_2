@@ -181,16 +181,16 @@ class MapBoxNavigation {
     required List<WayPoint> wayPoints,
     MapBoxOptions? options,
     MarkerPopupBuilder? markerPopupBuilder,
-    Function(StaticMarker)? onMarkerTap,
-    Function(double lat, double lng)? onMapTap,
-    Function(RouteEvent)? onRouteEvent,
-    Function()? onNavigationFinished,
+    void Function(StaticMarker)? onMarkerTap,
+    void Function(double lat, double lng)? onMapTap,
+    void Function(RouteEvent)? onRouteEvent,
+    void Function()? onNavigationFinished,
     bool showDebugOverlay = false,
   }) async {
     options ??= _defaultOptions;
 
     await Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (context) => FlutterFullScreenNavigation(
           wayPoints: wayPoints,
           options: options!,

@@ -178,24 +178,32 @@ class MarkerPopupManager extends ChangeNotifier {
     _configuration = null;
   }
   
-  /// Override dispose to prevent the singleton from being disposed
+  /// Override dispose to prevent the singleton from being disposed during normal use.
+  ///
+  /// This is intentional - as a singleton, the MarkerPopupManager should outlive
+  /// individual widgets. Call [forceDispose] only during app shutdown.
   @override
+  // ignore: must_call_super
   void dispose() {
     // Don't actually dispose the singleton, just mark it as disposed for debugging
     _disposed = true;
-    // Don't call super.dispose() to prevent actual disposal
+    // Intentionally not calling super.dispose() to prevent actual disposal
+    // ignore: avoid_print
     print('MarkerPopupManager dispose() called but prevented (singleton protection)');
   }
-  
-  /// Reset the disposed state and reinitialize if needed
+
+  /// Reset the disposed state and reinitialize if needed.
   void reset() {
     _disposed = false;
     cleanup();
   }
-  
-  /// Method to actually dispose when app shuts down (not used in normal flow)
-  void _actualDispose() {
+
+  /// Force dispose the singleton. Only call this during app shutdown.
+  ///
+  /// This properly cleans up resources and calls the parent dispose.
+  void forceDispose() {
     cleanup();
+    // Call the actual ChangeNotifier dispose
     super.dispose();
   }
 }
