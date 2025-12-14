@@ -1,0 +1,26 @@
+{
+  "android": {
+    "platformName": "Android",
+    "appium:app": "F:\\Dev\\adventure_platform\\adventure_platform_map_component\\flutter_mapbox_navigation\\example\\build\\app\\outputs\\flutter-apk\\app-debug.apk",
+    "appium:deviceName": "Android Emulator",
+    "appium:platformVersion": "14.0",
+    "appium:automationName": "UiAutomator2",
+    "appium:autoGrantPermissions": true,
+    "appium:noReset": false,
+    "appium:fullReset": false,
+    "appium:newCommandTimeout": 300,
+    "appium:uiautomator2ServerInstallTimeout": 120000,
+    "appium:appWaitActivity": "*",
+    "appium:appWaitDuration": 30000
+  },
+  "ios": {
+    "platformName": "iOS",
+    "appium:app": "/path/to/Runner.app",
+    "appium:deviceName": "iPhone 15 Pro",
+    "appium:platformVersion": "17.0",
+    "appium:automationName": "XCUITest",
+    "appium:autoAcceptAlerts": true,
+    "appium:noReset": false,
+    "appium:newCommandTimeout": 300
+  }
+}
