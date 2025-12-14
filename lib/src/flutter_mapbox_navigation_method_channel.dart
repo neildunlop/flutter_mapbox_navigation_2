@@ -453,7 +453,8 @@ class MethodChannelFlutterMapboxNavigation
       final result = await methodChannel.invokeMethod(Methods.getStaticMarkers);
       if (result is List) {
         return result
-            .map((markerJson) => StaticMarker.fromJson(markerJson as Map<String, dynamic>))
+            .map((markerJson) => StaticMarker.fromJson(
+                Map<String, dynamic>.from(markerJson as Map)))
             .toList();
       }
       return null;

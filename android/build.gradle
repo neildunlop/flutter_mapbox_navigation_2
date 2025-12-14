@@ -73,7 +73,7 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-group 'com.eopeter.fluttermapboxnavigation'
+group 'com.neiladunlop.fluttermapboxnavigation2'
 version '1.0-SNAPSHOT'
 
 rootProject.allprojects {
@@ -95,7 +95,7 @@ rootProject.allprojects {
 }
 
 android {
-    namespace 'com.eopeter.fluttermapboxnavigation'
+    namespace 'com.neiladunlop.fluttermapboxnavigation2'
     compileSdkVersion 35
 
     sourceSets {

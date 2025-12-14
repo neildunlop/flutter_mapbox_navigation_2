@@ -8,7 +8,7 @@ This document summarizes the recent changes made to modernize the Flutter Mapbox
 ### Flutter & Dart
 - Flutter SDK: >=2.5.0
 - Dart SDK: >=2.19.4 <4.0.0
-- Plugin Version: 0.2.2
+- Plugin Version: 0.3.0
 
 ### Android
 - Kotlin Version: 1.8.10
@@ -17,6 +17,10 @@ This document summarizes the recent changes made to modernize the Flutter Mapbox
 - Target SDK: 35
 - Minimum SDK: 21
 - Java Version: 17
+
+### iOS
+- Deployment Target: 13.4
+- Swift Version: 5.0
 
 ### Key Dependencies
 - Mapbox Navigation SDK Components:

@@ -9,9 +9,9 @@ Pod::Spec.new do |s|
   s.description      = <<-DESC
 Add Turn By Turn Navigation to Your Flutter Application Using MapBox. Never leave your app when you need to navigate your users to a location.
                        DESC
-  s.homepage         = 'https://eopeter.com'
+  s.homepage         = 'https://neiladunlop.com'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Emmanuel Peter Oche' => 'eopeter@gmail.com' }
+  s.author           = { 'Neil Dunlop' => 'neil@neiladunlop.com' }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'

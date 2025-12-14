@@ -1,12 +1,9 @@
-import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Error Handling Tests', () {
-    late MapBoxNavigation navigation;
-
     setUp(() {
-      navigation = MapBoxNavigation.instance;
+      // Initialize test environment
     });
 
     test('should handle invalid waypoints', () {

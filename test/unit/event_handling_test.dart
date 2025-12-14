@@ -1,16 +1,7 @@
-import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_mapbox_navigation/src/models/events.dart';
 
 void main() {
   group('Event Handling Tests', () {
-    late MapBoxNavigation navigation;
-    late List<RouteEvent> receivedEvents;
-
-    setUp(() {
-      navigation = MapBoxNavigation.instance;
-      receivedEvents = [];
-    });
 
     test('should handle all event types', () {
       // TODO: Test event type handling

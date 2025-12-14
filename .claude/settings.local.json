@@ -17,7 +17,18 @@
       "Bash(git check-ignore:*)",
       "Bash(git add:*)",
       "Bash(git rm:*)",
-      "Bash(dart pub publish:*)"
+      "Bash(dart pub publish:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(cat:*)",
+      "Bash(sort:*)",
+      "Bash(lcov:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(adb shell pm grant:*)",
+      "WebSearch",
+      "Bash(claude mcp add:*)",
+      "Bash(adb devices:*)",
+      "Bash(dir:*)",
+      "Bash(del \"doc\\marker_implementation.md\")"
     ],
     "deny": []
   }

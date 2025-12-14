@@ -93,7 +93,6 @@ This document compares the features available in the Mapbox Navigation SDKs with
 3. Junction views
 4. Custom instruction views
 5. Enhanced marker features (animations, custom icons)
-6. Complete Android icon coverage (35 remaining icons)
 
 ### Low Priority
 1. EV routing

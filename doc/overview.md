@@ -52,21 +52,21 @@ The package follows a platform-specific implementation pattern, where Flutter co
 
 ### Android Implementation
 
-- `android/src/main/kotlin/com/eopeter/fluttermapboxnavigation/FlutterMapboxNavigationPlugin.kt`
+- `android/src/main/kotlin/com/neiladunlop/fluttermapboxnavigation2/FlutterMapboxNavigationPlugin.kt`
   - Main plugin class for Android
   - Handles method channel communication
   - Manages navigation state and options
 
-- `android/src/main/kotlin/com/eopeter/fluttermapboxnavigation/TurnByTurn.kt`
+- `android/src/main/kotlin/com/neiladunlop/fluttermapboxnavigation2/TurnByTurn.kt`
   - Core navigation implementation for Android
   - Handles route building and navigation
   - Manages waypoints and navigation options
 
-- `android/src/main/kotlin/com/eopeter/fluttermapboxnavigation/models/views/EmbeddedNavigationMapView.kt`
+- `android/src/main/kotlin/com/neiladunlop/fluttermapboxnavigation2/models/views/EmbeddedNavigationMapView.kt`
   - Implements the embedded navigation view for Android
   - Handles map view lifecycle and user interactions
 
-- `android/src/main/kotlin/com/eopeter/fluttermapboxnavigation/StaticMarkerManager.kt`
+- `android/src/main/kotlin/com/neiladunlop/fluttermapboxnavigation2/StaticMarkerManager.kt`
   - Manages static marker display and interactions
   - Handles marker tap events and native notifications
   - Integrates with Maps SDK annotations API

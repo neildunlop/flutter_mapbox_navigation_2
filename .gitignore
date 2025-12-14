@@ -118,3 +118,6 @@ ios/Flutter/flutter_export_environment.sh
 
 # C++ build files
 example/android/app/.cxx/
+
+# Windows reserved names
+nul

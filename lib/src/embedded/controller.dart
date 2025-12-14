@@ -163,15 +163,21 @@ class MapBoxNavigationViewController {
 
   RouteEvent _parseRouteEvent(String jsonString) {
     RouteEvent event;
-    final map = json.decode(jsonString) as Map<String, dynamic>;
-    final progressEvent = RouteProgressEvent.fromJson(map);
-    if (progressEvent.isProgressEvent!) {
-      event = RouteEvent(
-        eventType: MapBoxEvent.progress_change,
-        data: progressEvent,
-      );
-    } else {
-      event = RouteEvent.fromJson(map);
+    try {
+      final map = json.decode(jsonString) as Map<String, dynamic>;
+      final progressEvent = RouteProgressEvent.fromJson(map);
+      if (progressEvent.isProgressEvent!) {
+        event = RouteEvent(
+          eventType: MapBoxEvent.progress_change,
+          data: progressEvent,
+        );
+      } else {
+        event = RouteEvent.fromJson(map);
+      }
+    } catch (e) {
+      // Handle malformed JSON from native code gracefully
+      debugPrint('Warning: Failed to parse route event: $e');
+      event = RouteEvent();
     }
     return event;
   }

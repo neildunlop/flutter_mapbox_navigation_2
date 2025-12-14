@@ -589,10 +589,7 @@ await MapBoxNavigation.instance.clearAllStaticMarkers();
 - **Interactive** - Tap callbacks with detailed information display
 - **Performance Optimized** - Configurable limits and efficient rendering
 
-> **📝 Icon Coverage Note**: 
-> - **iOS**: Complete icon coverage with 40+ SF Symbols for all marker types
-> - **Android**: 12 essential icons implemented (petrol, restaurant, hotel, hospital, etc.), 35 additional icons fall back to default pin
-> - **TODO**: Create remaining Android vector drawables for complete cross-platform icon parity
+> **📝 Icon Coverage**: Both iOS and Android have complete icon coverage for all 33 marker types.
 
 For detailed documentation, see [Static Markers Guide](doc/static_markers.md).
 
@@ -881,50 +878,14 @@ This plugin uses the Mapbox Directions API for route calculation. Understanding 
 ## Documentation
 
 For detailed technical documentation, architecture overview, and implementation guides, see the `/doc` directory:
+- [Documentation Index](doc/README.md)
 - [Architecture Overview](doc/overview.md)
+- [Configuration Guide](doc/mapbox_overview.md)
 - [Feature Comparison](doc/feature_comparison.md)
-- [Modernization Summary](doc/modernisation.md)
-- [Testing Strategy](doc/testing_strategy.md)
 - [Static Markers Guide](doc/static_markers.md)
-- [Map Marker Implementation Plan](doc/marker_implementation.md)
+- [Popup Usage Guide](doc/popup_usage_guide.md)
+- [Testing Guide](doc/testing.md)
 
 ## Changelog
 
-### [Unreleased]
-#### New Features
-- **Offline Navigation**: Complete offline routing and map tile support with:
-  - Region downloads with bounding box coordinates
-  - Progress tracking callbacks during downloads
-  - Optional routing tile downloads for offline turn-by-turn navigation
-  - Cache management (list, status, delete regions)
-  - Cache size monitoring
-
-- **Trip Progress Panel**: Customizable navigation progress overlay with:
-  - Skip/previous waypoint buttons for multi-stop navigation
-  - Progress bar showing trip completion
-  - Waypoint count, distance, duration, and ETA display
-  - Fluent builder API for easy configuration
-  - Full theming support (light/dark presets, custom colors)
-  - Category-based icon coloring
-  - Cross-platform consistency (iOS and Android)
-  - IconProvider interface for custom icon implementations
-
-- **Static Markers System**: Complete implementation of custom markers with:
-  - 30+ predefined icons across 5 categories
-  - Flexible string-based categories
-  - Rich metadata support
-  - Smart clustering and distance filtering
-  - Interactive tap callbacks
-  - Performance optimization features
-
-#### Breaking Changes
-- Improved `addWayPoints` API to return meaningful results:
-  - Now returns `WaypointResult` with success status and number of waypoints added
-  - Added proper error handling and feedback
-  - Makes the API more consistent with other navigation methods
-
-#### Improvements
-- Added better error handling for waypoint operations
-- Improved type safety across the navigation API
-- Enhanced test coverage for platform communication
-- Added comprehensive static marker documentation and examples
+See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes.

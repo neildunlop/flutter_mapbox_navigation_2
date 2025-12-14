@@ -1,33 +1,55 @@
-## [Unreleased]
+## 0.3.0
+
+### New Features
+
+- **Offline Navigation**: Complete offline routing and map tile support
+  - Region downloads with bounding box coordinates
+  - Progress tracking callbacks during downloads
+  - Optional routing tile downloads for offline turn-by-turn navigation
+  - Cache management (list, status, delete regions)
+  - Cache size monitoring
+
+- **Trip Progress Panel**: Customizable navigation progress overlay
+  - Skip/previous waypoint buttons for multi-stop navigation
+  - Progress bar showing trip completion
+  - Waypoint count, distance, duration, and ETA display
+  - Fluent builder API for easy configuration
+  - Full theming support (light/dark presets, custom colors)
+  - Category-based icon coloring
+  - Cross-platform consistency (iOS and Android)
+
+- **Static Markers System**: Custom POI markers on navigation maps
+  - 33 predefined icons across 5 categories (complete coverage on iOS and Android)
+  - Flexible string-based categories
+  - Rich metadata support
+  - Smart clustering and distance filtering
+  - Interactive tap callbacks with Flutter popup overlays
+  - Performance optimization features
+
+- **Marker Popup System**: Flutter-native popup overlays
+  - Cross-platform consistency
+  - Customizable popup builders
+  - Coordinate conversion utilities
 
 ### Breaking Changes
-- Improved `addWayPoints` API to return meaningful results:
-  - Now returns `WaypointResult` with success status and number of waypoints added
-  - Added proper error handling and feedback
-  - Makes the API more consistent with other navigation methods
 
-### Added
-- Documentation about voice instruction units being locked at first initialization
-- Proper error handling for offline routing feature
+- **Namespace Change**: Package namespace changed from `com.eopeter.fluttermapboxnavigation` to `com.neiladunlop.fluttermapboxnavigation2`
+- **`addWayPoints` API**: Now returns `WaypointResult` with success status and number of waypoints added (previously returned `bool?`)
+
+### Improvements
+
 - Better error handling for waypoint operations
 - Improved type safety across the navigation API
-- Enhanced test coverage for platform communication
-
-### Changed
-- Simplified embedded navigation UI by removing redundant "Start (Imperial)" button
-- Renamed "Start (Metric)" button to "Start Embedded" for clarity
-- Improved code organization and removed unused imports
-- Enhanced error messages and comments for better maintainability
+- Enhanced test coverage (625+ unit tests)
+- Comprehensive documentation cleanup and organization
+- Android 13+ security improvements with proper receiver registration
+- Complete Android icon coverage (all 33 marker icons implemented)
 
 ### Fixed
-- Voice instruction units now properly documented as being locked at first initialization
-- Removed redundant code and improved error handling in permission checks
-- Cleaned up empty method implementations with proper documentation
 
-### Technical Notes
-- Voice instruction units are locked at first initialization of the navigation session by design in the Mapbox SDK
-- Display units can be changed at runtime, but voice instructions will maintain their initial units
-- This behavior ensures consistent voice guidance throughout a navigation session
+- Voice instruction units documentation (locked at first initialization by design)
+- JSON parsing errors in embedded controller
+- Various platform channel communication issues
 
 ## 0.2.2
 * Fix issue with voice units in Android

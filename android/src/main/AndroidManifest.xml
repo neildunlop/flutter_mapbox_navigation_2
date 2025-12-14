@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.eopeter.fluttermapboxnavigation">
+    package="com.neiladunlop.fluttermapboxnavigation2">
 
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -8,18 +8,18 @@
 
     <application>
         <activity 
-            android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationActivity"
+            android:name="com.neiladunlop.fluttermapboxnavigation2.activity.NavigationActivity"
             android:exported="false"
             android:theme="@style/AppTheme"
             tools:replace="android:theme" />
             
         <activity 
-            android:name="com.eopeter.fluttermapboxnavigation.activity.FlutterStyledNavigationActivity"
+            android:name="com.neiladunlop.fluttermapboxnavigation2.activity.FlutterStyledNavigationActivity"
             android:exported="false"
             android:theme="@style/AppTheme" />
             
         <receiver
-            android:name="com.eopeter.fluttermapboxnavigation.receivers.NavigationReceiver"
+            android:name="com.neiladunlop.fluttermapboxnavigation2.receivers.NavigationReceiver"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
             
@@ -41,18 +41,18 @@
 
         <!-- Dynamic receivers from NavigationActivity -->
         <receiver
-            android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationActivity$finishBroadcastReceiver"
+            android:name="com.neiladunlop.fluttermapboxnavigation2.activity.NavigationActivity$finishBroadcastReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationLauncher.KEY_STOP_NAVIGATION" />
+                <action android:name="com.neiladunlop.fluttermapboxnavigation2.activity.NavigationLauncher.KEY_STOP_NAVIGATION" />
             </intent-filter>
         </receiver>
 
         <receiver
-            android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationActivity$addWayPointsBroadcastReceiver"
+            android:name="com.neiladunlop.fluttermapboxnavigation2.activity.NavigationActivity$addWayPointsBroadcastReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.eopeter.fluttermapboxnavigation.activity.NavigationLauncher.KEY_ADD_WAYPOINTS" />
+                <action android:name="com.neiladunlop.fluttermapboxnavigation2.activity.NavigationLauncher.KEY_ADD_WAYPOINTS" />
             </intent-filter>
         </receiver>
             
