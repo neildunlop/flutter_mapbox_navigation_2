@@ -56,8 +56,8 @@ flutter build apk --debug
 
 ### 5. Grant Permissions (Optional but recommended)
 ```bash
-adb shell pm grant com.eopeter.flutter_mapbox_navigation_example android.permission.ACCESS_FINE_LOCATION
-adb shell pm grant com.eopeter.flutter_mapbox_navigation_example android.permission.ACCESS_COARSE_LOCATION
+adb shell pm grant com.neiladunlop.fluttermapboxnavigation2example android.permission.ACCESS_FINE_LOCATION
+adb shell pm grant com.neiladunlop.fluttermapboxnavigation2example android.permission.ACCESS_COARSE_LOCATION
 ```
 
 ## Configuration

@@ -2,7 +2,7 @@
 # Usage: .\run_integration_tests.ps1
 
 $ADB = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
-$PACKAGE = "com.dormmom.flutter_mapbox_navigation_example"
+$PACKAGE = "com.neiladunlop.fluttermapboxnavigation2example"
 
 # Get the first online device
 $device = & $ADB devices | Select-String "device$" | Select-Object -First 1
