@@ -1,3 +1,22 @@
+## 0.4.0
+
+### New Features
+
+- **Dynamic Markers**: Real-time visualization of moving entities with smooth animation
+  - Native-level 60fps position interpolation between updates
+  - Smooth heading rotation for direction of travel
+  - Trail/breadcrumb rendering showing entity path history
+  - Automatic state management (tracking, stale, offline, expired)
+  - Stream-based integration with any real-time data source
+  - Dead-reckoning position prediction when updates are delayed
+  - Rich metadata support for entity-specific data
+  - Configurable animation duration, easing curves, and thresholds
+
+### Improvements
+
+- Updated screenshot documentation with feature showcase images
+- Added Dynamic Markers guide to documentation
+
 ## 0.3.0
 
 ### New Features

@@ -51,6 +51,7 @@ await MapBoxNavigation.instance.startNavigation(
 ### Advanced Features
 * **Event-Driven Architecture** - Comprehensive event system for navigation progress, route updates, and user interactions
 * **Static Markers** - Display custom points of interest with interactive markers and clustering
+* **Dynamic Markers** - Real-time visualization of moving entities with smooth 60fps animated transitions
 * **Offline Navigation** - Download map tiles and routing data for offline use with progress tracking
 * **Modern Android Support** - Android 13+ compatibility with enhanced security
 * **Type-Safe API** - Improved error handling and type safety across all platforms
@@ -593,6 +594,89 @@ await MapBoxNavigation.instance.clearAllStaticMarkers();
 
 For detailed documentation, see [Static Markers Guide](doc/static_markers.md).
 
+### Dynamic Markers
+
+Display moving entities on the map with smooth animated transitions. Unlike static markers, dynamic markers continuously update their position based on an external data stream with native-level animation for smooth 60fps movement.
+
+```dart
+// 1. Add a dynamic marker
+final marker = DynamicMarker(
+  id: 'vehicle_123',
+  latitude: 37.7749,
+  longitude: -122.4194,
+  title: 'Delivery Van',
+  category: 'vehicle',
+  iconId: MarkerIcons.vehicle,
+  heading: 45.0,
+  speed: 15.5,
+  showTrail: true,
+  metadata: {
+    'driverId': 'D-001',
+    'licensePlate': 'ABC123',
+    'status': 'in_transit',
+  },
+);
+
+await MapBoxNavigation.instance.addDynamicMarker(
+  marker: marker,
+  configuration: DynamicMarkerConfiguration(
+    animationDurationMs: 1000,
+    enableTrail: true,
+    staleThresholdMs: 10000,
+    onMarkerTap: (marker) => print('Tapped: ${marker.title}'),
+  ),
+);
+
+// 2. Update marker position (triggers smooth animation)
+await MapBoxNavigation.instance.updateDynamicMarkerPosition(
+  update: DynamicMarkerPositionUpdate(
+    markerId: 'vehicle_123',
+    latitude: 37.7760,
+    longitude: -122.4180,
+    heading: 90.0,
+    speed: 18.0,
+    timestamp: DateTime.now(),
+  ),
+);
+
+// 3. Subscribe to a stream for real-time updates
+final subscription = MapBoxNavigation.instance.subscribeToDynamicMarkerUpdates(
+  updateStream: myWebSocketStream.map((msg) => DynamicMarkerPositionUpdate(
+    markerId: msg.entityId,
+    latitude: msg.lat,
+    longitude: msg.lng,
+    heading: msg.heading,
+    speed: msg.speed,
+    timestamp: msg.timestamp,
+  )),
+);
+
+// 4. Remove markers when done
+await MapBoxNavigation.instance.clearAllDynamicMarkers();
+```
+
+**Dynamic Marker Features:**
+- **Smooth Animation** - Native-level 60fps position interpolation between updates
+- **Heading Rotation** - Markers rotate smoothly to face their direction of travel
+- **Trail/Breadcrumb** - Optional trail showing where the entity has been
+- **State Management** - Automatic tracking, stale, offline, and expired states
+- **Entity-Agnostic** - Track vehicles, people, drones, deliveries, or any moving entity
+- **Stream Integration** - Subscribe to any real-time data source (WebSocket, Firebase, MQTT, etc.)
+- **Position Prediction** - Dead-reckoning when updates are delayed
+- **Rich Metadata** - Store arbitrary entity-specific data with each marker
+
+**Marker States:**
+| State | Description |
+|-------|-------------|
+| `tracking` | Actively receiving position updates |
+| `animating` | Currently animating between positions |
+| `stationary` | Entity has stopped moving |
+| `stale` | No update received within threshold (visual indicator shown) |
+| `offline` | No update for extended period |
+| `expired` | About to be auto-removed |
+
+For detailed documentation, see [Dynamic Markers Guide](doc/features/12-dynamic-markers.md).
+
 ### Trip Progress Panel
 
 Customize the trip progress panel that shows navigation progress, waypoint information, and allows users to skip/go back to waypoints.
@@ -792,15 +876,17 @@ await _controller?.startFreeDrive();
 
 ## Screenshots
 
-### Full Screen Navigation
-![Navigation View](screenshots/screenshot1.png?raw=true "iOS View") | ![Android View](screenshots/screenshot2.png?raw=true "Android View")
-|:---:|:---:|
-| iOS View | Android View |
+### Navigation & Features
 
-### Embedded Navigation
-![Navigation View](screenshots/screenshot3.png?raw=true "Embedded iOS View") | ![Navigation View](screenshots/screenshot4.png?raw=true "Embedded Android View")
-|:---:|:---:|
-| Embedded iOS View | Embedded Android View |
+| Feature | Screenshot |
+|:--------|:----------:|
+| **Menu & Options** | ![Menu](doc/images/android_menu.png?raw=true "Navigation Menu") |
+| **Turn-by-Turn Navigation** | ![Navigation](doc/images/android_navigation_2.png?raw=true "Turn-by-Turn Navigation") |
+| **Multi-Stop Navigation** | ![Multi-Stop](doc/images/android_multistop.png?raw=true "Multi-Stop Navigation") |
+| **Trip Progress Panel** | ![Progress Panel](doc/images/android_progress_panel.png?raw=true "Trip Progress Panel") |
+| **Dynamic Markers** | ![Dynamic Markers](doc/images/android_dynamic_markers.png?raw=true "Dynamic Markers") |
+| **Marker Popups** | ![Popups](doc/images/android_popups.png?raw=true "Marker Popups") |
+| **Offline Navigation** | ![Offline](doc/images/android_offline_navigation.png?raw=true "Offline Navigation") |
 
 ## Platform Support
 
@@ -821,6 +907,7 @@ await _controller?.startFreeDrive();
 * [DONE] Static Markers System
 * [DONE] Trip Progress Panel with waypoint skipping
 * [DONE] Offline Navigation (map tiles and routing data)
+* [DONE] Dynamic Markers (real-time entity tracking with smooth animation)
 * [PLANNED] Vehicle Movement Simulation
 * [PLANNED] Enhanced UI Components
 
@@ -883,6 +970,7 @@ For detailed technical documentation, architecture overview, and implementation 
 - [Configuration Guide](doc/mapbox_overview.md)
 - [Feature Comparison](doc/feature_comparison.md)
 - [Static Markers Guide](doc/static_markers.md)
+- [Dynamic Markers Guide](doc/features/12-dynamic-markers.md)
 - [Popup Usage Guide](doc/popup_usage_guide.md)
 - [Testing Guide](doc/testing.md)
 
