@@ -113,6 +113,9 @@ public class FlutterMapboxNavigationView : NavigationFactory, FlutterPlatformVie
         // Set the MapView in the StaticMarkerManager for static marker support
         StaticMarkerManager.shared.setMapView(navigationMapView.mapView)
 
+        // Set the MapView in the DynamicMarkerManager for dynamic marker support
+        DynamicMarkerManager.shared.setMapView(navigationMapView.mapView)
+
         if(self.arguments != nil)
         {
            

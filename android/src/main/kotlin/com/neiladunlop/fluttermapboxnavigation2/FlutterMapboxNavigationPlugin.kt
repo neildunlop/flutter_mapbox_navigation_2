@@ -18,6 +18,9 @@ import com.neiladunlop.fluttermapboxnavigation2.models.Waypoint
 import com.neiladunlop.fluttermapboxnavigation2.models.StaticMarker
 import com.neiladunlop.fluttermapboxnavigation2.models.MarkerConfiguration
 import com.neiladunlop.fluttermapboxnavigation2.models.TripProgressConfig
+import com.neiladunlop.fluttermapboxnavigation2.models.DynamicMarker
+import com.neiladunlop.fluttermapboxnavigation2.models.DynamicMarkerConfiguration
+import com.neiladunlop.fluttermapboxnavigation2.models.DynamicMarkerPositionUpdate
 import com.mapbox.api.directions.v5.DirectionsCriteria
 import com.mapbox.api.directions.v5.models.DirectionsRoute
 import com.mapbox.common.TileRegion
@@ -52,9 +55,11 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
     private lateinit var channel: MethodChannel
     private lateinit var progressEventChannel: EventChannel
     private lateinit var markerEventChannel: EventChannel
+    private lateinit var dynamicMarkerEventChannel: EventChannel
     private var currentActivity: Activity? = null
     private lateinit var currentContext: Context
     private val markerManager = StaticMarkerManager.getInstance()
+    private val dynamicMarkerManager = DynamicMarkerManager.getInstance()
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         val messenger = binding.binaryMessenger
@@ -72,6 +77,17 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
 
             override fun onCancel(arguments: Any?) {
                 markerManager.setEventSink(null)
+            }
+        })
+
+        dynamicMarkerEventChannel = EventChannel(messenger, "flutter_mapbox_navigation/dynamic_marker_events")
+        dynamicMarkerEventChannel.setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                dynamicMarkerManager.setEventSink(events)
+            }
+
+            override fun onCancel(arguments: Any?) {
+                dynamicMarkerManager.setEventSink(null)
             }
         })
 
@@ -223,6 +239,46 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
             }
             "getMapViewport" -> {
                 getMapViewport(result)
+            }
+            // Dynamic Marker Methods
+            "addDynamicMarker" -> {
+                addDynamicMarker(call, result)
+            }
+            "addDynamicMarkers" -> {
+                addDynamicMarkers(call, result)
+            }
+            "updateDynamicMarkerPosition" -> {
+                updateDynamicMarkerPosition(call, result)
+            }
+            "batchUpdateDynamicMarkerPositions" -> {
+                batchUpdateDynamicMarkerPositions(call, result)
+            }
+            "updateDynamicMarker" -> {
+                updateDynamicMarker(call, result)
+            }
+            "removeDynamicMarker" -> {
+                removeDynamicMarker(call, result)
+            }
+            "removeDynamicMarkers" -> {
+                removeDynamicMarkers(call, result)
+            }
+            "clearAllDynamicMarkers" -> {
+                clearAllDynamicMarkers(result)
+            }
+            "getDynamicMarker" -> {
+                getDynamicMarker(call, result)
+            }
+            "getDynamicMarkers" -> {
+                getDynamicMarkers(result)
+            }
+            "updateDynamicMarkerConfiguration" -> {
+                updateDynamicMarkerConfiguration(call, result)
+            }
+            "clearDynamicMarkerTrail" -> {
+                clearDynamicMarkerTrail(call, result)
+            }
+            "clearAllDynamicMarkerTrails" -> {
+                clearAllDynamicMarkerTrails(result)
             }
             else -> result.notImplemented()
         }
@@ -958,6 +1014,7 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
         currentActivity = binding.activity
         currentContext = binding.activity.applicationContext
         markerManager.setContext(currentContext)
+        dynamicMarkerManager.setContext(currentContext)
         if (platformViewRegistry != null && binaryMessenger != null && currentActivity != null) {
             platformViewRegistry?.registerViewFactory(
                 viewId,
@@ -1220,6 +1277,223 @@ class FlutterMapboxNavigationPlugin : FlutterPlugin, MethodCallHandler,
 
         } catch (e: Exception) {
             result.error("FLUTTER_NAVIGATION_ERROR", "Failed to start Flutter navigation: ${e.message}", null)
+        }
+    }
+
+    // MARK: Dynamic Marker Methods
+
+    @Suppress("UNCHECKED_CAST")
+    private fun addDynamicMarker(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val markerJson = arguments?.get("marker") as? Map<String, Any>
+
+            if (markerJson == null) {
+                result.error("INVALID_ARGUMENTS", "Marker data is required", null)
+                return
+            }
+
+            val marker = DynamicMarker.fromJson(markerJson)
+            val success = dynamicMarkerManager.addDynamicMarker(marker)
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("ADD_DYNAMIC_MARKER_ERROR", "Failed to add dynamic marker: ${e.message}", null)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun addDynamicMarkers(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val markersList = arguments?.get("markers") as? List<Map<String, Any>>
+
+            if (markersList == null) {
+                result.error("INVALID_ARGUMENTS", "Markers list is required", null)
+                return
+            }
+
+            val markers = markersList.map { DynamicMarker.fromJson(it) }
+            val success = dynamicMarkerManager.addDynamicMarkers(markers)
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("ADD_DYNAMIC_MARKERS_ERROR", "Failed to add dynamic markers: ${e.message}", null)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun updateDynamicMarkerPosition(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+
+            if (arguments == null) {
+                result.error("INVALID_ARGUMENTS", "Position update data is required", null)
+                return
+            }
+
+            val update = DynamicMarkerPositionUpdate.fromJson(arguments)
+            val success = dynamicMarkerManager.updateDynamicMarkerPosition(update)
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("UPDATE_POSITION_ERROR", "Failed to update dynamic marker position: ${e.message}", null)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun batchUpdateDynamicMarkerPositions(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val updatesList = arguments?.get("updates") as? List<Map<String, Any>>
+
+            if (updatesList == null) {
+                result.error("INVALID_ARGUMENTS", "Updates list is required", null)
+                return
+            }
+
+            val updates = updatesList.map { DynamicMarkerPositionUpdate.fromJson(it) }
+            val success = dynamicMarkerManager.batchUpdateDynamicMarkerPositions(updates)
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("BATCH_UPDATE_ERROR", "Failed to batch update positions: ${e.message}", null)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun updateDynamicMarker(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val markerId = arguments?.get("markerId") as? String
+
+            if (markerId == null) {
+                result.error("INVALID_ARGUMENTS", "Marker ID is required", null)
+                return
+            }
+
+            val success = dynamicMarkerManager.updateDynamicMarker(
+                markerId = markerId,
+                title = arguments["title"] as? String,
+                snippet = arguments["snippet"] as? String,
+                iconId = arguments["iconId"] as? String,
+                showTrail = arguments["showTrail"] as? Boolean,
+                metadata = arguments["metadata"] as? Map<String, Any>
+            )
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("UPDATE_MARKER_ERROR", "Failed to update dynamic marker: ${e.message}", null)
+        }
+    }
+
+    private fun removeDynamicMarker(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val markerId = arguments?.get("markerId") as? String
+
+            if (markerId == null) {
+                result.error("INVALID_ARGUMENTS", "Marker ID is required", null)
+                return
+            }
+
+            val success = dynamicMarkerManager.removeDynamicMarker(markerId)
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("REMOVE_MARKER_ERROR", "Failed to remove dynamic marker: ${e.message}", null)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun removeDynamicMarkers(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val markerIds = arguments?.get("markerIds") as? List<String>
+
+            if (markerIds == null) {
+                result.error("INVALID_ARGUMENTS", "Marker IDs list is required", null)
+                return
+            }
+
+            val success = dynamicMarkerManager.removeDynamicMarkers(markerIds)
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("REMOVE_MARKERS_ERROR", "Failed to remove dynamic markers: ${e.message}", null)
+        }
+    }
+
+    private fun clearAllDynamicMarkers(result: Result) {
+        try {
+            val success = dynamicMarkerManager.clearAllDynamicMarkers()
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("CLEAR_MARKERS_ERROR", "Failed to clear dynamic markers: ${e.message}", null)
+        }
+    }
+
+    private fun getDynamicMarker(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val markerId = arguments?.get("markerId") as? String
+
+            if (markerId == null) {
+                result.error("INVALID_ARGUMENTS", "Marker ID is required", null)
+                return
+            }
+
+            val marker = dynamicMarkerManager.getDynamicMarker(markerId)
+            result.success(marker?.toJson())
+        } catch (e: Exception) {
+            result.error("GET_MARKER_ERROR", "Failed to get dynamic marker: ${e.message}", null)
+        }
+    }
+
+    private fun getDynamicMarkers(result: Result) {
+        try {
+            val markers = dynamicMarkerManager.getDynamicMarkers()
+            val markersJson = markers.map { it.toJson() }
+            result.success(markersJson)
+        } catch (e: Exception) {
+            result.error("GET_MARKERS_ERROR", "Failed to get dynamic markers: ${e.message}", null)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun updateDynamicMarkerConfiguration(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+
+            if (arguments == null) {
+                result.error("INVALID_ARGUMENTS", "Configuration is required", null)
+                return
+            }
+
+            val config = DynamicMarkerConfiguration.fromJson(arguments)
+            val success = dynamicMarkerManager.updateDynamicMarkerConfiguration(config)
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("UPDATE_CONFIG_ERROR", "Failed to update dynamic marker configuration: ${e.message}", null)
+        }
+    }
+
+    private fun clearDynamicMarkerTrail(call: MethodCall, result: Result) {
+        try {
+            val arguments = call.arguments as? Map<String, Any>
+            val markerId = arguments?.get("markerId") as? String
+
+            if (markerId == null) {
+                result.error("INVALID_ARGUMENTS", "Marker ID is required", null)
+                return
+            }
+
+            val success = dynamicMarkerManager.clearDynamicMarkerTrail(markerId)
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("CLEAR_TRAIL_ERROR", "Failed to clear dynamic marker trail: ${e.message}", null)
+        }
+    }
+
+    private fun clearAllDynamicMarkerTrails(result: Result) {
+        try {
+            val success = dynamicMarkerManager.clearAllDynamicMarkerTrails()
+            result.success(success)
+        } catch (e: Exception) {
+            result.error("CLEAR_TRAILS_ERROR", "Failed to clear all dynamic marker trails: ${e.message}", null)
         }
     }
 }

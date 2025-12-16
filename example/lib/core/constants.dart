@@ -40,6 +40,8 @@ class AppRoutes {
   static const String eventsDemo = '/events-demo';
   static const String validation = '/validation';
   static const String accessibility = '/accessibility';
+  static const String dynamicMarkers = '/dynamic-markers';
+  static const String dynamicMarkersNavigation = '/dynamic-markers-navigation';
 }
 
 /// UI Constants

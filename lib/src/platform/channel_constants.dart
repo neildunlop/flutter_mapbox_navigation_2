@@ -20,6 +20,9 @@ const String kMarkerEventChannelName = 'flutter_mapbox_navigation/marker_events'
 /// Event channel for offline download progress events.
 const String kOfflineProgressChannelName = 'flutter_mapbox_navigation/offline_progress';
 
+/// Event channel for dynamic marker position updates and state changes.
+const String kDynamicMarkerEventChannelName = 'flutter_mapbox_navigation/dynamic_marker_events';
+
 // =============================================================================
 // METHOD NAMES
 // =============================================================================
@@ -344,6 +347,189 @@ abstract class Methods {
   /// }
   /// ```
   static const String getMapViewport = 'getMapViewport';
+
+  // ---------------------------------------------------------------------------
+  // Dynamic Marker Methods
+  // ---------------------------------------------------------------------------
+
+  /// Adds a single dynamic marker to the map.
+  ///
+  /// **Arguments:**
+  /// ```json
+  /// {
+  ///   "marker": {
+  ///     "id": String,             // Required: Unique identifier
+  ///     "latitude": double,       // Required
+  ///     "longitude": double,      // Required
+  ///     "heading": double?,       // Optional: Direction in degrees (0-360)
+  ///     "speed": double?,         // Optional: Speed in m/s
+  ///     "title": String?,         // Optional: Display title
+  ///     "snippet": String?,       // Optional: Description
+  ///     "iconId": String?,        // Optional: Icon identifier
+  ///     "category": String?,      // Optional: Category for styling
+  ///     "showTrail": bool?,       // Optional: Show breadcrumb trail
+  ///     "metadata": Map?          // Optional: Custom data
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// **Returns:** `bool` - true if marker added
+  static const String addDynamicMarker = 'addDynamicMarker';
+
+  /// Adds multiple dynamic markers to the map.
+  ///
+  /// **Arguments:**
+  /// ```json
+  /// {
+  ///   "markers": [{ ... }]        // Array of marker objects (same as addDynamicMarker)
+  /// }
+  /// ```
+  ///
+  /// **Returns:** `bool` - true if markers added
+  static const String addDynamicMarkers = 'addDynamicMarkers';
+
+  /// Updates the position of a dynamic marker with animation.
+  ///
+  /// **Arguments:**
+  /// ```json
+  /// {
+  ///   "markerId": String,         // Required: Marker to update
+  ///   "latitude": double,         // Required
+  ///   "longitude": double,        // Required
+  ///   "heading": double?,         // Optional: New heading
+  ///   "speed": double?,           // Optional: Current speed
+  ///   "altitude": double?,        // Optional: Altitude in meters
+  ///   "accuracy": double?,        // Optional: GPS accuracy
+  ///   "timestamp": String,        // Required: ISO-8601 timestamp
+  ///   "additionalData": Map?      // Optional: Extra data
+  /// }
+  /// ```
+  ///
+  /// **Returns:** `bool` - true if update applied
+  static const String updateDynamicMarkerPosition = 'updateDynamicMarkerPosition';
+
+  /// Applies multiple position updates in batch.
+  ///
+  /// **Arguments:**
+  /// ```json
+  /// {
+  ///   "updates": [{ ... }]        // Array of position updates
+  /// }
+  /// ```
+  ///
+  /// **Returns:** `bool` - true if updates applied
+  static const String batchUpdateDynamicMarkerPositions = 'batchUpdateDynamicMarkerPositions';
+
+  /// Updates the configuration for a dynamic marker.
+  ///
+  /// **Arguments:**
+  /// ```json
+  /// {
+  ///   "markerId": String,         // Required
+  ///   "title": String?,           // Optional: New title
+  ///   "snippet": String?,         // Optional: New snippet
+  ///   "iconId": String?,          // Optional: New icon
+  ///   "showTrail": bool?,         // Optional: Toggle trail
+  ///   "metadata": Map?            // Optional: New metadata
+  /// }
+  /// ```
+  ///
+  /// **Returns:** `bool` - true if updated
+  static const String updateDynamicMarker = 'updateDynamicMarker';
+
+  /// Removes a dynamic marker by ID.
+  ///
+  /// **Arguments:**
+  /// ```json
+  /// {
+  ///   "markerId": String
+  /// }
+  /// ```
+  ///
+  /// **Returns:** `bool` - true if removed
+  static const String removeDynamicMarker = 'removeDynamicMarker';
+
+  /// Removes multiple dynamic markers by ID.
+  ///
+  /// **Arguments:**
+  /// ```json
+  /// {
+  ///   "markerIds": [String]
+  /// }
+  /// ```
+  ///
+  /// **Returns:** `bool` - true if markers removed
+  static const String removeDynamicMarkers = 'removeDynamicMarkers';
+
+  /// Removes all dynamic markers from the map.
+  ///
+  /// **Arguments:** None
+  ///
+  /// **Returns:** `bool` - true if cleared
+  static const String clearAllDynamicMarkers = 'clearAllDynamicMarkers';
+
+  /// Gets a dynamic marker by ID.
+  ///
+  /// **Arguments:**
+  /// ```json
+  /// {
+  ///   "markerId": String
+  /// }
+  /// ```
+  ///
+  /// **Returns:** `Map<String, Object?>?` - Marker data or null if not found
+  static const String getDynamicMarker = 'getDynamicMarker';
+
+  /// Gets all current dynamic markers.
+  ///
+  /// **Arguments:** None
+  ///
+  /// **Returns:** `List<Map<String, Object?>>` - Array of marker data
+  static const String getDynamicMarkers = 'getDynamicMarkers';
+
+  /// Updates the global dynamic marker configuration.
+  ///
+  /// **Arguments:**
+  /// ```json
+  /// {
+  ///   "animationDurationMs": int?,      // Position animation duration
+  ///   "enableAnimation": bool?,          // Enable/disable animation
+  ///   "animateHeading": bool?,           // Enable heading animation
+  ///   "staleThresholdMs": int?,          // Time before marking stale
+  ///   "offlineThresholdMs": int?,        // Time before marking offline
+  ///   "expiredThresholdMs": int?,        // Time before auto-removal
+  ///   "enableTrail": bool?,              // Enable trail by default
+  ///   "maxTrailPoints": int?,            // Max trail length
+  ///   "trailColor": int?,                // Trail color as ARGB int
+  ///   "trailWidth": double?,             // Trail width in pixels
+  ///   "enablePrediction": bool?,         // Enable dead-reckoning
+  ///   "predictionWindowMs": int?,        // Max prediction duration
+  ///   "zIndex": int?,                    // Z-order for markers
+  ///   "minZoomLevel": double?            // Min zoom for visibility
+  /// }
+  /// ```
+  ///
+  /// **Returns:** `bool` - true if configuration updated
+  static const String updateDynamicMarkerConfiguration = 'updateDynamicMarkerConfiguration';
+
+  /// Clears the trail for a specific marker.
+  ///
+  /// **Arguments:**
+  /// ```json
+  /// {
+  ///   "markerId": String
+  /// }
+  /// ```
+  ///
+  /// **Returns:** `bool` - true if trail cleared
+  static const String clearDynamicMarkerTrail = 'clearDynamicMarkerTrail';
+
+  /// Clears trails for all dynamic markers.
+  ///
+  /// **Arguments:** None
+  ///
+  /// **Returns:** `bool` - true if trails cleared
+  static const String clearAllDynamicMarkerTrails = 'clearAllDynamicMarkerTrails';
 }
 
 // =============================================================================
@@ -455,6 +641,55 @@ abstract class EventTypes {
 
   /// Download failed.
   static const String downloadFailed = 'download_failed';
+
+  // ---------------------------------------------------------------------------
+  // Dynamic Marker Events (via kDynamicMarkerEventChannelName)
+  // ---------------------------------------------------------------------------
+
+  /// A dynamic marker was tapped.
+  ///
+  /// **Data:** Full marker object as Map<String, Object?>
+  static const String dynamicMarkerTapped = 'dynamic_marker_tapped';
+
+  /// A dynamic marker's state changed.
+  ///
+  /// **Data:**
+  /// ```json
+  /// {
+  ///   "markerId": String,
+  ///   "previousState": String,
+  ///   "newState": String,
+  ///   "timestamp": String
+  /// }
+  /// ```
+  static const String dynamicMarkerStateChanged = 'dynamic_marker_state_changed';
+
+  /// A dynamic marker position was updated (for Flutter-side tracking).
+  ///
+  /// **Data:**
+  /// ```json
+  /// {
+  ///   "markerId": String,
+  ///   "latitude": double,
+  ///   "longitude": double,
+  ///   "heading": double?,
+  ///   "speed": double?,
+  ///   "timestamp": String
+  /// }
+  /// ```
+  static const String dynamicMarkerPositionUpdated = 'dynamic_marker_position_updated';
+
+  /// A dynamic marker was auto-removed due to expiration.
+  ///
+  /// **Data:**
+  /// ```json
+  /// {
+  ///   "markerId": String,
+  ///   "lastUpdateTimestamp": String,
+  ///   "expirationReason": String
+  /// }
+  /// ```
+  static const String dynamicMarkerExpired = 'dynamic_marker_expired';
 }
 
 // =============================================================================

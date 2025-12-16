@@ -3,12 +3,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'package:flutter_mapbox_navigation/src/flutter_mapbox_navigation_platform_interface.dart';
 import 'package:flutter_mapbox_navigation/src/flutter_mapbox_navigation_method_channel.dart';
+import 'package:flutter_mapbox_navigation/src/flutter_mapbox_navigation_platform_interface.dart';
 import 'package:flutter_mapbox_navigation/src/models/models.dart';
-import 'package:flutter_mapbox_navigation/src/widgets/flutter_fullscreen_navigation.dart';
 import 'package:flutter_mapbox_navigation/src/utilities/coordinate_converter.dart';
+import 'package:flutter_mapbox_navigation/src/widgets/flutter_fullscreen_navigation.dart';
 
 /// Turn-By-Turn Navigation Provider
 class MapBoxNavigation {
@@ -601,9 +600,9 @@ class MapBoxNavigation {
   Future<MapViewport?> getMapViewport() async {
     final result = await FlutterMapboxNavigationPlatform.instance
         .getMapViewport();
-    
+
     if (result == null) return null;
-    
+
     return MapViewport(
       center: LatLng(
         result['centerLat'] as double,
@@ -617,5 +616,285 @@ class MapBoxNavigation {
       bearing: result['bearing'] as double? ?? 0.0,
       tilt: result['tilt'] as double? ?? 0.0,
     );
+  }
+
+  // MARK: Dynamic Marker Methods
+
+  /// Adds a single dynamic marker to the map.
+  ///
+  /// Dynamic markers can move and animate across the map. Use this for
+  /// tracking real-time entities like vehicles, drones, or delivery drivers.
+  ///
+  /// [marker] The dynamic marker to add
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// final marker = DynamicMarker(
+  ///   id: 'vehicle_1',
+  ///   latitude: 37.7749,
+  ///   longitude: -122.4194,
+  ///   title: 'Delivery Van',
+  ///   category: 'delivery',
+  ///   showTrail: true,
+  /// );
+  /// await MapBoxNavigation.instance.addDynamicMarker(marker: marker);
+  /// ```
+  Future<bool?> addDynamicMarker({required DynamicMarker marker}) async {
+    return FlutterMapboxNavigationPlatform.instance.addDynamicMarker(
+      marker: marker,
+    );
+  }
+
+  /// Adds multiple dynamic markers to the map at once.
+  ///
+  /// More efficient than calling [addDynamicMarker] multiple times.
+  ///
+  /// [markers] List of dynamic markers to add
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// final markers = [
+  ///   DynamicMarker(id: 'v1', latitude: 37.77, longitude: -122.41, ...),
+  ///   DynamicMarker(id: 'v2', latitude: 37.78, longitude: -122.42, ...),
+  /// ];
+  /// await MapBoxNavigation.instance.addDynamicMarkers(markers: markers);
+  /// ```
+  Future<bool?> addDynamicMarkers({required List<DynamicMarker> markers}) async {
+    return FlutterMapboxNavigationPlatform.instance.addDynamicMarkers(
+      markers: markers,
+    );
+  }
+
+  /// Updates the position of a dynamic marker with smooth animation.
+  ///
+  /// The marker will animate from its current position to the new position
+  /// over the configured animation duration.
+  ///
+  /// [update] Position update data including new coordinates and optional heading/speed
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// final update = DynamicMarkerPositionUpdate(
+  ///   markerId: 'vehicle_1',
+  ///   latitude: 37.7750,
+  ///   longitude: -122.4195,
+  ///   heading: 45.0,
+  ///   speed: 15.0,
+  /// );
+  /// await MapBoxNavigation.instance.updateDynamicMarkerPosition(update: update);
+  /// ```
+  Future<bool?> updateDynamicMarkerPosition({
+    required DynamicMarkerPositionUpdate update,
+  }) async {
+    return FlutterMapboxNavigationPlatform.instance.updateDynamicMarkerPosition(
+      update: update,
+    );
+  }
+
+  /// Applies multiple position updates in a single batch.
+  ///
+  /// More efficient than calling [updateDynamicMarkerPosition] multiple times,
+  /// especially when tracking many entities simultaneously.
+  ///
+  /// [updates] List of position updates to apply
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// final updates = vehicles.map((v) => DynamicMarkerPositionUpdate(
+  ///   markerId: v.id,
+  ///   latitude: v.newLat,
+  ///   longitude: v.newLng,
+  /// )).toList();
+  /// await MapBoxNavigation.instance.batchUpdateDynamicMarkerPositions(updates: updates);
+  /// ```
+  Future<bool?> batchUpdateDynamicMarkerPositions({
+    required List<DynamicMarkerPositionUpdate> updates,
+  }) async {
+    return FlutterMapboxNavigationPlatform.instance.batchUpdateDynamicMarkerPositions(
+      updates: updates,
+    );
+  }
+
+  /// Updates non-position properties of a dynamic marker.
+  ///
+  /// Use this to change title, icon, trail visibility, etc. without
+  /// affecting the position animation.
+  ///
+  /// [markerId] The ID of the marker to update
+  /// [title] New title (optional)
+  /// [snippet] New snippet/description (optional)
+  /// [iconId] New icon identifier (optional)
+  /// [showTrail] Whether to show trail (optional)
+  /// [metadata] New metadata (optional)
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.updateDynamicMarker(
+  ///   markerId: 'vehicle_1',
+  ///   title: 'Delivery Van - En Route',
+  ///   showTrail: true,
+  /// );
+  /// ```
+  Future<bool?> updateDynamicMarker({
+    required String markerId,
+    String? title,
+    String? snippet,
+    String? iconId,
+    bool? showTrail,
+    Map<String, dynamic>? metadata,
+  }) async {
+    return FlutterMapboxNavigationPlatform.instance.updateDynamicMarker(
+      markerId: markerId,
+      title: title,
+      snippet: snippet,
+      iconId: iconId,
+      showTrail: showTrail,
+      metadata: metadata,
+    );
+  }
+
+  /// Removes a single dynamic marker by ID.
+  ///
+  /// [markerId] The ID of the marker to remove
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.removeDynamicMarker(markerId: 'vehicle_1');
+  /// ```
+  Future<bool?> removeDynamicMarker({required String markerId}) async {
+    return FlutterMapboxNavigationPlatform.instance.removeDynamicMarker(
+      markerId: markerId,
+    );
+  }
+
+  /// Removes multiple dynamic markers by ID.
+  ///
+  /// [markerIds] List of marker IDs to remove
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.removeDynamicMarkers(
+  ///   markerIds: ['vehicle_1', 'vehicle_2'],
+  /// );
+  /// ```
+  Future<bool?> removeDynamicMarkers({required List<String> markerIds}) async {
+    return FlutterMapboxNavigationPlatform.instance.removeDynamicMarkers(
+      markerIds: markerIds,
+    );
+  }
+
+  /// Removes all dynamic markers from the map.
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.clearAllDynamicMarkers();
+  /// ```
+  Future<bool?> clearAllDynamicMarkers() async {
+    return FlutterMapboxNavigationPlatform.instance.clearAllDynamicMarkers();
+  }
+
+  /// Gets a specific dynamic marker by ID.
+  ///
+  /// [markerId] The ID of the marker to retrieve
+  ///
+  /// Returns the marker if found, null otherwise.
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// final marker = await MapBoxNavigation.instance.getDynamicMarker(
+  ///   markerId: 'vehicle_1',
+  /// );
+  /// if (marker != null) {
+  ///   print('Vehicle at: ${marker.latitude}, ${marker.longitude}');
+  /// }
+  /// ```
+  Future<DynamicMarker?> getDynamicMarker({required String markerId}) async {
+    return FlutterMapboxNavigationPlatform.instance.getDynamicMarker(
+      markerId: markerId,
+    );
+  }
+
+  /// Gets all current dynamic markers.
+  ///
+  /// Returns a list of all active dynamic markers on the map.
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// final markers = await MapBoxNavigation.instance.getDynamicMarkers();
+  /// print('Tracking ${markers?.length ?? 0} entities');
+  /// ```
+  Future<List<DynamicMarker>?> getDynamicMarkers() async {
+    return FlutterMapboxNavigationPlatform.instance.getDynamicMarkers();
+  }
+
+  /// Updates the global dynamic marker configuration.
+  ///
+  /// Controls animation, state thresholds, trail rendering, and other
+  /// system-wide settings for dynamic markers.
+  ///
+  /// [configuration] New configuration settings
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.updateDynamicMarkerConfiguration(
+  ///   configuration: DynamicMarkerConfiguration(
+  ///     animationDurationMs: 1000,
+  ///     enableTrail: true,
+  ///     staleThresholdMs: 5000,
+  ///   ),
+  /// );
+  /// ```
+  Future<bool?> updateDynamicMarkerConfiguration({
+    required DynamicMarkerConfiguration configuration,
+  }) async {
+    return FlutterMapboxNavigationPlatform.instance.updateDynamicMarkerConfiguration(
+      configuration: configuration,
+    );
+  }
+
+  /// Clears the trail for a specific marker.
+  ///
+  /// [markerId] The ID of the marker whose trail to clear
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.clearDynamicMarkerTrail(markerId: 'vehicle_1');
+  /// ```
+  Future<bool?> clearDynamicMarkerTrail({required String markerId}) async {
+    return FlutterMapboxNavigationPlatform.instance.clearDynamicMarkerTrail(
+      markerId: markerId,
+    );
+  }
+
+  /// Clears trails for all dynamic markers.
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.clearAllDynamicMarkerTrails();
+  /// ```
+  Future<bool?> clearAllDynamicMarkerTrails() async {
+    return FlutterMapboxNavigationPlatform.instance.clearAllDynamicMarkerTrails();
+  }
+
+  /// Registers a listener for dynamic marker events.
+  ///
+  /// Events include state changes (tracking, stale, offline, expired)
+  /// and tap events.
+  ///
+  /// [listener] Callback function that receives marker events
+  ///
+  /// **Usage Example:**
+  /// ```dart
+  /// await MapBoxNavigation.instance.registerDynamicMarkerEventListener(
+  ///   (marker) {
+  ///     print('Marker ${marker.id} state: ${marker.state}');
+  ///   },
+  /// );
+  /// ```
+  Future<dynamic> registerDynamicMarkerEventListener(
+    ValueSetter<DynamicMarker> listener,
+  ) async {
+    return FlutterMapboxNavigationPlatform.instance
+        .registerDynamicMarkerEventListener(listener);
   }
 }

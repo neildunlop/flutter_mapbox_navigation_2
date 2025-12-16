@@ -31,6 +31,7 @@ import com.neiladunlop.fluttermapboxnavigation2.utilities.TripProgressManager
 import com.neiladunlop.fluttermapboxnavigation2.utilities.TripProgressOverlay
 import com.neiladunlop.fluttermapboxnavigation2.utilities.PluginUtilities.Companion.sendEvent
 import com.neiladunlop.fluttermapboxnavigation2.StaticMarkerManager
+import com.neiladunlop.fluttermapboxnavigation2.DynamicMarkerManager
 import com.google.gson.Gson
 import com.mapbox.api.directions.v5.DirectionsCriteria
 import com.mapbox.api.directions.v5.models.DirectionsRoute
@@ -400,6 +401,7 @@ class NavigationActivity : AppCompatActivity(), NavigationObserverCallback {
                     }
                     binding.navigationView.api.routeReplayEnabled(FlutterMapboxNavigationPlugin.simulateRoute)
                     binding.navigationView.api.startActiveGuidance(routes)
+                    sendEvent(MapBoxEvents.NAVIGATION_RUNNING)
                 }
             }
         )
@@ -453,6 +455,7 @@ class NavigationActivity : AppCompatActivity(), NavigationObserverCallback {
                     )
                     binding.navigationView.api.routeReplayEnabled(true)
                     binding.navigationView.api.startActiveGuidance(routes)
+                    sendEvent(MapBoxEvents.NAVIGATION_RUNNING)
                 }
 
                 override fun onFailure(
@@ -790,16 +793,22 @@ class NavigationActivity : AppCompatActivity(), NavigationObserverCallback {
                 val manager = StaticMarkerManager.getInstance()
                 manager.setContext(this@NavigationActivity)
                 manager.setMapView(mapView)
+
+                // Also set MapView for DynamicMarkerManager
+                val dynamicManager = DynamicMarkerManager.getInstance()
+                dynamicManager.setContext(this@NavigationActivity)
+                dynamicManager.setMapView(mapView)
             } catch (e: Exception) {
-                Log.e("NavigationActivity", "Error setting up StaticMarkerManager: ${e.message}")
+                Log.e("NavigationActivity", "Error setting up marker managers: ${e.message}")
             }
         }
 
         override fun onDetached(mapView: MapView) {
             try {
                 StaticMarkerManager.getInstance().setMapView(null)
+                DynamicMarkerManager.getInstance().setMapView(null)
             } catch (e: Exception) {
-                Log.e("NavigationActivity", "Error clearing StaticMarkerManager: ${e.message}")
+                Log.e("NavigationActivity", "Error clearing marker managers: ${e.message}")
             }
         }
     }

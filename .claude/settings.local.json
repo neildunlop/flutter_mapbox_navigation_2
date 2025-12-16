@@ -28,7 +28,10 @@
       "Bash(claude mcp add:*)",
       "Bash(adb devices:*)",
       "Bash(dir:*)",
-      "Bash(del \"doc\\marker_implementation.md\")"
+      "Bash(del \"doc\\marker_implementation.md\")",
+      "Bash(findstr:*)",
+      "Bash(tree:*)",
+      "Bash(.gradlew compileDebugKotlin:*)"
     ],
     "deny": []
   }

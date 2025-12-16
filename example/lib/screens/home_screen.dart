@@ -120,6 +120,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   route: AppRoutes.markerPopups,
                   category: FeatureCategory.mapFeatures,
                 ),
+                const SizedBox(height: 8),
+                FeatureTile(
+                  title: 'Dynamic Markers',
+                  description:
+                      'Real-time tracking with animated moving markers',
+                  icon: Icons.location_searching,
+                  route: AppRoutes.dynamicMarkers,
+                  category: FeatureCategory.mapFeatures,
+                ),
+                const SizedBox(height: 8),
+                FeatureTile(
+                  title: 'Dynamic + Navigation',
+                  description:
+                      'Fleet tracking during turn-by-turn navigation',
+                  icon: Icons.local_shipping,
+                  route: AppRoutes.dynamicMarkersNavigation,
+                  category: FeatureCategory.mapFeatures,
+                ),
               ],
             ),
           ),

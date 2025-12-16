@@ -2,6 +2,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mapbox_navigation/flutter_mapbox_navigation.dart';
 import 'package:flutter_mapbox_navigation/src/flutter_mapbox_navigation_method_channel.dart';
 import 'package:flutter_mapbox_navigation/src/flutter_mapbox_navigation_platform_interface.dart';
+import 'package:flutter_mapbox_navigation/src/models/dynamic_marker.dart';
+import 'package:flutter_mapbox_navigation/src/models/dynamic_marker_configuration.dart';
+import 'package:flutter_mapbox_navigation/src/models/dynamic_marker_position_update.dart';
 import 'package:flutter_mapbox_navigation/src/models/waypoint_result.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -223,6 +226,121 @@ class MockFlutterMapboxNavigationPlatform
       'bearing': 45.0,
       'tilt': 30.0,
     });
+  }
+
+  // MARK: - Dynamic Marker Methods
+
+  @override
+  Future<bool?> addDynamicMarker({required DynamicMarker marker}) {
+    methodCalls.add('addDynamicMarker');
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool?> addDynamicMarkers({required List<DynamicMarker> markers}) {
+    methodCalls.add('addDynamicMarkers');
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool?> updateDynamicMarkerPosition({
+    required DynamicMarkerPositionUpdate update,
+  }) {
+    methodCalls.add('updateDynamicMarkerPosition');
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool?> batchUpdateDynamicMarkerPositions({
+    required List<DynamicMarkerPositionUpdate> updates,
+  }) {
+    methodCalls.add('batchUpdateDynamicMarkerPositions');
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool?> updateDynamicMarker({
+    required String markerId,
+    String? title,
+    String? snippet,
+    String? iconId,
+    bool? showTrail,
+    Map<String, dynamic>? metadata,
+  }) {
+    methodCalls.add('updateDynamicMarker');
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool?> removeDynamicMarker({required String markerId}) {
+    methodCalls.add('removeDynamicMarker');
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool?> removeDynamicMarkers({required List<String> markerIds}) {
+    methodCalls.add('removeDynamicMarkers');
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool?> clearAllDynamicMarkers() {
+    methodCalls.add('clearAllDynamicMarkers');
+    return Future.value(true);
+  }
+
+  @override
+  Future<DynamicMarker?> getDynamicMarker({required String markerId}) {
+    methodCalls.add('getDynamicMarker');
+    return Future.value(DynamicMarker(
+      id: markerId,
+      latitude: 51.5074,
+      longitude: -0.1278,
+      title: 'Test Dynamic Marker',
+      category: 'vehicle',
+    ));
+  }
+
+  @override
+  Future<List<DynamicMarker>?> getDynamicMarkers() {
+    methodCalls.add('getDynamicMarkers');
+    return Future.value([
+      DynamicMarker(
+        id: 'test-dynamic-marker',
+        latitude: 51.5074,
+        longitude: -0.1278,
+        title: 'Test Dynamic Marker',
+        category: 'vehicle',
+      ),
+    ]);
+  }
+
+  @override
+  Future<bool?> updateDynamicMarkerConfiguration({
+    required DynamicMarkerConfiguration configuration,
+  }) {
+    methodCalls.add('updateDynamicMarkerConfiguration');
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool?> clearDynamicMarkerTrail({required String markerId}) {
+    methodCalls.add('clearDynamicMarkerTrail');
+    return Future.value(true);
+  }
+
+  @override
+  Future<bool?> clearAllDynamicMarkerTrails() {
+    methodCalls.add('clearAllDynamicMarkerTrails');
+    return Future.value(true);
+  }
+
+  @override
+  Future<dynamic> registerDynamicMarkerEventListener(
+    ValueSetter<DynamicMarker> listener,
+  ) {
+    methodCalls.add('registerDynamicMarkerEventListener');
+    return Future.value();
   }
 }
 

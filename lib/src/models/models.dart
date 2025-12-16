@@ -1,3 +1,6 @@
+export 'dynamic_marker.dart';
+export 'dynamic_marker_configuration.dart';
+export 'dynamic_marker_position_update.dart';
 export 'event_data.dart';
 export 'events.dart';
 export 'feedback.dart';

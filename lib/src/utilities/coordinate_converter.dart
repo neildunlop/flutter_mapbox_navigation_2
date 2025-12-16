@@ -88,12 +88,28 @@ class CoordinateConverter {
 class LatLng {
   final double latitude;
   final double longitude;
-  
+
   const LatLng(this.latitude, this.longitude);
-  
+
+  /// Creates a LatLng from a JSON map.
+  factory LatLng.fromJson(Map<String, dynamic> json) {
+    return LatLng(
+      (json['latitude'] as num).toDouble(),
+      (json['longitude'] as num).toDouble(),
+    );
+  }
+
+  /// Converts this LatLng to a JSON map.
+  Map<String, dynamic> toJson() {
+    return {
+      'latitude': latitude,
+      'longitude': longitude,
+    };
+  }
+
   @override
   String toString() => 'LatLng($latitude, $longitude)';
-  
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

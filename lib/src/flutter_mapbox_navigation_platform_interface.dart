@@ -4,6 +4,9 @@ import 'package:flutter_mapbox_navigation/src/models/models.dart';
 import 'package:flutter_mapbox_navigation/src/models/options.dart';
 import 'package:flutter_mapbox_navigation/src/models/route_event.dart';
 import 'package:flutter_mapbox_navigation/src/models/waypoint_result.dart';
+import 'package:flutter_mapbox_navigation/src/models/dynamic_marker.dart';
+import 'package:flutter_mapbox_navigation/src/models/dynamic_marker_configuration.dart';
+import 'package:flutter_mapbox_navigation/src/models/dynamic_marker_position_update.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 /// The interface that implementations of flutter_mapbox_navigation must implement.
@@ -285,5 +288,120 @@ abstract class FlutterMapboxNavigationPlatform extends PlatformInterface {
   /// Returns a Map with center coordinates, zoom level, and view size
   Future<Map<String, dynamic>?> getMapViewport() async {
     throw UnimplementedError('getMapViewport() has not been implemented.');
+  }
+
+  // MARK: Dynamic Marker Methods
+
+  /// Adds a single dynamic marker to the map.
+  Future<bool?> addDynamicMarker({
+    required DynamicMarker marker,
+  }) async {
+    throw UnimplementedError('addDynamicMarker() has not been implemented.');
+  }
+
+  /// Adds multiple dynamic markers to the map.
+  Future<bool?> addDynamicMarkers({
+    required List<DynamicMarker> markers,
+  }) async {
+    throw UnimplementedError('addDynamicMarkers() has not been implemented.');
+  }
+
+  /// Updates the position of a dynamic marker with animation.
+  Future<bool?> updateDynamicMarkerPosition({
+    required DynamicMarkerPositionUpdate update,
+  }) async {
+    throw UnimplementedError(
+      'updateDynamicMarkerPosition() has not been implemented.',
+    );
+  }
+
+  /// Applies multiple position updates in batch.
+  Future<bool?> batchUpdateDynamicMarkerPositions({
+    required List<DynamicMarkerPositionUpdate> updates,
+  }) async {
+    throw UnimplementedError(
+      'batchUpdateDynamicMarkerPositions() has not been implemented.',
+    );
+  }
+
+  /// Updates properties of a dynamic marker.
+  Future<bool?> updateDynamicMarker({
+    required String markerId,
+    String? title,
+    String? snippet,
+    String? iconId,
+    bool? showTrail,
+    Map<String, dynamic>? metadata,
+  }) async {
+    throw UnimplementedError('updateDynamicMarker() has not been implemented.');
+  }
+
+  /// Removes a dynamic marker by ID.
+  Future<bool?> removeDynamicMarker({
+    required String markerId,
+  }) async {
+    throw UnimplementedError('removeDynamicMarker() has not been implemented.');
+  }
+
+  /// Removes multiple dynamic markers by ID.
+  Future<bool?> removeDynamicMarkers({
+    required List<String> markerIds,
+  }) async {
+    throw UnimplementedError(
+      'removeDynamicMarkers() has not been implemented.',
+    );
+  }
+
+  /// Removes all dynamic markers from the map.
+  Future<bool?> clearAllDynamicMarkers() async {
+    throw UnimplementedError(
+      'clearAllDynamicMarkers() has not been implemented.',
+    );
+  }
+
+  /// Gets a dynamic marker by ID.
+  Future<DynamicMarker?> getDynamicMarker({
+    required String markerId,
+  }) async {
+    throw UnimplementedError('getDynamicMarker() has not been implemented.');
+  }
+
+  /// Gets all current dynamic markers.
+  Future<List<DynamicMarker>?> getDynamicMarkers() async {
+    throw UnimplementedError('getDynamicMarkers() has not been implemented.');
+  }
+
+  /// Updates the global dynamic marker configuration.
+  Future<bool?> updateDynamicMarkerConfiguration({
+    required DynamicMarkerConfiguration configuration,
+  }) async {
+    throw UnimplementedError(
+      'updateDynamicMarkerConfiguration() has not been implemented.',
+    );
+  }
+
+  /// Clears the trail for a specific marker.
+  Future<bool?> clearDynamicMarkerTrail({
+    required String markerId,
+  }) async {
+    throw UnimplementedError(
+      'clearDynamicMarkerTrail() has not been implemented.',
+    );
+  }
+
+  /// Clears trails for all dynamic markers.
+  Future<bool?> clearAllDynamicMarkerTrails() async {
+    throw UnimplementedError(
+      'clearAllDynamicMarkerTrails() has not been implemented.',
+    );
+  }
+
+  /// Registers a listener for dynamic marker events.
+  Future<dynamic> registerDynamicMarkerEventListener(
+    ValueSetter<DynamicMarker> listener,
+  ) async {
+    throw UnimplementedError(
+      'registerDynamicMarkerEventListener() has not been implemented.',
+    );
   }
 }

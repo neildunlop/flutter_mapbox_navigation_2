@@ -23,7 +23,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace 'com.fahad.app'
+    namespace 'com.neiladunlop.fluttermapboxnavigation.example'
     compileSdkVersion flutter.compileSdkVersion
 
     sourceSets {
@@ -35,7 +35,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.fahad.app"
+        applicationId "com.neiladunlop.fluttermapboxnavigation.example"
         minSdkVersion 21
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()

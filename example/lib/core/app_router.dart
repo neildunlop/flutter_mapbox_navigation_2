@@ -18,6 +18,8 @@ import '../screens/trip_progress/trip_progress_screen.dart';
 import '../screens/events_demo/events_demo_screen.dart';
 import '../screens/validation/validation_screen.dart';
 import '../screens/accessibility/accessibility_screen.dart';
+import '../screens/dynamic_markers/dynamic_markers_demo_screen.dart';
+import '../screens/dynamic_markers/dynamic_markers_navigation_screen.dart';
 
 class AppRouter {
   AppRouter._();
@@ -63,6 +65,12 @@ class AppRouter {
 
       case AppRoutes.accessibility:
         return _buildRoute(const AccessibilityScreen());
+
+      case AppRoutes.dynamicMarkers:
+        return _buildRoute(const DynamicMarkersDemoScreen());
+
+      case AppRoutes.dynamicMarkersNavigation:
+        return _buildRoute(const DynamicMarkersNavigationScreen());
 
       default:
         return _buildRoute(

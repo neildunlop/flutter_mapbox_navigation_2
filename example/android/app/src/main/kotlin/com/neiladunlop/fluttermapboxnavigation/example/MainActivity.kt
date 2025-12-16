@@ -1,4 +1,4 @@
-package com.fahad.app
+package com.neiladunlop.fluttermapboxnavigation.example
 
 import android.os.Bundle
 import android.util.Log
@@ -10,4 +10,4 @@ class MainActivity: FlutterFragmentActivity() {
         val token = resources.getString(R.string.mapbox_access_token)
         Log.d("MapboxDebug", "Access Token: $token")
     }
-} 
+}

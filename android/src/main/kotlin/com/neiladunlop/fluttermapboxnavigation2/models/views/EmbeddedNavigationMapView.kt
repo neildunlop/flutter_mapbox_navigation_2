@@ -8,6 +8,7 @@ import com.neiladunlop.fluttermapboxnavigation2.databinding.NavigationActivityBi
 import com.neiladunlop.fluttermapboxnavigation2.models.MapBoxEvents
 import com.neiladunlop.fluttermapboxnavigation2.utilities.PluginUtilities
 import com.neiladunlop.fluttermapboxnavigation2.StaticMarkerManager
+import com.neiladunlop.fluttermapboxnavigation2.DynamicMarkerManager
 import com.mapbox.geojson.Point
 import com.mapbox.maps.MapView
 import com.mapbox.maps.plugin.gestures.OnMapClickListener
@@ -112,7 +113,13 @@ class EmbeddedNavigationMapView(
                 // Call the setMapView method
                 manager.setMapView(mapView)
                 println("🔧 setMapView() call completed")
-                
+
+                // Also set MapView for DynamicMarkerManager
+                val dynamicManager = DynamicMarkerManager.getInstance()
+                dynamicManager.setContext(mapView.context)
+                dynamicManager.setMapView(mapView)
+                println("🔧 DynamicMarkerManager.setContext() and setMapView() calls completed")
+
             } catch (e: Exception) {
                 println("❌ Error calling setMapView(): ${e.message}")
                 e.printStackTrace()
@@ -124,6 +131,8 @@ class EmbeddedNavigationMapView(
             try {
                 // Clear the MapView in the StaticMarkerManager
                 StaticMarkerManager.getInstance().setMapView(null)
+                // Clear the MapView in the DynamicMarkerManager
+                DynamicMarkerManager.getInstance().setMapView(null)
             } catch (e: Exception) {
                 println("❌ Error calling setMapView(null): ${e.message}")
             }

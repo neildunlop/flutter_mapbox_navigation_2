@@ -26,11 +26,17 @@ class MethodChannelFlutterMapboxNavigation
   @visibleForTesting
   final markerEventChannel = const EventChannel(kMarkerEventChannelName);
 
+  /// The event channel used for dynamic marker events.
+  @visibleForTesting
+  final dynamicMarkerEventChannel = const EventChannel(kDynamicMarkerEventChannelName);
+
   late StreamSubscription<RouteEvent> _routeEventSubscription;
   late StreamSubscription<StaticMarker> _markerEventSubscription;
+  StreamSubscription<DynamicMarker>? _dynamicMarkerEventSubscription;
   ValueSetter<RouteEvent>? _onRouteEvent;
   ValueSetter<StaticMarker>? _onMarkerTap;
   ValueSetter<FullScreenEvent>? _onFullScreenEvent;
+  ValueSetter<DynamicMarker>? _onDynamicMarkerEvent;
 
   @override
   Future<String?> getPlatformVersion() async {
@@ -615,6 +621,36 @@ class MethodChannelFlutterMapboxNavigation
     return StaticMarker.fromJson(markerData);
   }
 
+  /// Dynamic Marker Events Handling
+  Stream<DynamicMarker>? get dynamicMarkerEventsListener {
+    return dynamicMarkerEventChannel
+        .receiveBroadcastStream()
+        .map((dynamic event) => _parseDynamicMarkerEvent(Map<String, dynamic>.from(event as Map)));
+  }
+
+  void _onDynamicMarkerEventData(DynamicMarker marker) {
+    if (_onDynamicMarkerEvent != null) _onDynamicMarkerEvent?.call(marker);
+  }
+
+  DynamicMarker _parseDynamicMarkerEvent(Map<String, dynamic> eventData) {
+    // The event data contains 'eventType' and 'marker' fields
+    // Extract the marker data from the event
+    final markerData = eventData['marker'] != null
+        ? Map<String, dynamic>.from(eventData['marker'] as Map)
+        : eventData;
+    return DynamicMarker.fromJson(markerData);
+  }
+
+  @override
+  Future<dynamic> registerDynamicMarkerEventListener(
+    ValueSetter<DynamicMarker> listener,
+  ) async {
+    _onDynamicMarkerEvent = listener;
+    _dynamicMarkerEventSubscription?.cancel();
+    _dynamicMarkerEventSubscription = dynamicMarkerEventsListener?.listen(_onDynamicMarkerEventData);
+    return true;
+  }
+
   List<Map<String, Object?>> _getPointListFromWayPoints(
     List<WayPoint> wayPoints,
   ) {
@@ -662,5 +698,246 @@ class MethodChannelFlutterMapboxNavigation
         return item;
       }
     }).toList();
+  }
+
+  // MARK: Dynamic Marker Methods
+
+  @override
+  Future<bool?> addDynamicMarker({
+    required DynamicMarker marker,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'marker': marker.toJson(),
+      };
+      final result = await methodChannel.invokeMethod(
+        Methods.addDynamicMarker,
+        args,
+      );
+      return result as bool?;
+    } catch (e) {
+      log('Error adding dynamic marker: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> addDynamicMarkers({
+    required List<DynamicMarker> markers,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'markers': markers.map((m) => m.toJson()).toList(),
+      };
+      final result = await methodChannel.invokeMethod(
+        Methods.addDynamicMarkers,
+        args,
+      );
+      return result as bool?;
+    } catch (e) {
+      log('Error adding dynamic markers: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> updateDynamicMarkerPosition({
+    required DynamicMarkerPositionUpdate update,
+  }) async {
+    try {
+      final args = update.toJson();
+      final result = await methodChannel.invokeMethod(
+        Methods.updateDynamicMarkerPosition,
+        args,
+      );
+      return result as bool?;
+    } catch (e) {
+      log('Error updating dynamic marker position: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> batchUpdateDynamicMarkerPositions({
+    required List<DynamicMarkerPositionUpdate> updates,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'updates': updates.map((u) => u.toJson()).toList(),
+      };
+      final result = await methodChannel.invokeMethod(
+        Methods.batchUpdateDynamicMarkerPositions,
+        args,
+      );
+      return result as bool?;
+    } catch (e) {
+      log('Error batch updating dynamic marker positions: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> updateDynamicMarker({
+    required String markerId,
+    String? title,
+    String? snippet,
+    String? iconId,
+    bool? showTrail,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'markerId': markerId,
+        if (title != null) 'title': title,
+        if (snippet != null) 'snippet': snippet,
+        if (iconId != null) 'iconId': iconId,
+        if (showTrail != null) 'showTrail': showTrail,
+        if (metadata != null) 'metadata': metadata,
+      };
+      final result = await methodChannel.invokeMethod(
+        Methods.updateDynamicMarker,
+        args,
+      );
+      return result as bool?;
+    } catch (e) {
+      log('Error updating dynamic marker: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> removeDynamicMarker({
+    required String markerId,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'markerId': markerId,
+      };
+      final result = await methodChannel.invokeMethod(
+        Methods.removeDynamicMarker,
+        args,
+      );
+      return result as bool?;
+    } catch (e) {
+      log('Error removing dynamic marker: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> removeDynamicMarkers({
+    required List<String> markerIds,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'markerIds': markerIds,
+      };
+      final result = await methodChannel.invokeMethod(
+        Methods.removeDynamicMarkers,
+        args,
+      );
+      return result as bool?;
+    } catch (e) {
+      log('Error removing dynamic markers: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> clearAllDynamicMarkers() async {
+    try {
+      final result = await methodChannel.invokeMethod(
+        Methods.clearAllDynamicMarkers,
+      );
+      return result as bool?;
+    } catch (e) {
+      log('Error clearing all dynamic markers: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<DynamicMarker?> getDynamicMarker({
+    required String markerId,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'markerId': markerId,
+      };
+      final result = await methodChannel.invokeMethod(
+        Methods.getDynamicMarker,
+        args,
+      );
+      if (result == null) return null;
+      return DynamicMarker.fromJson(Map<String, dynamic>.from(result as Map));
+    } catch (e) {
+      log('Error getting dynamic marker: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<List<DynamicMarker>?> getDynamicMarkers() async {
+    try {
+      final result = await methodChannel.invokeMethod(
+        Methods.getDynamicMarkers,
+      );
+      if (result == null) return null;
+      return (result as List)
+          .map((m) => DynamicMarker.fromJson(Map<String, dynamic>.from(m as Map)))
+          .toList();
+    } catch (e) {
+      log('Error getting dynamic markers: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<bool?> updateDynamicMarkerConfiguration({
+    required DynamicMarkerConfiguration configuration,
+  }) async {
+    try {
+      final args = configuration.toJson();
+      final result = await methodChannel.invokeMethod(
+        Methods.updateDynamicMarkerConfiguration,
+        args,
+      );
+      return result as bool?;
+    } catch (e) {
+      log('Error updating dynamic marker configuration: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> clearDynamicMarkerTrail({
+    required String markerId,
+  }) async {
+    try {
+      final args = <String, dynamic>{
+        'markerId': markerId,
+      };
+      final result = await methodChannel.invokeMethod(
+        Methods.clearDynamicMarkerTrail,
+        args,
+      );
+      return result as bool?;
+    } catch (e) {
+      log('Error clearing dynamic marker trail: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool?> clearAllDynamicMarkerTrails() async {
+    try {
+      final result = await methodChannel.invokeMethod(
+        Methods.clearAllDynamicMarkerTrails,
+      );
+      return result as bool?;
+    } catch (e) {
+      log('Error clearing all dynamic marker trails: $e');
+      return false;
+    }
   }
 }

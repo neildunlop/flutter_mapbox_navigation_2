@@ -19,14 +19,19 @@ void main() {
       expect(kOfflineProgressChannelName, equals('flutter_mapbox_navigation/offline_progress'));
     });
 
+    test('kDynamicMarkerEventChannelName should have correct value', () {
+      expect(kDynamicMarkerEventChannelName, equals('flutter_mapbox_navigation/dynamic_marker_events'));
+    });
+
     test('channel names should be unique', () {
       final channelNames = {
         kMethodChannelName,
         kEventChannelName,
         kMarkerEventChannelName,
         kOfflineProgressChannelName,
+        kDynamicMarkerEventChannelName,
       };
-      expect(channelNames.length, equals(4));
+      expect(channelNames.length, equals(5));
     });
   });
 
@@ -126,6 +131,60 @@ void main() {
         expect(Methods.getMapViewport, equals('getMapViewport'));
       });
     });
+
+    group('Dynamic Marker Methods', () {
+      test('addDynamicMarker should be defined', () {
+        expect(Methods.addDynamicMarker, equals('addDynamicMarker'));
+      });
+
+      test('addDynamicMarkers should be defined', () {
+        expect(Methods.addDynamicMarkers, equals('addDynamicMarkers'));
+      });
+
+      test('updateDynamicMarkerPosition should be defined', () {
+        expect(Methods.updateDynamicMarkerPosition, equals('updateDynamicMarkerPosition'));
+      });
+
+      test('batchUpdateDynamicMarkerPositions should be defined', () {
+        expect(Methods.batchUpdateDynamicMarkerPositions, equals('batchUpdateDynamicMarkerPositions'));
+      });
+
+      test('updateDynamicMarker should be defined', () {
+        expect(Methods.updateDynamicMarker, equals('updateDynamicMarker'));
+      });
+
+      test('removeDynamicMarker should be defined', () {
+        expect(Methods.removeDynamicMarker, equals('removeDynamicMarker'));
+      });
+
+      test('removeDynamicMarkers should be defined', () {
+        expect(Methods.removeDynamicMarkers, equals('removeDynamicMarkers'));
+      });
+
+      test('clearAllDynamicMarkers should be defined', () {
+        expect(Methods.clearAllDynamicMarkers, equals('clearAllDynamicMarkers'));
+      });
+
+      test('getDynamicMarker should be defined', () {
+        expect(Methods.getDynamicMarker, equals('getDynamicMarker'));
+      });
+
+      test('getDynamicMarkers should be defined', () {
+        expect(Methods.getDynamicMarkers, equals('getDynamicMarkers'));
+      });
+
+      test('updateDynamicMarkerConfiguration should be defined', () {
+        expect(Methods.updateDynamicMarkerConfiguration, equals('updateDynamicMarkerConfiguration'));
+      });
+
+      test('clearDynamicMarkerTrail should be defined', () {
+        expect(Methods.clearDynamicMarkerTrail, equals('clearDynamicMarkerTrail'));
+      });
+
+      test('clearAllDynamicMarkerTrails should be defined', () {
+        expect(Methods.clearAllDynamicMarkerTrails, equals('clearAllDynamicMarkerTrails'));
+      });
+    });
   });
 
   group('EventTypes', () {
@@ -199,6 +258,24 @@ void main() {
       });
     });
 
+    group('Dynamic Marker Events', () {
+      test('dynamicMarkerTapped should be defined', () {
+        expect(EventTypes.dynamicMarkerTapped, equals('dynamic_marker_tapped'));
+      });
+
+      test('dynamicMarkerStateChanged should be defined', () {
+        expect(EventTypes.dynamicMarkerStateChanged, equals('dynamic_marker_state_changed'));
+      });
+
+      test('dynamicMarkerPositionUpdated should be defined', () {
+        expect(EventTypes.dynamicMarkerPositionUpdated, equals('dynamic_marker_position_updated'));
+      });
+
+      test('dynamicMarkerExpired should be defined', () {
+        expect(EventTypes.dynamicMarkerExpired, equals('dynamic_marker_expired'));
+      });
+    });
+
     test('all event types should be unique', () {
       final eventTypes = {
         EventTypes.navigationStarted,
@@ -217,8 +294,12 @@ void main() {
         EventTypes.downloadProgress,
         EventTypes.downloadComplete,
         EventTypes.downloadFailed,
+        EventTypes.dynamicMarkerTapped,
+        EventTypes.dynamicMarkerStateChanged,
+        EventTypes.dynamicMarkerPositionUpdated,
+        EventTypes.dynamicMarkerExpired,
       };
-      expect(eventTypes.length, equals(16));
+      expect(eventTypes.length, equals(20));
     });
   });
 
@@ -310,11 +391,38 @@ void main() {
         EventTypes.routeBuilt,
         EventTypes.progressChange,
         EventTypes.userOffRoute,
+        EventTypes.dynamicMarkerTapped,
+        EventTypes.dynamicMarkerStateChanged,
+        EventTypes.dynamicMarkerPositionUpdated,
+        EventTypes.dynamicMarkerExpired,
       ];
 
       for (final eventType in eventTypes) {
         expect(eventType, matches(RegExp(r'^[a-z_]+$')),
             reason: 'Event type "$eventType" should be snake_case');
+      }
+    });
+
+    test('dynamic marker method names should use camelCase', () {
+      final methods = [
+        Methods.addDynamicMarker,
+        Methods.addDynamicMarkers,
+        Methods.updateDynamicMarkerPosition,
+        Methods.batchUpdateDynamicMarkerPositions,
+        Methods.updateDynamicMarker,
+        Methods.removeDynamicMarker,
+        Methods.removeDynamicMarkers,
+        Methods.clearAllDynamicMarkers,
+        Methods.getDynamicMarker,
+        Methods.getDynamicMarkers,
+        Methods.updateDynamicMarkerConfiguration,
+        Methods.clearDynamicMarkerTrail,
+        Methods.clearAllDynamicMarkerTrails,
+      ];
+
+      for (final method in methods) {
+        expect(method, matches(RegExp(r'^[a-z][a-zA-Z]+$')),
+            reason: 'Method "$method" should be camelCase');
       }
     });
   });
