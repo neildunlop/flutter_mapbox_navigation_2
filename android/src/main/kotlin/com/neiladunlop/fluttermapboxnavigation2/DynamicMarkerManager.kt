@@ -639,32 +639,22 @@ class DynamicMarkerManager {
 
     /**
      * Updates an existing marker annotation.
+     * Note: Some properties like textColor and textHaloColor cannot be updated on existing
+     * annotations in Mapbox SDK v10+. For full updates, we delete and recreate the annotation.
      */
     private fun updateMarkerAnnotation(marker: DynamicMarker) {
         val annotation = pointAnnotations[marker.id]
+        val annotationManager = pointAnnotationManager
 
-        if (annotation != null) {
+        if (annotation != null && annotationManager != null) {
             try {
-                annotation.point = Point.fromLngLat(marker.longitude, marker.latitude)
-                annotation.iconOpacity = getOpacityForState(marker.state)
-                marker.heading?.let { annotation.iconRotate = it }
-
-                // Update label properties if labels are enabled
-                if (configuration.showLabels) {
-                    val labelText = marker.title.ifEmpty { marker.category }
-                    annotation.textField = labelText
-                    annotation.textSize = configuration.labelTextSize
-                    annotation.textColor = configuration.labelTextColor
-                    annotation.textHaloColor = configuration.labelHaloColor
-                    annotation.textHaloWidth = configuration.labelHaloWidth
-                    annotation.textOffset = listOf(0.0, configuration.labelOffsetY)
-                } else {
-                    // Clear label if labels are disabled
-                    annotation.textField = null
-                }
-
-                pointAnnotationManager?.update(annotation)
-                Log.d(TAG, "updateMarkerAnnotation: Updated ${marker.id} to (${marker.latitude}, ${marker.longitude})")
+                // Delete the existing annotation and recreate it with updated properties
+                // This is necessary because PointAnnotation doesn't support updating
+                // text color properties directly in Mapbox SDK v10+
+                annotationManager.delete(annotation)
+                pointAnnotations.remove(marker.id)
+                createMarkerAnnotation(marker)
+                Log.d(TAG, "updateMarkerAnnotation: Recreated ${marker.id} at (${marker.latitude}, ${marker.longitude})")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to update marker annotation: ${e.message}")
             }
