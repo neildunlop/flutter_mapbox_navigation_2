@@ -112,6 +112,42 @@ class DynamicMarkerConfiguration {
   final int predictionWindowMs;
 
   // ---------------------------------------------------------------------------
+  // Label Settings
+  // ---------------------------------------------------------------------------
+
+  /// Enable text labels below markers.
+  ///
+  /// When true, displays the marker title as a label below the icon.
+  /// Default: false
+  final bool showLabels;
+
+  /// Label text size in logical pixels.
+  ///
+  /// Default: 12.0
+  final double labelTextSize;
+
+  /// Label text color.
+  ///
+  /// Default: White
+  final Color labelTextColor;
+
+  /// Label background color (halo).
+  ///
+  /// Default: Dark gray with opacity
+  final Color labelHaloColor;
+
+  /// Label halo width in logical pixels.
+  ///
+  /// Default: 1.5
+  final double labelHaloWidth;
+
+  /// Vertical offset of label from marker icon.
+  ///
+  /// Positive values move label down.
+  /// Default: 1.5
+  final double labelOffsetY;
+
+  // ---------------------------------------------------------------------------
   // Display Settings
   // ---------------------------------------------------------------------------
 
@@ -147,6 +183,12 @@ class DynamicMarkerConfiguration {
   final void Function(DynamicMarker marker)? onMarkerExpired;
 
   /// Creates a configuration for dynamic markers.
+  ///
+  /// Throws [AssertionError] if:
+  /// - [labelTextSize] is not positive
+  /// - [labelHaloWidth] is negative
+  /// - [animationDurationMs] is not positive
+  /// - [trailWidth] is not positive
   const DynamicMarkerConfiguration({
     this.animationDurationMs = 1000,
     this.enableAnimation = true,
@@ -164,13 +206,22 @@ class DynamicMarkerConfiguration {
     this.minTrailPointDistance = 5.0,
     this.enablePrediction = true,
     this.predictionWindowMs = 2000,
+    this.showLabels = false,
+    this.labelTextSize = 12.0,
+    this.labelTextColor = const Color(0xFFFFFFFF),
+    this.labelHaloColor = const Color(0xCC333333),
+    this.labelHaloWidth = 1.5,
+    this.labelOffsetY = 1.5,
     this.zIndex = 100,
     this.minZoomLevel = 0.0,
     this.maxDistanceFromCenter,
     this.onMarkerTap,
     this.onMarkerStateChanged,
     this.onMarkerExpired,
-  });
+  })  : assert(animationDurationMs > 0, 'animationDurationMs must be positive'),
+        assert(trailWidth > 0, 'trailWidth must be positive'),
+        assert(labelTextSize > 0, 'labelTextSize must be positive'),
+        assert(labelHaloWidth >= 0, 'labelHaloWidth must be non-negative');
 
   /// Creates a configuration from a JSON map.
   factory DynamicMarkerConfiguration.fromJson(Map<String, dynamic> json) {
@@ -195,6 +246,16 @@ class DynamicMarkerConfiguration {
           (json['minTrailPointDistance'] as num?)?.toDouble() ?? 5.0,
       enablePrediction: json['enablePrediction'] as bool? ?? true,
       predictionWindowMs: json['predictionWindowMs'] as int? ?? 2000,
+      showLabels: json['showLabels'] as bool? ?? false,
+      labelTextSize: (json['labelTextSize'] as num?)?.toDouble() ?? 12.0,
+      labelTextColor: json['labelTextColor'] != null
+          ? Color(json['labelTextColor'] as int)
+          : const Color(0xFFFFFFFF),
+      labelHaloColor: json['labelHaloColor'] != null
+          ? Color(json['labelHaloColor'] as int)
+          : const Color(0xCC333333),
+      labelHaloWidth: (json['labelHaloWidth'] as num?)?.toDouble() ?? 1.5,
+      labelOffsetY: (json['labelOffsetY'] as num?)?.toDouble() ?? 1.5,
       zIndex: json['zIndex'] as int? ?? 100,
       minZoomLevel: (json['minZoomLevel'] as num?)?.toDouble() ?? 0.0,
       maxDistanceFromCenter:
@@ -217,12 +278,18 @@ class DynamicMarkerConfiguration {
       'stationaryDurationMs': stationaryDurationMs,
       'enableTrail': enableTrail,
       'maxTrailPoints': maxTrailPoints,
-      'trailColor': trailColor.value,
+      'trailColor': trailColor.toARGB32(),
       'trailWidth': trailWidth,
       'trailGradient': trailGradient,
       'minTrailPointDistance': minTrailPointDistance,
       'enablePrediction': enablePrediction,
       'predictionWindowMs': predictionWindowMs,
+      'showLabels': showLabels,
+      'labelTextSize': labelTextSize,
+      'labelTextColor': labelTextColor.toARGB32(),
+      'labelHaloColor': labelHaloColor.toARGB32(),
+      'labelHaloWidth': labelHaloWidth,
+      'labelOffsetY': labelOffsetY,
       'zIndex': zIndex,
       'minZoomLevel': minZoomLevel,
       'maxDistanceFromCenter': maxDistanceFromCenter,
@@ -247,6 +314,12 @@ class DynamicMarkerConfiguration {
     double? minTrailPointDistance,
     bool? enablePrediction,
     int? predictionWindowMs,
+    bool? showLabels,
+    double? labelTextSize,
+    Color? labelTextColor,
+    Color? labelHaloColor,
+    double? labelHaloWidth,
+    double? labelOffsetY,
     int? zIndex,
     double? minZoomLevel,
     double? maxDistanceFromCenter,
@@ -273,6 +346,12 @@ class DynamicMarkerConfiguration {
           minTrailPointDistance ?? this.minTrailPointDistance,
       enablePrediction: enablePrediction ?? this.enablePrediction,
       predictionWindowMs: predictionWindowMs ?? this.predictionWindowMs,
+      showLabels: showLabels ?? this.showLabels,
+      labelTextSize: labelTextSize ?? this.labelTextSize,
+      labelTextColor: labelTextColor ?? this.labelTextColor,
+      labelHaloColor: labelHaloColor ?? this.labelHaloColor,
+      labelHaloWidth: labelHaloWidth ?? this.labelHaloWidth,
+      labelOffsetY: labelOffsetY ?? this.labelOffsetY,
       zIndex: zIndex ?? this.zIndex,
       minZoomLevel: minZoomLevel ?? this.minZoomLevel,
       maxDistanceFromCenter:

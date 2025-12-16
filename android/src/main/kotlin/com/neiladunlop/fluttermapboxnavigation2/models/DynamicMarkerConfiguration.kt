@@ -150,6 +150,54 @@ data class DynamicMarkerConfiguration(
     val predictionWindowMs: Int = 2000,
 
     // ---------------------------------------------------------------------------
+    // Label Settings
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Enable text labels below markers.
+     *
+     * When true, displays the marker title as a label below the icon.
+     * Default: false
+     */
+    val showLabels: Boolean = false,
+
+    /**
+     * Label text size in logical pixels.
+     *
+     * Default: 12.0
+     */
+    val labelTextSize: Double = 12.0,
+
+    /**
+     * Label text color (ARGB integer).
+     *
+     * Default: White (0xFFFFFFFF)
+     */
+    val labelTextColor: Int = 0xFFFFFFFF.toInt(),
+
+    /**
+     * Label background/halo color (ARGB integer).
+     *
+     * Default: Dark gray with opacity (0xCC333333)
+     */
+    val labelHaloColor: Int = 0xCC333333.toInt(),
+
+    /**
+     * Label halo width in logical pixels.
+     *
+     * Default: 1.5
+     */
+    val labelHaloWidth: Double = 1.5,
+
+    /**
+     * Vertical offset of label from marker icon.
+     *
+     * Positive values move label down.
+     * Default: 1.5
+     */
+    val labelOffsetY: Double = 1.5,
+
+    // ---------------------------------------------------------------------------
     // Display Settings
     // ---------------------------------------------------------------------------
 
@@ -176,6 +224,13 @@ data class DynamicMarkerConfiguration(
      */
     val maxDistanceFromCenter: Double? = null
 ) {
+    init {
+        require(animationDurationMs > 0) { "animationDurationMs must be positive" }
+        require(trailWidth > 0) { "trailWidth must be positive" }
+        require(labelTextSize > 0) { "labelTextSize must be positive" }
+        require(labelHaloWidth >= 0) { "labelHaloWidth must be non-negative" }
+    }
+
     companion object {
         /**
          * Default configuration instance.
@@ -203,6 +258,12 @@ data class DynamicMarkerConfiguration(
                 minTrailPointDistance = (json["minTrailPointDistance"] as? Number)?.toDouble() ?: 5.0,
                 enablePrediction = json["enablePrediction"] as? Boolean ?: true,
                 predictionWindowMs = json["predictionWindowMs"] as? Int ?: 2000,
+                showLabels = json["showLabels"] as? Boolean ?: false,
+                labelTextSize = (json["labelTextSize"] as? Number)?.toDouble() ?: 12.0,
+                labelTextColor = json["labelTextColor"] as? Int ?: 0xFFFFFFFF.toInt(),
+                labelHaloColor = json["labelHaloColor"] as? Int ?: 0xCC333333.toInt(),
+                labelHaloWidth = (json["labelHaloWidth"] as? Number)?.toDouble() ?: 1.5,
+                labelOffsetY = (json["labelOffsetY"] as? Number)?.toDouble() ?: 1.5,
                 zIndex = json["zIndex"] as? Int ?: 100,
                 minZoomLevel = (json["minZoomLevel"] as? Number)?.toDouble() ?: 0.0,
                 maxDistanceFromCenter = (json["maxDistanceFromCenter"] as? Number)?.toDouble()
@@ -231,6 +292,12 @@ data class DynamicMarkerConfiguration(
             "minTrailPointDistance" to minTrailPointDistance,
             "enablePrediction" to enablePrediction,
             "predictionWindowMs" to predictionWindowMs,
+            "showLabels" to showLabels,
+            "labelTextSize" to labelTextSize,
+            "labelTextColor" to labelTextColor,
+            "labelHaloColor" to labelHaloColor,
+            "labelHaloWidth" to labelHaloWidth,
+            "labelOffsetY" to labelOffsetY,
             "zIndex" to zIndex,
             "minZoomLevel" to minZoomLevel,
             "maxDistanceFromCenter" to maxDistanceFromCenter

@@ -389,6 +389,18 @@ public typealias DynamicMarkerTapListener = (DynamicMarker) -> Void
             annotationOptions.iconRotate = heading
         }
 
+        // Add text label if enabled in configuration
+        if configuration.showLabels {
+            let labelText = marker.title.isEmpty ? marker.category : marker.title
+            annotationOptions.textField = labelText
+            annotationOptions.textSize = configuration.labelTextSize
+            annotationOptions.textColor = StyleColor(UIColor(argb: configuration.labelTextColor))
+            annotationOptions.textHaloColor = StyleColor(UIColor(argb: configuration.labelHaloColor))
+            annotationOptions.textHaloWidth = configuration.labelHaloWidth
+            annotationOptions.textOffset = [0.0, configuration.labelOffsetY]
+            annotationOptions.textAnchor = .top
+        }
+
         let annotation = manager.create(annotationOptions)
         markerAnnotations[marker.id] = annotation
 
@@ -415,6 +427,21 @@ public typealias DynamicMarkerTapListener = (DynamicMarker) -> Void
         if let heading = marker.heading {
             updatedAnnotation.iconRotate = heading
         }
+
+        // Update label properties if labels are enabled
+        if configuration.showLabels {
+            let labelText = marker.title.isEmpty ? marker.category : marker.title
+            updatedAnnotation.textField = labelText
+            updatedAnnotation.textSize = configuration.labelTextSize
+            updatedAnnotation.textColor = StyleColor(UIColor(argb: configuration.labelTextColor))
+            updatedAnnotation.textHaloColor = StyleColor(UIColor(argb: configuration.labelHaloColor))
+            updatedAnnotation.textHaloWidth = configuration.labelHaloWidth
+            updatedAnnotation.textOffset = [0.0, configuration.labelOffsetY]
+        } else {
+            // Clear label if labels are disabled
+            updatedAnnotation.textField = nil
+        }
+
         manager.update([updatedAnnotation])
     }
 

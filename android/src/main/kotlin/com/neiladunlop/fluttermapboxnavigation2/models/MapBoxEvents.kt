@@ -23,5 +23,6 @@ enum class MapBoxEvents(val value: String) {
     MARKER_TAP_FULLSCREEN("marker_tap_fullscreen"),
     MAP_TAP_FULLSCREEN("map_tap_fullscreen"),
     WAYPOINT_SKIPPED("waypoint_skipped"),
-    WAYPOINT_RESTORED("waypoint_restored")
+    WAYPOINT_RESTORED("waypoint_restored"),
+    DYNAMIC_MARKER_TAP("dynamic_marker_tap")
 }

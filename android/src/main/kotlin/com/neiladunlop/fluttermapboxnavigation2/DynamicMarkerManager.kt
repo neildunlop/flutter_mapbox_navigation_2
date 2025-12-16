@@ -616,6 +616,18 @@ class DynamicMarkerManager {
                 options.withIconRotate(heading)
             }
 
+            // Add text label if enabled in configuration
+            if (configuration.showLabels) {
+                val labelText = marker.title.ifEmpty { marker.category }
+                options.withTextField(labelText)
+                options.withTextSize(configuration.labelTextSize)
+                options.withTextColor(configuration.labelTextColor)
+                options.withTextHaloColor(configuration.labelHaloColor)
+                options.withTextHaloWidth(configuration.labelHaloWidth)
+                options.withTextOffset(listOf(0.0, configuration.labelOffsetY))
+                options.withTextAnchor(com.mapbox.maps.extension.style.layers.properties.generated.TextAnchor.TOP)
+            }
+
             val annotation = annotationManager.create(options)
             pointAnnotations[marker.id] = annotation
             Log.d(TAG, "  Annotation created successfully for ${marker.id}")
@@ -636,6 +648,21 @@ class DynamicMarkerManager {
                 annotation.point = Point.fromLngLat(marker.longitude, marker.latitude)
                 annotation.iconOpacity = getOpacityForState(marker.state)
                 marker.heading?.let { annotation.iconRotate = it }
+
+                // Update label properties if labels are enabled
+                if (configuration.showLabels) {
+                    val labelText = marker.title.ifEmpty { marker.category }
+                    annotation.textField = labelText
+                    annotation.textSize = configuration.labelTextSize
+                    annotation.textColor = configuration.labelTextColor
+                    annotation.textHaloColor = configuration.labelHaloColor
+                    annotation.textHaloWidth = configuration.labelHaloWidth
+                    annotation.textOffset = listOf(0.0, configuration.labelOffsetY)
+                } else {
+                    // Clear label if labels are disabled
+                    annotation.textField = null
+                }
+
                 pointAnnotationManager?.update(annotation)
                 Log.d(TAG, "updateMarkerAnnotation: Updated ${marker.id} to (${marker.latitude}, ${marker.longitude})")
             } catch (e: Exception) {

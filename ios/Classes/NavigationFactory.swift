@@ -42,8 +42,11 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
     var _enableOnMapTapCallback = false
     var navigationDirections: Directions?
 
-    // Marker popup overlay for showing marker info cards
+    // Marker popup overlay for showing marker info cards (static markers)
     var markerPopupOverlay: MarkerPopupOverlay?
+
+    // Dynamic marker popup overlay for showing team marker info cards
+    var dynamicMarkerPopupOverlay: DynamicMarkerPopupOverlay?
 
     // Trip progress overlay for showing navigation progress
     var tripProgressOverlay: TripProgressOverlay?
@@ -224,10 +227,14 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         }
         let flutterViewController = UIApplication.shared.delegate?.window??.rootViewController as! FlutterViewController
         flutterViewController.present(self._navigationViewController!, animated: true) { [weak self] in
-            // Initialize the marker popup overlay after navigation view is presented
+            // Initialize the marker popup overlay after navigation view is presented (for static markers)
             guard let strongSelf = self, let navVC = strongSelf._navigationViewController else { return }
             strongSelf.markerPopupOverlay = MarkerPopupOverlay(parentViewController: navVC, config: strongSelf._tripProgressConfig)
             strongSelf.markerPopupOverlay?.initialize()
+
+            // Initialize the dynamic marker popup overlay (for team markers)
+            strongSelf.dynamicMarkerPopupOverlay = DynamicMarkerPopupOverlay(parentViewController: navVC, config: strongSelf._tripProgressConfig)
+            strongSelf.dynamicMarkerPopupOverlay?.initialize()
 
             // Initialize the trip progress overlay with config
             print("NavigationFactory: Creating TripProgressOverlay with config")
@@ -362,9 +369,13 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
     {
         sendEvent(eventType: MapBoxEventType.navigation_finished)
 
-        // Clean up the marker popup overlay
+        // Clean up the marker popup overlay (static markers)
         markerPopupOverlay?.cleanup()
         markerPopupOverlay = nil
+
+        // Clean up the dynamic marker popup overlay (team markers)
+        dynamicMarkerPopupOverlay?.cleanup()
+        dynamicMarkerPopupOverlay = nil
 
         // Clean up the trip progress overlay
         tripProgressOverlay?.hide(animated: false)

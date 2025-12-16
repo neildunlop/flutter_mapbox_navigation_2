@@ -115,6 +115,42 @@ import UIKit
     @objc public let predictionWindowMs: Int
 
     // ---------------------------------------------------------------------------
+    // Label Settings
+    // ---------------------------------------------------------------------------
+
+    /// Enable text labels below markers.
+    ///
+    /// When true, displays the marker title as a label below the icon.
+    /// Default: false
+    @objc public let showLabels: Bool
+
+    /// Label text size in logical pixels.
+    ///
+    /// Default: 12.0
+    @objc public let labelTextSize: Double
+
+    /// Label text color (ARGB integer).
+    ///
+    /// Default: White (0xFFFFFFFF)
+    @objc public let labelTextColor: Int
+
+    /// Label background/halo color (ARGB integer).
+    ///
+    /// Default: Dark gray with opacity (0xCC333333)
+    @objc public let labelHaloColor: Int
+
+    /// Label halo width in logical pixels.
+    ///
+    /// Default: 1.5
+    @objc public let labelHaloWidth: Double
+
+    /// Vertical offset of label from marker icon.
+    ///
+    /// Positive values move label down.
+    /// Default: 1.5
+    @objc public let labelOffsetY: Double
+
+    // ---------------------------------------------------------------------------
     // Display Settings
     // ---------------------------------------------------------------------------
 
@@ -152,6 +188,12 @@ import UIKit
         minTrailPointDistance: Double = 5.0,
         enablePrediction: Bool = true,
         predictionWindowMs: Int = 2000,
+        showLabels: Bool = false,
+        labelTextSize: Double = 12.0,
+        labelTextColor: Int = Int(bitPattern: 0xFFFFFFFF),
+        labelHaloColor: Int = Int(bitPattern: 0xCC333333),
+        labelHaloWidth: Double = 1.5,
+        labelOffsetY: Double = 1.5,
         zIndex: Int = 100,
         minZoomLevel: Double = 0.0,
         maxDistanceFromCenter: Double = -1.0 // -1 means nil/no limit
@@ -172,9 +214,21 @@ import UIKit
         self.minTrailPointDistance = minTrailPointDistance
         self.enablePrediction = enablePrediction
         self.predictionWindowMs = predictionWindowMs
+        self.showLabels = showLabels
+        self.labelTextSize = labelTextSize
+        self.labelTextColor = labelTextColor
+        self.labelHaloColor = labelHaloColor
+        self.labelHaloWidth = labelHaloWidth
+        self.labelOffsetY = labelOffsetY
         self.zIndex = zIndex
         self.minZoomLevel = minZoomLevel
         self.maxDistanceFromCenter = maxDistanceFromCenter
+
+        // Validate configuration values
+        precondition(animationDurationMs > 0, "animationDurationMs must be positive")
+        precondition(trailWidth > 0, "trailWidth must be positive")
+        precondition(labelTextSize > 0, "labelTextSize must be positive")
+        precondition(labelHaloWidth >= 0, "labelHaloWidth must be non-negative")
     }
 
     /// Default configuration instance.
@@ -221,6 +275,12 @@ import UIKit
             "minTrailPointDistance": minTrailPointDistance,
             "enablePrediction": enablePrediction,
             "predictionWindowMs": predictionWindowMs,
+            "showLabels": showLabels,
+            "labelTextSize": labelTextSize,
+            "labelTextColor": labelTextColor,
+            "labelHaloColor": labelHaloColor,
+            "labelHaloWidth": labelHaloWidth,
+            "labelOffsetY": labelOffsetY,
             "zIndex": zIndex,
             "minZoomLevel": minZoomLevel,
             "maxDistanceFromCenter": maxDistanceFromCenter > 0 ? maxDistanceFromCenter : NSNull()
@@ -245,6 +305,12 @@ import UIKit
             minTrailPointDistance: json["minTrailPointDistance"] as? Double ?? 5.0,
             enablePrediction: json["enablePrediction"] as? Bool ?? true,
             predictionWindowMs: json["predictionWindowMs"] as? Int ?? 2000,
+            showLabels: json["showLabels"] as? Bool ?? false,
+            labelTextSize: json["labelTextSize"] as? Double ?? 12.0,
+            labelTextColor: json["labelTextColor"] as? Int ?? Int(bitPattern: 0xFFFFFFFF),
+            labelHaloColor: json["labelHaloColor"] as? Int ?? Int(bitPattern: 0xCC333333),
+            labelHaloWidth: json["labelHaloWidth"] as? Double ?? 1.5,
+            labelOffsetY: json["labelOffsetY"] as? Double ?? 1.5,
             zIndex: json["zIndex"] as? Int ?? 100,
             minZoomLevel: json["minZoomLevel"] as? Double ?? 0.0,
             maxDistanceFromCenter: json["maxDistanceFromCenter"] as? Double ?? -1.0
@@ -259,6 +325,7 @@ import UIKit
         case stationarySpeedThreshold, stationaryDurationMs
         case enableTrail, maxTrailPoints, trailColor, trailWidth, trailGradient, minTrailPointDistance
         case enablePrediction, predictionWindowMs
+        case showLabels, labelTextSize, labelTextColor, labelHaloColor, labelHaloWidth, labelOffsetY
         case zIndex, minZoomLevel, maxDistanceFromCenter
     }
 
@@ -280,6 +347,12 @@ import UIKit
         minTrailPointDistance = try container.decodeIfPresent(Double.self, forKey: .minTrailPointDistance) ?? 5.0
         enablePrediction = try container.decodeIfPresent(Bool.self, forKey: .enablePrediction) ?? true
         predictionWindowMs = try container.decodeIfPresent(Int.self, forKey: .predictionWindowMs) ?? 2000
+        showLabels = try container.decodeIfPresent(Bool.self, forKey: .showLabels) ?? false
+        labelTextSize = try container.decodeIfPresent(Double.self, forKey: .labelTextSize) ?? 12.0
+        labelTextColor = try container.decodeIfPresent(Int.self, forKey: .labelTextColor) ?? Int(bitPattern: 0xFFFFFFFF)
+        labelHaloColor = try container.decodeIfPresent(Int.self, forKey: .labelHaloColor) ?? Int(bitPattern: 0xCC333333)
+        labelHaloWidth = try container.decodeIfPresent(Double.self, forKey: .labelHaloWidth) ?? 1.5
+        labelOffsetY = try container.decodeIfPresent(Double.self, forKey: .labelOffsetY) ?? 1.5
         zIndex = try container.decodeIfPresent(Int.self, forKey: .zIndex) ?? 100
         minZoomLevel = try container.decodeIfPresent(Double.self, forKey: .minZoomLevel) ?? 0.0
         maxDistanceFromCenter = try container.decodeIfPresent(Double.self, forKey: .maxDistanceFromCenter) ?? -1.0
@@ -303,6 +376,12 @@ import UIKit
         try container.encode(minTrailPointDistance, forKey: .minTrailPointDistance)
         try container.encode(enablePrediction, forKey: .enablePrediction)
         try container.encode(predictionWindowMs, forKey: .predictionWindowMs)
+        try container.encode(showLabels, forKey: .showLabels)
+        try container.encode(labelTextSize, forKey: .labelTextSize)
+        try container.encode(labelTextColor, forKey: .labelTextColor)
+        try container.encode(labelHaloColor, forKey: .labelHaloColor)
+        try container.encode(labelHaloWidth, forKey: .labelHaloWidth)
+        try container.encode(labelOffsetY, forKey: .labelOffsetY)
         try container.encode(zIndex, forKey: .zIndex)
         try container.encode(minZoomLevel, forKey: .minZoomLevel)
         try container.encode(maxDistanceFromCenter, forKey: .maxDistanceFromCenter)

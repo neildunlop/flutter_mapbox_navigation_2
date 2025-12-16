@@ -25,6 +25,7 @@ import com.neiladunlop.fluttermapboxnavigation2.models.WaypointSet
 import com.neiladunlop.fluttermapboxnavigation2.utilities.CustomInfoPanelBinder
 import com.neiladunlop.fluttermapboxnavigation2.utilities.CustomInfoPanelEndNavButtonBinder
 import com.neiladunlop.fluttermapboxnavigation2.utilities.CustomTripProgressBinder
+import com.neiladunlop.fluttermapboxnavigation2.utilities.DynamicMarkerPopupOverlay
 import com.neiladunlop.fluttermapboxnavigation2.utilities.MarkerPopupOverlay
 import com.neiladunlop.fluttermapboxnavigation2.utilities.PluginUtilities
 import com.neiladunlop.fluttermapboxnavigation2.utilities.TripProgressManager
@@ -83,6 +84,7 @@ class NavigationActivity : AppCompatActivity(), NavigationObserverCallback {
     private lateinit var binding: NavigationActivityBinding
     private lateinit var turnByTurn: TurnByTurn
     private lateinit var markerPopupOverlay: MarkerPopupOverlay
+    private lateinit var dynamicMarkerPopupOverlay: DynamicMarkerPopupOverlay
     private lateinit var tripProgressOverlay: TripProgressOverlay
     private lateinit var customInfoPanelBinder: CustomInfoPanelBinder
     private val tripProgressManager = TripProgressManager.getInstance()
@@ -328,6 +330,11 @@ class NavigationActivity : AppCompatActivity(), NavigationObserverCallback {
         // Clean up the marker popup overlay
         if (::markerPopupOverlay.isInitialized) {
             markerPopupOverlay.cleanup()
+        }
+
+        // Clean up the dynamic marker popup overlay
+        if (::dynamicMarkerPopupOverlay.isInitialized) {
+            dynamicMarkerPopupOverlay.cleanup()
         }
 
         // Clean up the trip progress overlay
@@ -909,9 +916,13 @@ class NavigationActivity : AppCompatActivity(), NavigationObserverCallback {
             infoPanelBinder = customInfoPanelBinder
         }
 
-        // Initialize the floating marker popup overlay
+        // Initialize the floating marker popup overlay (for static markers)
         markerPopupOverlay = MarkerPopupOverlay(this)
         markerPopupOverlay.initialize()
+
+        // Initialize the dynamic marker popup overlay (for team markers)
+        dynamicMarkerPopupOverlay = DynamicMarkerPopupOverlay(this)
+        dynamicMarkerPopupOverlay.initialize()
 
         // Initialize the legacy trip progress overlay (keep for backward compatibility, but don't show)
         tripProgressOverlay = TripProgressOverlay(this)
