@@ -880,13 +880,13 @@ await _controller?.startFreeDrive();
 
 | Feature | Screenshot |
 |:--------|:----------:|
-| **Menu & Options** | ![Menu](doc/images/android_menu.png?raw=true "Navigation Menu") |
-| **Turn-by-Turn Navigation** | ![Navigation](doc/images/android_navigation_2.png?raw=true "Turn-by-Turn Navigation") |
-| **Multi-Stop Navigation** | ![Multi-Stop](doc/images/android_multistop.png?raw=true "Multi-Stop Navigation") |
-| **Trip Progress Panel** | ![Progress Panel](doc/images/android_progress_panel.png?raw=true "Trip Progress Panel") |
-| **Dynamic Markers** | ![Dynamic Markers](doc/images/android_dynamic_markers.png?raw=true "Dynamic Markers") |
-| **Marker Popups** | ![Popups](doc/images/android_popups.png?raw=true "Marker Popups") |
-| **Offline Navigation** | ![Offline](doc/images/android_offline_navigation.png?raw=true "Offline Navigation") |
+| **Menu & Options** | <img src="doc/images/android_menu.png" width="300" alt="Navigation Menu"> |
+| **Turn-by-Turn Navigation** | <img src="doc/images/android_navigation_2.png" width="300" alt="Turn-by-Turn Navigation"> |
+| **Multi-Stop Navigation** | <img src="doc/images/android_multistop.png" width="300" alt="Multi-Stop Navigation"> |
+| **Trip Progress Panel** | <img src="doc/images/android_progress_panel.png" width="300" alt="Trip Progress Panel"> |
+| **Dynamic Markers** | <img src="doc/images/android_dynamic_markers.png" width="300" alt="Dynamic Markers"> |
+| **Marker Popups** | <img src="doc/images/android_popups.png" width="300" alt="Marker Popups"> |
+| **Offline Navigation** | <img src="doc/images/android_offline_navigation.png" width="300" alt="Offline Navigation"> |
 
 ## Platform Support
 
