@@ -237,12 +237,12 @@ import UIKit
     // MARK: - Helper Methods
 
     /// Returns the expired threshold as an optional.
-    @objc public var expiredThresholdMsOptional: Int? {
+    public var expiredThresholdMsOptional: Int? {
         return expiredThresholdMs > 0 ? expiredThresholdMs : nil
     }
 
     /// Returns the max distance as an optional.
-    @objc public var maxDistanceFromCenterOptional: Double? {
+    public var maxDistanceFromCenterOptional: Double? {
         return maxDistanceFromCenter > 0 ? maxDistanceFromCenter : nil
     }
 

@@ -205,7 +205,7 @@ public typealias DynamicMarkerTapListener = (DynamicMarker) -> Void
         return true
     }
 
-    @objc public func updateDynamicMarker(
+    public func updateDynamicMarker(
         markerId: String,
         title: String? = nil,
         snippet: String? = nil,
@@ -263,7 +263,7 @@ public typealias DynamicMarkerTapListener = (DynamicMarker) -> Void
         // Remove annotation
         if let annotation = markerAnnotations[markerId],
            let manager = pointAnnotationManager {
-            manager.remove(annotation)
+            manager.annotations = manager.annotations.filter { $0.id != annotation.id }
         }
         markerAnnotations.removeValue(forKey: markerId)
 
@@ -292,9 +292,7 @@ public typealias DynamicMarkerTapListener = (DynamicMarker) -> Void
 
         // Clear annotations
         if let manager = pointAnnotationManager {
-            for annotation in markerAnnotations.values {
-                manager.remove(annotation)
-            }
+            manager.annotations.removeAll()
         }
         markerAnnotations.removeAll()
 
@@ -359,7 +357,11 @@ public typealias DynamicMarkerTapListener = (DynamicMarker) -> Void
                 if let heading = heading {
                     updatedAnnotation.iconRotate = heading
                 }
-                manager.update([updatedAnnotation])
+                // Update by replacing in annotations array
+                if let index = manager.annotations.firstIndex(where: { $0.id == annotation.id }) {
+                    manager.annotations[index] = updatedAnnotation
+                }
+                self.markerAnnotations[newMarker.id] = updatedAnnotation
             }
         }
 
@@ -372,46 +374,39 @@ public typealias DynamicMarkerTapListener = (DynamicMarker) -> Void
     private func createMarkerAnnotation(_ marker: DynamicMarker) {
         guard let manager = pointAnnotationManager else { return }
 
-        var annotationOptions = PointAnnotationOptions()
-        annotationOptions.point = marker.toMapboxPoint()
+        var annotation = PointAnnotation(point: marker.toMapboxPoint())
 
         // Set icon
         let iconId = marker.iconId ?? "ic_pin"
         if let iconImage = IconResourceMapper.getIconImage(for: iconId) {
-            annotationOptions.iconImage = iconImage
+            annotation.image = .init(image: iconImage, name: iconId)
         }
 
         // Set opacity based on state
-        annotationOptions.iconOpacity = getOpacityForState(marker.state)
+        annotation.iconOpacity = getOpacityForState(marker.state)
 
         // Set rotation if heading is available
         if let heading = marker.heading {
-            annotationOptions.iconRotate = heading
+            annotation.iconRotate = heading
         }
 
         // Add text label if enabled in configuration
         if configuration.showLabels {
             let labelText = marker.title.isEmpty ? marker.category : marker.title
-            annotationOptions.textField = labelText
-            annotationOptions.textSize = configuration.labelTextSize
-            annotationOptions.textColor = StyleColor(UIColor(argb: configuration.labelTextColor))
-            annotationOptions.textHaloColor = StyleColor(UIColor(argb: configuration.labelHaloColor))
-            annotationOptions.textHaloWidth = configuration.labelHaloWidth
-            annotationOptions.textOffset = [0.0, configuration.labelOffsetY]
-            annotationOptions.textAnchor = .top
+            annotation.textField = labelText
+            annotation.textSize = configuration.labelTextSize
+            annotation.textColor = StyleColor(UIColor(argb: configuration.labelTextColor))
+            annotation.textHaloColor = StyleColor(UIColor(argb: configuration.labelHaloColor))
+            annotation.textHaloWidth = configuration.labelHaloWidth
+            annotation.textOffset = [0.0, configuration.labelOffsetY]
+            annotation.textAnchor = .top
         }
 
-        let annotation = manager.create(annotationOptions)
         markerAnnotations[marker.id] = annotation
+        manager.annotations.append(annotation)
 
-        // Add click listener
-        manager.addClickListener { [weak self] clickedAnnotation in
-            if clickedAnnotation == annotation {
-                self?.onMarkerTap(marker)
-                return true
-            }
-            return false
-        }
+        // Note: Click listener handling moved to delegate pattern or gesture recognizers
+        // This would need to be implemented separately in the view controller
     }
 
     private func updateMarkerAnnotation(_ marker: DynamicMarker) {
@@ -442,16 +437,18 @@ public typealias DynamicMarkerTapListener = (DynamicMarker) -> Void
             updatedAnnotation.textField = nil
         }
 
-        manager.update([updatedAnnotation])
+        // Update by replacing in annotations array
+        if let index = manager.annotations.firstIndex(where: { $0.id == annotation.id }) {
+            manager.annotations[index] = updatedAnnotation
+        }
+        markerAnnotations[marker.id] = updatedAnnotation
     }
 
     private func refreshAllMarkers() {
         guard let manager = pointAnnotationManager else { return }
 
         // Remove all existing annotations
-        for annotation in markerAnnotations.values {
-            manager.remove(annotation)
-        }
+        manager.annotations.removeAll()
         markerAnnotations.removeAll()
 
         // Recreate all markers

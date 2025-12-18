@@ -71,6 +71,11 @@ public class FlutterMapboxNavigationPlugin: NavigationFactory, FlutterPlugin {
         {
             startNavigation(arguments: arguments, result: result)
         }
+        else if(call.method == "startFlutterNavigation" || call.method == "startFlutterStyledNavigation")
+        {
+            // Flutter-styled navigation (Drop-in UI) - same implementation as startNavigation
+            startNavigation(arguments: arguments, result: result)
+        }
         else if(call.method == "addWayPoints")
         {
             addWayPoints(arguments: arguments, result: result)

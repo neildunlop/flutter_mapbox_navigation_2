@@ -56,8 +56,10 @@ public class TripProgressOverlay {
     private var currentWaypointIndex = 0
     private var totalWaypoints = 0
 
-    // Bottom margin to position above the info panel
-    private let bottomMargin: CGFloat = 180
+    // Bottom margin to position at the bottom of the screen
+    private var bottomMargin: CGFloat {
+        return 0
+    }
 
     // Theme shortcut
     private var theme: TripProgressTheme { config.theme }
@@ -98,7 +100,7 @@ public class TripProgressOverlay {
         NSLayoutConstraint.activate([
             card.leadingAnchor.constraint(equalTo: parentVC.view.leadingAnchor, constant: 12),
             card.trailingAnchor.constraint(equalTo: parentVC.view.trailingAnchor, constant: -12),
-            card.bottomAnchor.constraint(equalTo: parentVC.view.safeAreaLayoutGuide.bottomAnchor, constant: -bottomMargin)
+            card.bottomAnchor.constraint(equalTo: parentVC.view.bottomAnchor, constant: -bottomMargin)
         ])
 
         // Animate in
@@ -243,30 +245,30 @@ public class TripProgressOverlay {
         outerCard.addSubview(innerCard)
 
         NSLayoutConstraint.activate([
-            innerCard.topAnchor.constraint(equalTo: outerCard.topAnchor, constant: 10),
-            innerCard.leadingAnchor.constraint(equalTo: outerCard.leadingAnchor, constant: 10),
-            innerCard.trailingAnchor.constraint(equalTo: outerCard.trailingAnchor, constant: -10),
-            innerCard.bottomAnchor.constraint(equalTo: outerCard.bottomAnchor, constant: -10)
+            innerCard.topAnchor.constraint(equalTo: outerCard.topAnchor, constant: 6),
+            innerCard.leadingAnchor.constraint(equalTo: outerCard.leadingAnchor, constant: 6),
+            innerCard.trailingAnchor.constraint(equalTo: outerCard.trailingAnchor, constant: -6),
+            innerCard.bottomAnchor.constraint(equalTo: outerCard.bottomAnchor, constant: -6)
         ])
 
         // Content stack inside the inner white card
         let contentStack = UIStackView()
         contentStack.axis = .vertical
-        contentStack.spacing = 10
+        contentStack.spacing = 6
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         innerCard.addSubview(contentStack)
 
         NSLayoutConstraint.activate([
-            contentStack.topAnchor.constraint(equalTo: innerCard.topAnchor, constant: 12),
-            contentStack.leadingAnchor.constraint(equalTo: innerCard.leadingAnchor, constant: 16),
-            contentStack.trailingAnchor.constraint(equalTo: innerCard.trailingAnchor, constant: -16),
-            contentStack.bottomAnchor.constraint(equalTo: innerCard.bottomAnchor, constant: -16)
+            contentStack.topAnchor.constraint(equalTo: innerCard.topAnchor, constant: 8),
+            contentStack.leadingAnchor.constraint(equalTo: innerCard.leadingAnchor, constant: 12),
+            contentStack.trailingAnchor.constraint(equalTo: innerCard.trailingAnchor, constant: -12),
+            contentStack.bottomAnchor.constraint(equalTo: innerCard.bottomAnchor, constant: -8)
         ])
 
         // === Line 1: [◀] Icon + Waypoint Name [▶] ===
         let line1 = UIStackView()
         line1.axis = .horizontal
-        line1.spacing = 12
+        line1.spacing = 8
         line1.alignment = .center
 
         // Prev button (only if enabled)
@@ -400,7 +402,7 @@ public class TripProgressOverlay {
             endBtn.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
             endBtn.backgroundColor = theme.endButtonColor
             endBtn.layer.cornerRadius = 8
-            endBtn.contentEdgeInsets = UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
+            endBtn.contentEdgeInsets = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
             endBtn.addTarget(self, action: #selector(endNavButtonTapped), for: .touchUpInside)
             endNavButton = endBtn
             contentStack.addArrangedSubview(endBtn)

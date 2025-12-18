@@ -208,56 +208,46 @@ public typealias MarkerTapListener = (StaticMarker) -> Void
         guard let annotationManager = pointAnnotationManager else { return }
         
         // Clear existing annotations
-        for annotation in markerAnnotations.values {
-            annotationManager.remove(annotation)
-        }
+        annotationManager.annotations.removeAll()
         markerAnnotations.removeAll()
         
         for marker in markers {
             do {
                 // Create point for the marker
-                let point = Point(latitude: marker.latitude, longitude: marker.longitude)
+                let point = Point(CLLocationCoordinate2D(latitude: marker.latitude, longitude: marker.longitude))
                 
-                // Create annotation options
-                var annotationOptions = PointAnnotationOptions()
-                annotationOptions.point = point
-                
+                // Create annotation
+                var annotation = PointAnnotation(point: point)
+
                 // Set title
-                annotationOptions.textField = marker.title
-                
+                annotation.textField = marker.title
+
                 // Set icon based on marker configuration
                 let iconId = marker.iconId ?? "ic_pin"
                 if let iconImage = IconResourceMapper.getIconImage(for: iconId) {
-                    annotationOptions.iconImage = iconImage
+                    annotation.image = .init(image: iconImage, name: iconId)
                 }
-                
+
                 // Set color if specified
-                if let customColor = marker.customColor {
-                    annotationOptions.iconColor = StyleColor(customColor)
+                if let customColor = marker.customColor, let color = UIColor(hex: customColor) {
+                    annotation.iconColor = StyleColor(color)
                 }
-                
+
                 // Set text color and size
-                annotationOptions.textColor = StyleColor("#000000")
-                annotationOptions.textSize = 12.0
-                
+                annotation.textColor = StyleColor(.black)
+                annotation.textSize = 12.0
+
                 // Set anchor point for text
-                annotationOptions.textAnchor = .top
-                annotationOptions.textOffset = [0, -2]
-                
-                // Create and add the annotation
-                let annotation = annotationManager.create(annotationOptions)
-                
+                annotation.textAnchor = TextAnchor.top
+                annotation.textOffset = [0, -2]
+
                 // Store the annotation for later management
                 markerAnnotations[marker.id] = annotation
-                
-                // Add click listener
-                annotationManager.addClickListener { [weak self] clickedAnnotation in
-                    if clickedAnnotation == annotation {
-                        self?.onMarkerTap(marker)
-                        return true
-                    }
-                    return false
-                }
+
+                // Add to annotations array
+                annotationManager.annotations.append(annotation)
+
+                // Note: Click listener handling moved to delegate pattern or gesture recognizers
                 
             } catch {
                 print("Failed to add marker \(marker.id): \(error)")

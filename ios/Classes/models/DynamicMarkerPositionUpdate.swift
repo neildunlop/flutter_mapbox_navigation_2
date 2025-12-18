@@ -19,21 +19,21 @@ import Foundation
     @objc public let timestamp: String
 
     /// New heading in degrees (0-360, north = 0).
-    @objc public let heading: Double?
+    public let heading: Double?
 
     /// Current speed in meters per second.
-    @objc public let speed: Double?
+    public let speed: Double?
 
     /// Altitude in meters (for 3D tracking scenarios).
-    @objc public let altitude: Double?
+    public let altitude: Double?
 
     /// GPS accuracy in meters.
-    @objc public let accuracy: Double?
+    public let accuracy: Double?
 
     /// Additional data associated with this update.
-    @objc public let additionalData: [String: Any]?
+    public let additionalData: [String: Any]?
 
-    @objc public init(
+    public init(
         markerId: String,
         latitude: Double,
         longitude: Double,
@@ -57,7 +57,7 @@ import Foundation
 
     // MARK: - JSON Conversion
 
-    @objc public func toJson() -> [String: Any] {
+    public func toJson() -> [String: Any] {
         var json: [String: Any] = [
             "markerId": markerId,
             "latitude": latitude,
@@ -84,7 +84,7 @@ import Foundation
         return json
     }
 
-    @objc public static func fromJson(_ json: [String: Any]) -> DynamicMarkerPositionUpdate? {
+    public static func fromJson(_ json: [String: Any]) -> DynamicMarkerPositionUpdate? {
         guard let markerId = json["markerId"] as? String,
               let latitude = json["latitude"] as? Double,
               let longitude = json["longitude"] as? Double else {
@@ -110,7 +110,7 @@ import Foundation
     /// - latitude/longitude
     /// - lat/lng
     /// - lat/lon
-    @objc public static func fromMap(_ map: [String: Any]) -> DynamicMarkerPositionUpdate? {
+    public static func fromMap(_ map: [String: Any]) -> DynamicMarkerPositionUpdate? {
         // Extract marker ID
         guard let markerId = (map["markerId"] ?? map["id"]) as? String else {
             return nil
@@ -161,7 +161,7 @@ import Foundation
         speed = try container.decodeIfPresent(Double.self, forKey: .speed)
         altitude = try container.decodeIfPresent(Double.self, forKey: .altitude)
         accuracy = try container.decodeIfPresent(Double.self, forKey: .accuracy)
-        additionalData = try container.decodeIfPresent([String: Any].self, forKey: .additionalData)
+        additionalData = nil // [String: Any] is not Codable - skip decoding
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -174,7 +174,7 @@ import Foundation
         try container.encodeIfPresent(speed, forKey: .speed)
         try container.encodeIfPresent(altitude, forKey: .altitude)
         try container.encodeIfPresent(accuracy, forKey: .accuracy)
-        try container.encodeIfPresent(additionalData, forKey: .additionalData)
+        // additionalData is [String: Any] which is not Codable - skip encoding
     }
 
     // MARK: - Equality

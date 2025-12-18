@@ -136,8 +136,8 @@ public class DynamicMarkerPopupOverlay {
         let markerColor: UIColor
         if let cv = colorValue {
             markerColor = UIColor(argb: cv)
-        } else if let customColor = marker.customColor {
-            markerColor = UIColor(argb: customColor)
+        } else if let customColor = marker.customColor, let color = UIColor(hex: customColor) {
+            markerColor = color
         } else {
             markerColor = .systemBlue
         }

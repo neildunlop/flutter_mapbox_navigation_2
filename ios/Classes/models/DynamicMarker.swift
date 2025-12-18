@@ -91,16 +91,16 @@ import UIKit
     @objc public let category: String
 
     /// Previous latitude coordinate (used for interpolation).
-    @objc public var previousLatitude: Double?
+    public var previousLatitude: Double?
 
     /// Previous longitude coordinate (used for interpolation).
-    @objc public var previousLongitude: Double?
+    public var previousLongitude: Double?
 
     /// Current heading/bearing in degrees (0-360, where 0 = north).
-    @objc public var heading: Double?
+    public var heading: Double?
 
     /// Current speed in meters per second.
-    @objc public var speed: Double?
+    public var speed: Double?
 
     /// Timestamp of the last position update (ISO8601 string).
     @objc public var lastUpdated: String?
@@ -112,7 +112,7 @@ import UIKit
     @objc public let customColor: String?
 
     /// Arbitrary metadata associated with this marker.
-    @objc public let metadata: [String: Any]?
+    public let metadata: [String: Any]?
 
     /// Current state of the marker.
     @objc public var state: DynamicMarkerState
@@ -124,9 +124,9 @@ import UIKit
     @objc public var trailLength: Int
 
     /// Historical positions for trail rendering.
-    @objc public var positionHistory: [LatLng]?
+    public var positionHistory: [LatLng]?
 
-    @objc public init(
+    public init(
         id: String,
         latitude: Double,
         longitude: Double,
@@ -167,12 +167,12 @@ import UIKit
     // MARK: - Computed Properties
 
     /// Returns the current position as a MapboxMaps Point.
-    @objc public func toMapboxPoint() -> Point {
+    public func toMapboxPoint() -> Point {
         return Point(CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
     }
 
     /// Returns the previous position as a LatLng, or nil if not set.
-    @objc public var previousPosition: LatLng? {
+    public var previousPosition: LatLng? {
         guard let prevLat = previousLatitude, let prevLng = previousLongitude else {
             return nil
         }
@@ -181,7 +181,7 @@ import UIKit
 
     // MARK: - JSON Conversion
 
-    @objc public func toJson() -> [String: Any] {
+    public func toJson() -> [String: Any] {
         var json: [String: Any] = [
             "id": id,
             "latitude": latitude,
@@ -264,7 +264,7 @@ import UIKit
     // MARK: - Position Update
 
     /// Creates a copy with an updated position.
-    @objc public func withPosition(
+    public func withPosition(
         newLatitude: Double,
         newLongitude: Double,
         newHeading: Double? = nil,
@@ -381,7 +381,7 @@ import UIKit
         lastUpdated = try container.decodeIfPresent(String.self, forKey: .lastUpdated)
         iconId = try container.decodeIfPresent(String.self, forKey: .iconId)
         customColor = try container.decodeIfPresent(String.self, forKey: .customColor)
-        metadata = try container.decodeIfPresent([String: Any].self, forKey: .metadata)
+        metadata = nil // [String: Any] is not Codable - skip decoding
         state = try container.decodeIfPresent(DynamicMarkerState.self, forKey: .state) ?? .tracking
         showTrail = try container.decodeIfPresent(Bool.self, forKey: .showTrail) ?? false
         trailLength = try container.decodeIfPresent(Int.self, forKey: .trailLength) ?? 50
@@ -402,7 +402,7 @@ import UIKit
         try container.encodeIfPresent(lastUpdated, forKey: .lastUpdated)
         try container.encodeIfPresent(iconId, forKey: .iconId)
         try container.encodeIfPresent(customColor, forKey: .customColor)
-        try container.encodeIfPresent(metadata, forKey: .metadata)
+        // metadata is [String: Any] which is not Codable - skip encoding
         try container.encode(state, forKey: .state)
         try container.encode(showTrail, forKey: .showTrail)
         try container.encode(trailLength, forKey: .trailLength)

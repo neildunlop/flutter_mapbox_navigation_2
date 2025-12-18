@@ -90,9 +90,9 @@ public class TripProgressManager {
             return WaypointInfo(
                 name: waypointName,
                 category: marker?.category ?? "waypoint",
-                description: marker?.description,
+                description: marker?.markerDescription,
                 iconId: marker?.iconId,
-                isCheckpoint: marker?.category?.lowercased() == "checkpoint",
+                isCheckpoint: marker?.category.lowercased() == "checkpoint",
                 latitude: wp.coordinate.latitude,
                 longitude: wp.coordinate.longitude
             )

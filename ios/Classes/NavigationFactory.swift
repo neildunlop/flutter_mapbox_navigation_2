@@ -37,7 +37,7 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
     var _longPressDestinationEnabled = true
     var _alternatives = true
     var _shouldReRoute = true
-    var _showReportFeedbackButton = true
+    var _showReportFeedbackButton = false
     var _showEndOfRouteFeedback = true
     var _enableOnMapTapCallback = false
     var navigationDirections: Directions?
@@ -117,11 +117,18 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
     
     func startNavigation(arguments: NSDictionary?, result: @escaping FlutterResult)
     {
+        print("NavigationFactory: startNavigation called")
+
         _wayPoints.removeAll()
         _wayPointOrder.removeAll()
         _originalWayPoints.removeAll()  // Reset original waypoints for new navigation
 
-        guard var locations = getLocationsFromFlutterArgument(arguments: arguments) else { return }
+        guard var locations = getLocationsFromFlutterArgument(arguments: arguments) else {
+            print("NavigationFactory: No valid locations found")
+            return
+        }
+
+        print("NavigationFactory: Processing \(locations.count) waypoints")
 
         for loc in locations
         {
@@ -229,6 +236,30 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         flutterViewController.present(self._navigationViewController!, animated: true) { [weak self] in
             // Initialize the marker popup overlay after navigation view is presented (for static markers)
             guard let strongSelf = self, let navVC = strongSelf._navigationViewController else { return }
+
+            // Hide the default bottom banner views (we use our custom trip progress overlay instead)
+            // Do this after presentation when subviews are fully loaded
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                // VISUAL DEBUG: Flash screen green to show this block is executing
+                let originalColor = navVC.view.backgroundColor
+                navVC.view.backgroundColor = .green
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    navVC.view.backgroundColor = originalColor
+                }
+
+                // Hide bottom banner
+                if let bottomBanner = navVC.view.subviews.first(where: { String(describing: type(of: $0)).contains("BottomBanner") }) {
+                    bottomBanner.isHidden = true
+                    print("NavigationFactory: Hidden default bottom banner")
+                }
+
+                // Hide report feedback button
+                navVC.showsReportFeedback = false
+                print("NavigationFactory: Disabled report feedback button")
+
+                // Reposition the default recenter button to top-right corner
+                strongSelf.repositionRecenterButton(navVC: navVC)
+            }
             strongSelf.markerPopupOverlay = MarkerPopupOverlay(parentViewController: navVC, config: strongSelf._tripProgressConfig)
             strongSelf.markerPopupOverlay?.initialize()
 
@@ -264,15 +295,15 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
 
             // Set up waypoints for progress tracking
             let markers = StaticMarkerManager.shared.getStaticMarkers()
-            if let waypoints = strongSelf._wayPoints, !waypoints.isEmpty {
-                TripProgressManager.shared.setWaypointsFromMarkers(waypoints, markers: markers, isInitialSetup: true)
+            if !strongSelf._wayPoints.isEmpty {
+                TripProgressManager.shared.setWaypointsFromMarkers(strongSelf._wayPoints, markers: markers, isInitialSetup: true)
             }
 
             // Show the trip progress overlay FIRST
             strongSelf.tripProgressOverlay?.show()
 
             // Then trigger initial update (after UI is created)
-            if let waypoints = strongSelf._wayPoints, !waypoints.isEmpty {
+            if !strongSelf._wayPoints.isEmpty {
                 TripProgressManager.shared.updateProgress(
                     legIndex: 0,
                     distanceToNextWaypoint: 0,
@@ -282,7 +313,403 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
             }
         }
     }
-    
+
+    private var buttonMonitorTimer: Timer?
+    private var repositionedButtons: Set<UIButton> = []
+    private var timerTickCount = 0
+    private var debugOverlayView: UIView?
+    private var buttonTapHandlers: [UIButton: Any] = [:]
+    private var overviewButtonTapped = false
+    private var overviewButton: UIButton?
+    private var overviewButtonPosition: CGRect?
+
+    private func repositionRecenterButton(navVC: NavigationViewController) {
+        // Set up continuous monitoring for recenter button (appears after overview tap)
+        // Check every 0.3 seconds throughout the navigation session
+        sendEvent(eventType: .navigation_running, data: "[iOS] repositionRecenterButton called, setting up timer")
+
+        buttonMonitorTimer?.invalidate()
+        repositionedButtons.removeAll()
+        timerTickCount = 0
+
+        let timer = Timer(timeInterval: 0.3, repeats: true) { [weak self, weak navVC] _ in
+            guard let self = self, let navVC = navVC else {
+                self?.buttonMonitorTimer?.invalidate()
+                return
+            }
+
+            // Debug: Timer is firing
+            self.timerTickCount += 1
+            if self.timerTickCount % 10 == 0 {  // Every 3 seconds
+                self.sendEvent(eventType: .navigation_running, data: "[iOS] Button monitor timer tick \(self.timerTickCount)")
+            }
+
+            // Search for circular buttons that might be the recenter button
+            func findCircularButtons(in view: UIView) -> [UIButton] {
+                var buttons: [UIButton] = []
+
+                if let button = view as? UIButton {
+                    // Recenter button is circular (equal width/height) with cornerRadius
+                    if button.layer.cornerRadius > 15 &&
+                       abs(button.frame.size.width - button.frame.size.height) < 5 {
+                        buttons.append(button)
+                    }
+                }
+
+                for subview in view.subviews {
+                    buttons.append(contentsOf: findCircularButtons(in: subview))
+                }
+
+                return buttons
+            }
+
+            let circularButtons = findCircularButtons(in: navVC.view)
+
+            // Add tap handlers to ALL circular buttons to show debug overlay
+            for button in circularButtons {
+                // Skip if we already added a tap handler
+                if self.buttonTapHandlers[button] != nil {
+                    continue
+                }
+
+                // Add a tap gesture recognizer to intercept taps
+                let tapGesture = UITapGestureRecognizer(target: self, action: #selector(self.buttonTapped(_:)))
+                tapGesture.cancelsTouchesInView = false  // Let the button's action still fire
+                button.addGestureRecognizer(tapGesture)
+                self.buttonTapHandlers[button] = tapGesture
+
+                let buttonY = button.frame.origin.y
+                let screenMidpoint = UIScreen.main.bounds.height / 2
+                let position = buttonY > screenMidpoint ? "BOTTOM" : "TOP"
+                self.sendEvent(eventType: .navigation_running, data: "[iOS] Added tap handler to \(position) button at y=\(buttonY)")
+            }
+        }
+
+        // Store the timer and add it to the run loop
+        buttonMonitorTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+        sendEvent(eventType: .navigation_running, data: "[iOS] Timer added to run loop")
+    }
+
+    @objc private func buttonTapped(_ gesture: UITapGestureRecognizer) {
+        guard let button = gesture.view as? UIButton,
+              let navVC = _navigationViewController else { return }
+
+        let buttonY = button.frame.origin.y
+        let screenMidpoint = UIScreen.main.bounds.height / 2
+        let position = buttonY > screenMidpoint ? "BOTTOM" : "TOP"
+
+        // Only respond to TOP buttons (route overview button is at the top)
+        guard position == "TOP" else {
+            sendEvent(eventType: .navigation_running, data: "[iOS] Ignoring BOTTOM button tap at y=\(buttonY)")
+            return
+        }
+
+        sendEvent(eventType: .navigation_running, data: "[iOS] ⚡️⚡️⚡️ ROUTE OVERVIEW BUTTON TAPPED at y=\(buttonY) ⚡️⚡️⚡️")
+
+        // Track that overview was tapped and save its position
+        overviewButtonTapped = true
+        overviewButton = button
+
+        // Log the overview button's background color for matching
+        if let bgColor = button.backgroundColor {
+            sendEvent(eventType: .navigation_running, data: "[iOS] Overview button background color: \(bgColor)")
+        } else {
+            sendEvent(eventType: .navigation_running, data: "[iOS] Overview button has no background color")
+        }
+
+        // Save the overview button's position in navVC.view coordinates for Resume button placement
+        if let navVC = _navigationViewController {
+            overviewButtonPosition = button.convert(button.bounds, to: navVC.view)
+            sendEvent(eventType: .navigation_running, data: "[iOS] Saved overview position: \(overviewButtonPosition!)")
+        }
+
+        // Try multiple times to find the recenter button (it may take a moment to appear)
+        var attempts = 0
+        func tryFindRecenter() {
+            attempts += 1
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempts) * 0.5) { [weak self] in
+                guard let self = self else { return }
+                let found = self.lookForRecenterButton(navVC: navVC)
+                if !found && attempts < 5 {
+                    self.sendEvent(eventType: .navigation_running, data: "[iOS] Retry #\(attempts) - recenter not found yet, trying again...")
+                    tryFindRecenter()
+                } else if !found {
+                    self.sendEvent(eventType: .navigation_running, data: "[iOS] ❌ Gave up after \(attempts) attempts - recenter button never appeared")
+                }
+            }
+        }
+        tryFindRecenter()
+    }
+
+    private func lookForRecenterButton(navVC: NavigationViewController) -> Bool {
+        sendEvent(eventType: .navigation_running, data: "[iOS] Looking for Resume button (searching ALL views with Resume)...")
+
+        // Search for ALL views that might contain "Resume" text
+        func findViewsWithResume(in view: UIView, depth: Int = 0) -> [(view: UIView, info: String)] {
+            var matches: [(view: UIView, info: String)] = []
+
+            // Check accessibility label
+            if let accessibilityLabel = view.accessibilityLabel, accessibilityLabel.lowercased().contains("resume") {
+                matches.append((view, "accessibilityLabel: \(accessibilityLabel)"))
+            }
+
+            // Check if it's a UILabel with Resume text
+            if let label = view as? UILabel, let text = label.text, text.lowercased().contains("resume") {
+                matches.append((view, "UILabel text: \(text)"))
+            }
+
+            // Check if it's a UIButton with Resume title
+            if let button = view as? UIButton {
+                let title = button.title(for: .normal) ?? button.currentTitle ?? ""
+                if title.lowercased().contains("resume") {
+                    matches.append((view, "UIButton title: \(title)"))
+                }
+            }
+
+            // Search subviews (limit depth to avoid too much recursion)
+            if depth < 10 {
+                for subview in view.subviews {
+                    matches.append(contentsOf: findViewsWithResume(in: subview, depth: depth + 1))
+                }
+            }
+
+            return matches
+        }
+
+        let resumeViews = findViewsWithResume(in: navVC.view)
+        sendEvent(eventType: .navigation_running, data: "[iOS] Found \(resumeViews.count) views with 'Resume'")
+
+        // Log each Resume view found
+        for (index, match) in resumeViews.enumerated() {
+            let frameInNavView = match.view.convert(match.view.bounds, to: navVC.view)
+            let viewType = String(describing: type(of: match.view))
+            sendEvent(eventType: .navigation_running, data: "[iOS] Resume view \(index): \(viewType) at y=\(Int(frameInNavView.origin.y)) - \(match.info)")
+        }
+
+        // If we found Resume view(s), try to reposition the first one
+        if let firstResumeMatch = resumeViews.first {
+            let resumeView = firstResumeMatch.view
+            let frameInNavView = resumeView.convert(resumeView.bounds, to: navVC.view)
+
+            sendEvent(eventType: .navigation_running, data: "[iOS] ✅ FOUND RESUME VIEW - attempting to reposition...")
+
+            // Find the container that likely holds both Resume text and icon
+            var containerToMove = resumeView
+            var iconView: UIView?
+
+            if let parent = resumeView.superview {
+                // Check if parent has multiple subviews (text + icon)
+                if parent.subviews.count > 1 {
+                    containerToMove = parent
+                    sendEvent(eventType: .navigation_running, data: "[iOS] Found parent container with \(parent.subviews.count) subviews")
+
+                    // Look for the icon (UIImageView)
+                    for subview in parent.subviews {
+                        if subview is UIImageView {
+                            iconView = subview
+                            sendEvent(eventType: .navigation_running, data: "[iOS] Found icon (UIImageView)")
+                        } else if subview is UILabel || subview === resumeView {
+                            // Hide text labels to show only icon
+                            subview.isHidden = true
+                            sendEvent(eventType: .navigation_running, data: "[iOS] Hiding text: \(type(of: subview))")
+                        }
+                    }
+                }
+            }
+
+            // Use the saved overview button position and size
+            let targetFrame: CGRect
+            if let savedPosition = overviewButtonPosition {
+                targetFrame = savedPosition
+                sendEvent(eventType: .navigation_running, data: "[iOS] Using saved overview position: \(savedPosition)")
+            } else {
+                // Fallback - make it square/circular like overview button
+                let safeArea = navVC.view.safeAreaInsets
+                let size: CGFloat = 50  // Same size as overview button
+                let targetX = navVC.view.bounds.width - size - 16 - safeArea.right
+                let targetY = 16 + safeArea.top
+                targetFrame = CGRect(x: targetX, y: targetY, width: size, height: size)
+                sendEvent(eventType: .navigation_running, data: "[iOS] No saved position, using square button")
+            }
+
+            // First, configure the icon BEFORE moving container
+            var configuredIcon: UIImageView?
+            if let icon = iconView as? UIImageView {
+                // Check if image exists
+                if let image = icon.image {
+                    sendEvent(eventType: .navigation_running, data: "[iOS] Icon has image: \(image.size)")
+
+                    // Set rendering mode and tint
+                    icon.image = image.withRenderingMode(.alwaysTemplate)
+                    icon.tintColor = .systemBlue
+                    icon.contentMode = .scaleAspectFit
+                    configuredIcon = icon
+                    sendEvent(eventType: .navigation_running, data: "[iOS] Configured existing icon")
+                } else {
+                    sendEvent(eventType: .navigation_running, data: "[iOS] WARNING: Icon UIImageView has no image!")
+                }
+            }
+
+            // Move the container
+            containerToMove.removeFromSuperview()
+            navVC.view.addSubview(containerToMove)
+
+            containerToMove.translatesAutoresizingMaskIntoConstraints = true
+            containerToMove.frame = targetFrame
+            containerToMove.layer.zPosition = 10000
+            containerToMove.clipsToBounds = false  // Don't clip the icon!
+
+            // Add circular background that adapts to dark mode
+            // Using secondarySystemBackground for better contrast in both modes
+            containerToMove.backgroundColor = .secondarySystemBackground
+            containerToMove.layer.cornerRadius = targetFrame.width / 2
+            containerToMove.layer.shadowColor = UIColor.black.cgColor
+            containerToMove.layer.shadowOffset = CGSize(width: 0, height: 2)
+            containerToMove.layer.shadowOpacity = 0.3
+            containerToMove.layer.shadowRadius = 4
+
+            // Note: We create a fresh icon below instead of reusing the existing Resume button icon
+
+            // Create the icon
+            let scopeIcon = UIImageView(frame: CGRect(x: 8, y: 8, width: 32, height: 32))
+            if let targetImage = UIImage(systemName: "scope") {
+                scopeIcon.image = targetImage.withRenderingMode(.alwaysTemplate)
+                scopeIcon.tintColor = .systemBlue
+                scopeIcon.contentMode = .scaleAspectFit
+                scopeIcon.backgroundColor = .clear
+                scopeIcon.layer.zPosition = 200
+                containerToMove.addSubview(scopeIcon)
+                sendEvent(eventType: .navigation_running, data: "[iOS] Resume icon added successfully")
+            } else {
+                sendEvent(eventType: .navigation_running, data: "[iOS] ERROR: Could not create scope system image!")
+            }
+
+            // Hide volume button to prevent it from moving into overview's space
+            hideVolumeButton(in: navVC.view)
+
+            sendEvent(eventType: .navigation_running, data: "[iOS] ✅ Resume container repositioned to \(targetFrame) with background!")
+            return true
+        }
+
+        sendEvent(eventType: .navigation_running, data: "[iOS] ❌ NO RESUME VIEW/BUTTON FOUND")
+        return false
+    }
+
+    private func hideVolumeButton(in view: UIView) {
+        // Find circular button at bottom (likely volume button)
+        func findCircularButtons(in view: UIView) -> [UIButton] {
+            var buttons: [UIButton] = []
+            if let button = view as? UIButton {
+                let width = button.frame.width
+                let height = button.frame.height
+                if button.layer.cornerRadius > 15 && abs(width - height) < 5 {
+                    buttons.append(button)
+                }
+            }
+            for subview in view.subviews {
+                buttons.append(contentsOf: findCircularButtons(in: subview))
+            }
+            return buttons
+        }
+
+        let circularButtons = findCircularButtons(in: view)
+        for button in circularButtons {
+            let buttonY = button.frame.origin.y
+            let screenMidpoint = UIScreen.main.bounds.height / 2
+
+            // Hide circular buttons in the middle area (likely volume button)
+            if buttonY > 100 && buttonY < screenMidpoint && button != overviewButton {
+                button.isHidden = true
+                sendEvent(eventType: .navigation_running, data: "[iOS] Hid circular button at y=\(Int(buttonY)) (likely volume)")
+            }
+        }
+    }
+
+    private func repositionButton(_ button: UIButton, navVC: NavigationViewController) {
+        sendEvent(eventType: .navigation_running, data: "[iOS] repositionButton called - current frame: \(button.frame)")
+        sendEvent(eventType: .navigation_running, data: "[iOS] Button superview: \(String(describing: type(of: button.superview)))")
+
+        // Save original dimensions
+        let originalWidth = button.frame.width
+        let originalHeight = button.frame.height
+
+        // BETTER APPROACH: Move button to navVC.view directly to avoid coordinate system issues
+        let oldSuperview = button.superview
+
+        // Convert current position to navVC.view coordinates
+        let currentFrameInNavView = button.convert(button.bounds, to: navVC.view)
+        sendEvent(eventType: .navigation_running, data: "[iOS] Current position in nav view: \(currentFrameInNavView)")
+
+        // Remove from current superview and add to navVC.view
+        button.removeFromSuperview()
+        navVC.view.addSubview(button)
+
+        sendEvent(eventType: .navigation_running, data: "[iOS] Moved button from \(String(describing: type(of: oldSuperview))) to nav view")
+
+        // Calculate target position (top-right corner) in navVC.view coordinates
+        let safeArea = navVC.view.safeAreaInsets
+        let targetX = navVC.view.bounds.width - originalWidth - 16 - safeArea.right
+        let targetY = 16 + safeArea.top
+
+        sendEvent(eventType: .navigation_running, data: "[iOS] Target position: x=\(Int(targetX)), y=\(Int(targetY))")
+
+        // Set frame directly (now in navVC.view coordinate system)
+        button.translatesAutoresizingMaskIntoConstraints = true
+        button.frame = CGRect(x: targetX, y: targetY, width: originalWidth, height: originalHeight)
+
+        sendEvent(eventType: .navigation_running, data: "[iOS] Set frame to: \(button.frame)")
+
+        // Make sure it's visible and on top
+        button.isHidden = false
+        button.alpha = 1.0
+        button.layer.zPosition = 10000  // Very high z-index to be on top
+
+        sendEvent(eventType: .navigation_running, data: "[iOS] Button visible=\(!button.isHidden) alpha=\(button.alpha) zPosition=\(button.layer.zPosition)")
+
+        // Mark as repositioned
+        repositionedButtons.insert(button)
+
+        sendEvent(eventType: .navigation_running, data: "[iOS] ✅ Repositioning complete - button should now be at top-right")
+    }
+
+    private func showDebugOverlay(navVC: NavigationViewController, message: String) {
+        // Remove any existing overlay
+        debugOverlayView?.removeFromSuperview()
+
+        // Create a bright overlay that covers the entire screen
+        let overlay = UIView(frame: navVC.view.bounds)
+        overlay.backgroundColor = UIColor.systemYellow.withAlphaComponent(0.95)
+        overlay.layer.zPosition = 10000 // Ensure it's on top of everything
+
+        // Add a label with the message
+        let label = UILabel()
+        label.text = message
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.font = UIFont.systemFont(ofSize: 36, weight: .bold)
+        label.textColor = .black
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        overlay.addSubview(label)
+        navVC.view.addSubview(overlay)
+
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: overlay.centerYAnchor),
+            label.leadingAnchor.constraint(greaterThanOrEqualTo: overlay.leadingAnchor, constant: 20),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: overlay.trailingAnchor, constant: -20)
+        ])
+
+        debugOverlayView = overlay
+
+        // Auto-dismiss after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            self?.debugOverlayView?.removeFromSuperview()
+            self?.debugOverlayView = nil
+        }
+    }
+
     func setNavigationOptions(wayPoints: [Waypoint]) {
         var mode: ProfileIdentifier = .automobileAvoidingTraffic
         
@@ -382,6 +809,23 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         tripProgressOverlay = nil
         TripProgressManager.shared.clear()
 
+        // Clean up the button monitor timer
+        buttonMonitorTimer?.invalidate()
+        buttonMonitorTimer = nil
+        repositionedButtons.removeAll()
+
+        // Clean up button tap handlers
+        buttonTapHandlers.removeAll()
+
+        // Clean up debug overlay
+        debugOverlayView?.removeFromSuperview()
+        debugOverlayView = nil
+
+        // Reset overview button tracking
+        overviewButtonTapped = false
+        overviewButton = nil
+        overviewButtonPosition = nil
+
         if(self._navigationViewController != nil)
         {
             self._navigationViewController?.navigationService.endNavigation(feedback: nil)
@@ -431,7 +875,7 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         // Recalculate route with remaining waypoints
         recalculateRouteFromCurrentLocation()
 
-        sendEvent(eventType: MapBoxEventType.waypoint_arrival, data: "skipped:\(skipped.name ?? "")")
+        // sendEvent(eventType: MapBoxEventType.waypoint_arrival, data: "skipped:\(skipped.name ?? "")") // TODO: Update event type name for new SDK
     }
 
     /// Go back to the previous waypoint
@@ -486,7 +930,7 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         // Recalculate route
         recalculateRouteFromCurrentLocation()
 
-        sendEvent(eventType: MapBoxEventType.waypoint_arrival, data: "restored:\(previousWaypoint.name ?? "")")
+        // sendEvent(eventType: MapBoxEventType.waypoint_arrival, data: "restored:\(previousWaypoint.name ?? "")") // TODO: Update event type name for new SDK
     }
 
     /// Recalculate route from current location to remaining waypoints
@@ -521,6 +965,9 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
 
         sendEvent(eventType: MapBoxEventType.route_building)
 
+        // TODO: Update Directions API for new SDK version
+        print("NavigationFactory: Route recalculation temporarily disabled - API update needed")
+        /*
         Directions.shared.calculate(_options!) { [weak self] (session, result) in
             guard let strongSelf = self else { return }
             switch result {
@@ -547,8 +994,9 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
                 }
             }
         }
+        */
     }
-    
+
     func getLocationsFromFlutterArgument(arguments: NSDictionary?) -> [Location]? {
         
         var locations = [Location]()
@@ -717,22 +1165,22 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
             styleURI: .streets,
             zoomRange: minZoom...maxZoom
         )
-        if let mapDescriptor = OfflineManager().createTilesetDescriptor(for: standardOptions) {
-            descriptors.append(mapDescriptor)
-            print("OfflineRouting: Added map tileset descriptor (streets)")
-        }
+        // TODO: Update OfflineManager API for new SDK version
+        // let mapDescriptor = OfflineManager.shared.createTilesetDescriptor(for: standardOptions)
+        // descriptors.append(mapDescriptor)
+        // print("OfflineRouting: Added map tileset descriptor (streets)")
 
         // Navigation tileset for routing (included if requested)
-        if includeRoutingTiles {
-            let navigationOptions = TilesetDescriptorOptions(
-                styleURI: .navigationDay,
-                zoomRange: minZoom...maxZoom
-            )
-            if let navDescriptor = OfflineManager().createTilesetDescriptor(for: navigationOptions) {
-                descriptors.append(navDescriptor)
-                print("OfflineRouting: Added navigation routing tileset descriptor")
-            }
-        }
+        // TODO: Update OfflineManager API for new SDK version
+        // if includeRoutingTiles {
+        //     let navigationOptions = TilesetDescriptorOptions(
+        //         styleURI: .navigationDay,
+        //         zoomRange: minZoom...maxZoom
+        //     )
+        //     let navDescriptor = OfflineManager.shared.createTilesetDescriptor(for: navigationOptions)
+        //     descriptors.append(navDescriptor)
+        //     print("OfflineRouting: Added navigation routing tileset descriptor")
+        // }
 
         return descriptors
     }
@@ -858,13 +1306,11 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
                     print("OfflineRouting: Cleaning up \(regionsToDelete.count) old regions to free space")
 
                     for region in regionsToDelete {
-                        tileStore.removeTileRegion(forId: region.id) { deleteResult in
-                            switch deleteResult {
-                            case .success:
-                                print("OfflineRouting: Auto-deleted old region: \(region.id)")
-                            case .failure(let error):
-                                print("OfflineRouting: Failed to auto-delete region \(region.id) - \(error.localizedDescription)")
-                            }
+                        do {
+                            try tileStore.removeTileRegion(forId: region.id)
+                            print("OfflineRouting: Auto-deleted old region: \(region.id)")
+                        } catch {
+                            print("OfflineRouting: Failed to auto-delete region \(region.id) - \(error.localizedDescription)")
                         }
                     }
                 }
@@ -918,15 +1364,13 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
         let tileStore = TileStore.default
         let regionId = "region_\(Int(southWestLat * 1000))_\(Int(southWestLng * 1000))_\(Int(northEastLat * 1000))_\(Int(northEastLng * 1000))"
 
-        tileStore.removeTileRegion(forId: regionId) { deleteResult in
-            switch deleteResult {
-            case .success:
-                print("OfflineRouting: Region \(regionId) deleted successfully")
-                result(true)
-            case .failure(let error):
-                print("OfflineRouting: Failed to delete region - \(error.localizedDescription)")
-                result(FlutterError(code: "DELETE_FAILED", message: error.localizedDescription, details: nil))
-            }
+        do {
+            try tileStore.removeTileRegion(forId: regionId)
+            print("OfflineRouting: Region \(regionId) deleted successfully")
+            result(true)
+        } catch {
+            print("OfflineRouting: Failed to delete region - \(error.localizedDescription)")
+            result(FlutterError(code: "DELETE_FAILED", message: error.localizedDescription, details: nil))
         }
     }
 
@@ -980,8 +1424,10 @@ public class NavigationFactory : NSObject, FlutterStreamHandler
 
                 for region in regions {
                     group.enter()
-                    tileStore.removeTileRegion(forId: region.id) { deleteResult in
-                        if case .failure(let error) = deleteResult {
+                    DispatchQueue.global().async {
+                        do {
+                            try tileStore.removeTileRegion(forId: region.id)
+                        } catch {
                             print("OfflineRouting: Failed to delete region \(region.id) - \(error.localizedDescription)")
                             allSuccessful = false
                         }
